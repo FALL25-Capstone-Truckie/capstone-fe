@@ -56,40 +56,34 @@ Hệ thống quản lý vận tải với tính năng theo dõi đơn hàng theo
 
 Dự án sử dụng các biến môi trường để cấu hình. Bạn cần tạo file `.env` ở thư mục gốc của dự án với các biến sau:
 
-### API Configuration
+### '.env' file
 ```
+# API Configuration
 VITE_API_URL=https://api.truckie.com/v1
 VITE_API_TIMEOUT=30000
-```
 
-### Authentication
-```
+# Authentication
 VITE_AUTH_TOKEN_KEY=truckie_auth_token
 VITE_AUTH_REFRESH_TOKEN_KEY=truckie_refresh_token
-```
 
-### Map Configuration
-```
-VITE_VIET_MAPS_API_KEY=your_vietmap_api_key_here
-VITE_MAP_DEFAULT_CENTER_LAT=10.762622
-VITE_MAP_DEFAULT_CENTER_LNG=106.660172
-VITE_MAP_DEFAULT_ZOOM=12
-```
+# Map Configuration
+VITE_VIET_MAPS_API_KEY=df5d9a3fffec4d07c7e3710bd0caf8181945d446509a3d42
+VITE_OPEN_MAP_API_KEY=Fca7FB9MxT00OntvC6WjZruBko5MBDRF
+VITE_OPEN_MAP_API_BASE_URL=https://mapapis.openmap.vn/v1
 
-### App Configuration
-```
+# App Configuration
 VITE_APP_NAME=Truckie
 VITE_APP_DESCRIPTION=Transportation Management System with Real-Time GPS Order Tracking
 VITE_SUPPORT_EMAIL=support@truckie.com
 VITE_SUPPORT_PHONE=02873005588
-```
 
-### Feature Flags
-```
+# Feature Flags
 VITE_FEATURE_LIVE_TRACKING=true
 VITE_FEATURE_NOTIFICATIONS=true
 VITE_FEATURE_CHAT=false
+
 ```
+
 
 ## Cấu trúc dự án
 

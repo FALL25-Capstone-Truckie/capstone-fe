@@ -7,7 +7,7 @@ interface AuthContextType {
     user: User | null;
     isAuthenticated: boolean;
     isLoading: boolean;
-    login: (email: string, password: string) => Promise<void>;
+    login: (email: string, password: string, role?: string) => Promise<void>;
     logout: () => void;
 }
 
@@ -32,12 +32,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
                 }
 
                 // In a real app, you would verify the token with your API
-                // For now, we'll just simulate a user
+                // and get the user role from the token or a separate API call
+                const userRole = localStorage.getItem('user_role') || 'customer';
+
                 const userData: User = {
                     id: '1',
                     username: 'demo_user',
                     email: 'demo@example.com',
-                    role: 'customer'
+                    role: userRole as 'admin' | 'customer' | 'staff' | 'driver'
                 };
 
                 setUser(userData);
@@ -45,6 +47,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             } catch (error) {
                 console.error('Authentication check failed:', error);
                 localStorage.removeItem(AUTH_TOKEN_KEY);
+                localStorage.removeItem('user_role');
                 setIsLoading(false);
             }
         };
@@ -52,7 +55,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         checkAuth();
     }, []);
 
-    const login = async (email: string, password: string) => {
+    const login = async (email: string, password: string, role: string = 'customer') => {
         setIsLoading(true);
         try {
             // In a real app, you would call your API
@@ -66,11 +69,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
                 id: '1',
                 username: 'demo_user',
                 email: email,
-                role: 'customer'
+                role: role as 'admin' | 'customer' | 'staff' | 'driver'
             };
 
-            // Store token
+            // Store token and role
             localStorage.setItem(AUTH_TOKEN_KEY, 'demo_token');
+            localStorage.setItem('user_role', role);
 
             setUser(userData);
         } catch (error) {
@@ -83,6 +87,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     const logout = () => {
         localStorage.removeItem(AUTH_TOKEN_KEY);
+        localStorage.removeItem('user_role');
         setUser(null);
     };
 

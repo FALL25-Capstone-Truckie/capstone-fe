@@ -1,18 +1,42 @@
-import axios from 'axios';
-import { API_URL, API_TIMEOUT, AUTH_TOKEN_KEY } from '../config';
+import axios, { AxiosError } from 'axios';
+import type { AxiosRequestConfig, AxiosResponse } from 'axios';
+import { AUTH_TOKEN_KEY } from '../config';
+import authService from './authService';
 
 // Create an axios instance with default config
 const api = axios.create({
-    baseURL: API_URL,
-    timeout: API_TIMEOUT,
+    baseURL: 'http://localhost:8080',
+    timeout: 30000,
     headers: {
         'Content-Type': 'application/json',
     },
+    // Quan trọng: cho phép gửi cookie với các request
+    withCredentials: true,
 });
+
+// Biến để theo dõi nếu đang refresh token
+let isRefreshing = false;
+// Hàng đợi các request đang chờ token mới
+let failedQueue: any[] = [];
+
+// Xử lý hàng đợi các request
+const processQueue = (error: any, token: string | null = null) => {
+    failedQueue.forEach(prom => {
+        if (error) {
+            prom.reject(error);
+        } else {
+            prom.resolve(token);
+        }
+    });
+
+    failedQueue = [];
+};
 
 // Request interceptor for adding auth token
 api.interceptors.request.use(
     (config) => {
+        // Không cần thêm token vào header nếu đã sử dụng HTTP-only cookie
+        // Tuy nhiên, giữ lại code này cho đến khi backend được cập nhật để hỗ trợ cookie
         const token = localStorage.getItem(AUTH_TOKEN_KEY);
         if (token) {
             config.headers.Authorization = `Bearer ${token}`;
@@ -27,13 +51,61 @@ api.interceptors.request.use(
 // Response interceptor for handling errors
 api.interceptors.response.use(
     (response) => response,
-    (error) => {
-        // Handle 401 Unauthorized errors
-        if (error.response && error.response.status === 401) {
-            // Clear local storage and redirect to login
-            localStorage.removeItem(AUTH_TOKEN_KEY);
-            window.location.href = '/login';
+    async (error: AxiosError) => {
+        const originalRequest = error.config as AxiosRequestConfig & { _retry?: boolean };
+
+        // Nếu lỗi 401 (Unauthorized) và chưa thử refresh token
+        if (error.response?.status === 401 && !originalRequest._retry) {
+            if (isRefreshing) {
+                // Nếu đang refresh, thêm request vào hàng đợi
+                return new Promise((resolve, reject) => {
+                    failedQueue.push({ resolve, reject });
+                }).then(token => {
+                    if (originalRequest.headers) {
+                        originalRequest.headers.Authorization = `Bearer ${token}`;
+                    }
+                    return api(originalRequest);
+                }).catch(err => {
+                    return Promise.reject(err);
+                });
+            }
+
+            // Đánh dấu đang refresh token
+            originalRequest._retry = true;
+            isRefreshing = true;
+
+            try {
+                // Thử refresh token
+                const response = await authService.refreshToken();
+
+                // Nếu refresh thành công, cập nhật token cho các request trong hàng đợi
+                const newToken = response.data.authToken;
+                if (originalRequest.headers) {
+                    originalRequest.headers.Authorization = `Bearer ${newToken}`;
+                }
+
+                // Xử lý hàng đợi các request
+                processQueue(null, newToken);
+
+                // Thực hiện lại request ban đầu với token mới
+                return api(originalRequest);
+            } catch (refreshError) {
+                // Nếu refresh thất bại, xử lý lỗi và đăng xuất
+                processQueue(refreshError, null);
+
+                // Đăng xuất người dùng
+                authService.logout();
+
+                // Chuyển hướng đến trang đăng nhập
+                window.location.href = '/auth/login';
+
+                return Promise.reject(refreshError);
+            } finally {
+                isRefreshing = false;
+            }
         }
+
+        // Xử lý các lỗi khác
         return Promise.reject(error);
     }
 );

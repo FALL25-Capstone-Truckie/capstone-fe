@@ -2,13 +2,15 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import type { ReactNode } from 'react';
 import type { User } from '../types';
 import { AUTH_TOKEN_KEY } from '../config';
+import authService from '../services/authService';
 
 interface AuthContextType {
     user: User | null;
     isAuthenticated: boolean;
     isLoading: boolean;
-    login: (email: string, password: string, role?: string) => Promise<void>;
+    login: (username: string, password: string) => Promise<void>;
     logout: () => void;
+    getRedirectPath: () => string;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -31,8 +33,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
                     return;
                 }
 
-                // In a real app, you would verify the token with your API
-                // and get the user role from the token or a separate API call
+                // TODO: Implement API call to get user profile
+                // For now, we'll just simulate a user based on stored role
                 const userRole = localStorage.getItem('user_role') || 'customer';
 
                 const userData: User = {
@@ -46,8 +48,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
                 setIsLoading(false);
             } catch (error) {
                 console.error('Authentication check failed:', error);
-                localStorage.removeItem(AUTH_TOKEN_KEY);
-                localStorage.removeItem('user_role');
+                authService.logout();
                 setIsLoading(false);
             }
         };
@@ -55,28 +56,30 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         checkAuth();
     }, []);
 
-    const login = async (email: string, password: string, role: string = 'customer') => {
+    const login = async (username: string, password: string) => {
         setIsLoading(true);
         try {
-            // In a real app, you would call your API
-            // For now, we'll just simulate a successful login
+            // Call the authentication API
+            const response = await authService.login(username, password);
 
-            // Simulate API delay
-            await new Promise(resolve => setTimeout(resolve, 1000));
+            if (response.success) {
+                const apiUser = response.data.user;
 
-            // Simulate a successful login
-            const userData: User = {
-                id: '1',
-                username: 'demo_user',
-                email: email,
-                role: role as 'admin' | 'customer' | 'staff' | 'driver'
-            };
+                // Map API user to our User type
+                const userData: User = {
+                    id: apiUser.id,
+                    username: apiUser.username,
+                    email: apiUser.email,
+                    role: apiUser.role.roleName.toLowerCase() as 'admin' | 'customer' | 'staff' | 'driver'
+                };
 
-            // Store token and role
-            localStorage.setItem(AUTH_TOKEN_KEY, 'demo_token');
-            localStorage.setItem('user_role', role);
+                // Store role for future use
+                localStorage.setItem('user_role', userData.role);
 
-            setUser(userData);
+                setUser(userData);
+            } else {
+                throw new Error(response.message || 'Đăng nhập thất bại');
+            }
         } catch (error) {
             console.error('Login failed:', error);
             throw error;
@@ -86,9 +89,26 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     };
 
     const logout = () => {
-        localStorage.removeItem(AUTH_TOKEN_KEY);
-        localStorage.removeItem('user_role');
+        authService.logout();
         setUser(null);
+    };
+
+    // Xác định đường dẫn chuyển hướng dựa trên vai trò người dùng
+    const getRedirectPath = (): string => {
+        if (!user) return '/auth/login';
+
+        switch (user.role) {
+            case 'admin':
+                return '/admin/dashboard';
+            case 'staff':
+                return '/staff/dashboard';
+            case 'driver':
+                return '/driver/dashboard';
+            case 'customer':
+                return '/'; // Chuyển hướng customer đến trang chủ
+            default:
+                return '/';
+        }
     };
 
     const value = {
@@ -96,7 +116,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         isAuthenticated: !!user,
         isLoading,
         login,
-        logout
+        logout,
+        getRedirectPath
     };
 
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

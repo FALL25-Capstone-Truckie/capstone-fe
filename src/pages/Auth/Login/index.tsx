@@ -1,43 +1,58 @@
-import React, { useState } from 'react';
-import { Form, Input, Button, Checkbox, Card, Select } from 'antd';
-import { GoogleOutlined, EyeInvisibleOutlined, EyeTwoTone } from '@ant-design/icons';
+import React, { useState, useEffect } from 'react';
+import { Form, Input, Button, Checkbox, Card, Alert, Spin, message } from 'antd';
+import { GoogleOutlined, EyeInvisibleOutlined, EyeTwoTone, UserOutlined, LockOutlined } from '@ant-design/icons';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { AuthPageLayout } from '../components';
 import { useAuth } from '../../../context';
 
-const { Option } = Select;
-
 const LoginPage: React.FC = () => {
     const [form] = Form.useForm();
     const [loading, setLoading] = useState(false);
+    const [errorMessage, setErrorMessage] = useState<string | null>(null);
     const navigate = useNavigate();
     const location = useLocation();
-    const { login } = useAuth();
+    const { login, isAuthenticated, isLoading, getRedirectPath, user } = useAuth();
 
-    // Lấy đường dẫn chuyển hướng từ state (nếu có)
-    const from = (location.state as any)?.from?.pathname || '/dashboard';
+    // Nếu đã đăng nhập, chuyển hướng đến trang phù hợp với vai trò
+    useEffect(() => {
+        if (isAuthenticated && !isLoading && user) {
+            const redirectPath = getRedirectPath();
+            message.success(`Đăng nhập thành công! Chào mừng ${user.username}`);
+            navigate(redirectPath, { replace: true });
+        }
+    }, [isAuthenticated, isLoading, navigate, getRedirectPath, user]);
 
-    const onFinish = async (values: { email: string; password: string; remember: boolean; role: string }) => {
+    const onFinish = async (values: { username: string; password: string; remember: boolean }) => {
         try {
             setLoading(true);
-            await login(values.email, values.password, values.role);
+            setErrorMessage(null);
 
-            // Chuyển hướng dựa trên vai trò
-            let redirectPath = from;
+            await login(values.username, values.password);
 
-            if (values.role === 'admin') {
-                redirectPath = '/admin/dashboard';
-            } else if (values.role === 'staff') {
-                redirectPath = '/staff/dashboard';
-            } else if (values.role === 'customer') {
-                redirectPath = '/customer/dashboard';
-            } else if (values.role === 'driver') {
-                redirectPath = '/driver/dashboard';
-            }
-
-            navigate(redirectPath, { replace: true });
-        } catch (error) {
+            // Redirect sẽ được xử lý bởi useEffect khi isAuthenticated thay đổi
+        } catch (error: any) {
             console.error('Đăng nhập thất bại:', error);
+
+            // Xử lý các loại lỗi khác nhau
+            if (error.response) {
+                // Lỗi từ server
+                const status = error.response.status;
+                if (status === 401) {
+                    setErrorMessage('Tên đăng nhập hoặc mật khẩu không đúng');
+                } else if (status === 403) {
+                    setErrorMessage('Tài khoản của bạn đã bị khóa');
+                } else if (status === 429) {
+                    setErrorMessage('Quá nhiều lần thử đăng nhập. Vui lòng thử lại sau');
+                } else {
+                    setErrorMessage(`Lỗi đăng nhập: ${error.response.data?.message || 'Đã có lỗi xảy ra'}`);
+                }
+            } else if (error.request) {
+                // Không nhận được phản hồi từ server
+                setErrorMessage('Không thể kết nối đến máy chủ. Vui lòng kiểm tra kết nối mạng của bạn');
+            } else {
+                // Lỗi khác
+                setErrorMessage(error.message || 'Đã có lỗi xảy ra khi đăng nhập');
+            }
         } finally {
             setLoading(false);
         }
@@ -47,6 +62,16 @@ const LoginPage: React.FC = () => {
         // Implement Google login logic here
         console.log('Đăng nhập với Google được nhấp');
     };
+
+    if (isLoading) {
+        return (
+            <AuthPageLayout>
+                <div className="flex justify-center items-center h-64">
+                    <Spin size="large" tip="Đang tải..." />
+                </div>
+            </AuthPageLayout>
+        );
+    }
 
     return (
         <AuthPageLayout>
@@ -62,23 +87,37 @@ const LoginPage: React.FC = () => {
                     <p className="text-gray-500 text-sm">Chào mừng bạn quay lại!</p>
                 </div>
 
+                {errorMessage && (
+                    <Alert
+                        message="Đăng nhập thất bại"
+                        description={errorMessage}
+                        type="error"
+                        showIcon
+                        closable
+                        className="mb-4"
+                    />
+                )}
+
                 <Form
                     form={form}
                     layout="vertical"
                     onFinish={onFinish}
                     autoComplete="off"
                     requiredMark="optional"
-                    initialValues={{ remember: true, role: 'customer' }}
+                    initialValues={{ remember: true }}
                 >
                     <Form.Item
-                        name="email"
-                        label={<span className="flex items-center"><span className="text-red-500 mr-1">*</span>Email</span>}
+                        name="username"
+                        label={<span className="flex items-center"><span className="text-red-500 mr-1">*</span>Tên đăng nhập</span>}
                         rules={[
-                            { required: true, message: 'Vui lòng nhập email' },
-                            { type: 'email', message: 'Email không hợp lệ' }
+                            { required: true, message: 'Vui lòng nhập tên đăng nhập' }
                         ]}
                     >
-                        <Input placeholder="Nhập email của bạn" />
+                        <Input
+                            prefix={<UserOutlined className="text-gray-400" />}
+                            placeholder="Nhập tên đăng nhập của bạn"
+                            autoFocus
+                        />
                     </Form.Item>
 
                     <Form.Item
@@ -87,22 +126,10 @@ const LoginPage: React.FC = () => {
                         rules={[{ required: true, message: 'Vui lòng nhập mật khẩu' }]}
                     >
                         <Input.Password
+                            prefix={<LockOutlined className="text-gray-400" />}
                             placeholder="Nhập mật khẩu"
                             iconRender={visible => (visible ? <EyeTwoTone /> : <EyeInvisibleOutlined />)}
                         />
-                    </Form.Item>
-
-                    {/* Thêm lựa chọn vai trò cho mục đích demo */}
-                    <Form.Item
-                        name="role"
-                        label="Đăng nhập với vai trò (Demo)"
-                    >
-                        <Select>
-                            <Option value="customer">Khách hàng</Option>
-                            <Option value="staff">Nhân viên</Option>
-                            <Option value="admin">Quản trị viên</Option>
-                            <Option value="driver">Tài xế</Option>
-                        </Select>
                     </Form.Item>
 
                     <div className="flex justify-between items-center mb-4">
@@ -135,6 +162,13 @@ const LoginPage: React.FC = () => {
                 >
                     Đăng nhập với Google
                 </Button>
+
+                <div className="text-center mt-4">
+                    <span className="text-gray-500">Chưa có tài khoản? </span>
+                    <Link to="/auth/register" className="text-blue-600">
+                        Đăng ký ngay
+                    </Link>
+                </div>
             </Card>
         </AuthPageLayout>
     );

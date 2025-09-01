@@ -3,6 +3,7 @@ import HomePage from '../pages/Home';
 import { LoginPage, RegisterPage } from '../pages/Auth';
 import VietMapPage from '../pages/VietMap';
 import OpenMapPage from '../pages/OpenMap';
+import TrackAsiaMapPage from '../pages/TrackAsiaMap';
 
 const router = createBrowserRouter([
     {
@@ -24,6 +25,10 @@ const router = createBrowserRouter([
     {
         path: '/open-map',
         element: <OpenMapPage />,
+    },
+    {
+        path: '/trackasia-map',
+        element: <TrackAsiaMapPage />,
     }
 ]);
 

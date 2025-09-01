@@ -1,46 +1,52 @@
 import React from 'react';
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context';
+import AuthRoute from './AuthRoute';
+
+type RedirectPathFunction = (auth: { user: any; isAuthenticated: boolean }) => string;
 
 interface RoleBasedRouteProps {
-    allowedRoles: ('admin' | 'customer' | 'staff' | 'driver' | 'guest')[];
+    /**
+     * Các vai trò được phép truy cập route này
+     */
+    allowedRoles: ('admin' | 'customer' | 'staff' | 'driver')[];
     children?: React.ReactNode;
-    redirectPath?: string;
+    redirectPath?: string | RedirectPathFunction;
 }
 
 /**
  * Component bảo vệ các route dựa trên vai trò người dùng
- * Nếu người dùng không có quyền truy cập, chuyển hướng đến trang được chỉ định
+ * Lưu ý: Component này giả định người dùng đã đăng nhập
+ * Nên kết hợp với AuthRoute để kiểm tra trạng thái xác thực
  */
 const RoleBasedRoute: React.FC<RoleBasedRouteProps> = ({
     allowedRoles,
     children,
     redirectPath = '/'
 }) => {
-    const { user, isAuthenticated, isLoading } = useAuth();
+    const auth = useAuth();
+    const { user, isAuthenticated } = auth;
     const location = useLocation();
 
-    // Hiển thị loading nếu đang kiểm tra trạng thái xác thực
-    if (isLoading) {
-        return <div>Đang tải...</div>; // Có thể thay thế bằng loading spinner
-    }
-
-    // Kiểm tra nếu vai trò hiện tại được phép
+    // Kiểm tra nếu người dùng có vai trò được phép
     const hasRequiredRole = () => {
-        if (allowedRoles.includes('guest')) {
-            return true; // Guest role luôn được phép
+        // Nếu chưa đăng nhập, không có vai trò
+        if (!isAuthenticated || !user) {
+            return false;
         }
 
-        if (!isAuthenticated) {
-            return false; // Nếu không đăng nhập và không cho phép guest
-        }
-
-        return user && allowedRoles.includes(user.role);
+        // Kiểm tra vai trò
+        return allowedRoles.includes(user.role);
     };
 
     if (!hasRequiredRole()) {
-        // Chuyển hướng đến trang được chỉ định hoặc trang chủ
-        return <Navigate to={redirectPath} state={{ from: location }} replace />;
+        // Xác định đường dẫn chuyển hướng
+        const redirectTo = typeof redirectPath === 'function'
+            ? redirectPath(auth)
+            : redirectPath;
+
+        // Chuyển hướng đến trang được chỉ định
+        return <Navigate to={redirectTo} state={{ from: location }} replace />;
     }
 
     // Nếu có quyền truy cập, hiển thị nội dung

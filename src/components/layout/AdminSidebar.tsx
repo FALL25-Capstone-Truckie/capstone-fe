@@ -13,6 +13,7 @@ import {
     BarChartOutlined,
     BellOutlined,
     ExclamationCircleOutlined,
+    CustomerServiceOutlined,
 } from '@ant-design/icons';
 
 const { Sider } = Layout;
@@ -77,6 +78,11 @@ const AdminSidebar: React.FC = () => {
                     key: '/staff/penalties',
                     icon: <ExclamationCircleOutlined />,
                     label: <Link to="/staff/penalties">Vi phạm</Link>,
+                },
+                {
+                    key: '/staff/customer-support',
+                    icon: <CustomerServiceOutlined />,
+                    label: <Link to="/staff/customer-support">CSKH</Link>,
                 },
                 {
                     key: '/staff/deliveries',

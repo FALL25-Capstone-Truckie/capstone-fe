@@ -6,6 +6,7 @@ import OpenMapPage from '../pages/OpenMap';
 import TrackAsiaMapPage from '../pages/TrackAsiaMap';
 import Dashboard, { AdminDashboard, StaffDashboard } from '../pages/Dashboard';
 import PenaltyHistory from '../pages/Staff/PenaltyHistory';
+import CustomerSupport from '../pages/Staff/CustomerSupport';
 import { PermissionRoute } from '../components/auth';
 import { MainLayout, AdminLayout } from '../components/layout';
 
@@ -103,6 +104,10 @@ const router = createBrowserRouter([
             {
                 path: 'penalties',
                 element: <PenaltyHistory />,
+            },
+            {
+                path: 'customer-support',
+                element: <CustomerSupport />,
             },
             {
                 path: 'orders',

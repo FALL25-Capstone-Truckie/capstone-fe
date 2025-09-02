@@ -1,9 +1,7 @@
 import axios, { AxiosError } from 'axios';
 import type { AxiosRequestConfig, AxiosResponse } from 'axios';
 import { AUTH_TOKEN_KEY } from '../../config';
-
-// Tạm thời import từ authService cũ, sau này sẽ cập nhật
-import authService from '../auth/authService';
+import { handleApiError } from './errorHandler';
 
 // Create an axios instance with default config
 const httpClient = axios.create({
@@ -37,8 +35,6 @@ const processQueue = (error: any, token: string | null = null) => {
 // Request interceptor for adding auth token
 httpClient.interceptors.request.use(
     (config) => {
-        // Không cần thêm token vào header nếu đã sử dụng HTTP-only cookie
-        // Tuy nhiên, giữ lại code này cho đến khi backend được cập nhật để hỗ trợ cookie
         const token = localStorage.getItem(AUTH_TOKEN_KEY);
         if (token) {
             config.headers.Authorization = `Bearer ${token}`;
@@ -77,6 +73,9 @@ httpClient.interceptors.response.use(
             isRefreshing = true;
 
             try {
+                // Import authService ở đây để tránh circular dependency
+                const authService = await import('../auth/authService').then(module => module.default);
+
                 // Thử refresh token
                 const response = await authService.refreshToken();
 
@@ -95,20 +94,23 @@ httpClient.interceptors.response.use(
                 // Nếu refresh thất bại, xử lý lỗi và đăng xuất
                 processQueue(refreshError, null);
 
+                // Import authService ở đây để tránh circular dependency
+                const authService = await import('../auth/authService').then(module => module.default);
+
                 // Đăng xuất người dùng
                 authService.logout();
 
                 // Chuyển hướng đến trang đăng nhập
                 window.location.href = '/auth/login';
 
-                return Promise.reject(refreshError);
+                return Promise.reject(handleApiError(refreshError, 'Phiên đăng nhập hết hạn'));
             } finally {
                 isRefreshing = false;
             }
         }
 
         // Xử lý các lỗi khác
-        return Promise.reject(error);
+        return Promise.reject(handleApiError(error));
     }
 );
 

@@ -12,6 +12,7 @@ import {
     FileTextOutlined,
     BarChartOutlined,
     BellOutlined,
+    ExclamationCircleOutlined,
 } from '@ant-design/icons';
 
 const { Sider } = Layout;
@@ -72,6 +73,11 @@ const AdminSidebar: React.FC = () => {
         if (user?.role === 'staff') {
             return [
                 ...baseItems,
+                {
+                    key: '/staff/penalties',
+                    icon: <ExclamationCircleOutlined />,
+                    label: <Link to="/staff/penalties">Vi phạm</Link>,
+                },
                 {
                     key: '/staff/deliveries',
                     icon: <CarOutlined />,

@@ -5,6 +5,7 @@ import VietMapPage from '../pages/VietMap';
 import OpenMapPage from '../pages/OpenMap';
 import TrackAsiaMapPage from '../pages/TrackAsiaMap';
 import Dashboard, { AdminDashboard, StaffDashboard } from '../pages/Dashboard';
+import PenaltyHistory from '../pages/Staff/PenaltyHistory';
 import { PermissionRoute } from '../components/auth';
 import { MainLayout, AdminLayout } from '../components/layout';
 
@@ -98,6 +99,10 @@ const router = createBrowserRouter([
             {
                 path: 'dashboard',
                 element: <StaffDashboard />,
+            },
+            {
+                path: 'penalties',
+                element: <PenaltyHistory />,
             },
             {
                 path: 'orders',

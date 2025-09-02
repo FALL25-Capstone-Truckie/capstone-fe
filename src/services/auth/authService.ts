@@ -8,6 +8,7 @@ import type {
     RefreshTokenResponse
 } from './types';
 import { mapUserResponseToModel } from '@/models/User';
+import { handleApiError } from '../api/errorHandler';
 
 /**
  * Service for handling authentication API calls
@@ -22,19 +23,22 @@ const authService = {
     login: async (username: string, password: string): Promise<LoginResponse> => {
         try {
             const loginData: LoginRequest = { username, password };
-            const response = await httpClient.post<LoginResponse>('/auth/login', loginData);
+            const response = await httpClient.post<LoginResponse>('/auths', loginData);
 
             // Lưu token vào localStorage (tạm thời, sau này sẽ dùng HTTP-only cookie)
             if (response.data.success) {
                 localStorage.setItem(AUTH_TOKEN_KEY, response.data.data.authToken);
                 localStorage.setItem(AUTH_REFRESH_TOKEN_KEY, response.data.data.refreshToken);
                 localStorage.setItem('user_role', response.data.data.user.role.roleName.toLowerCase());
+
+                // Thêm dòng hello username
+                response.data.message = `Hello ${response.data.data.user.username}! ${response.data.message}`;
             }
 
             return response.data;
-        } catch (error: any) {
+        } catch (error) {
             console.error('Login error:', error);
-            throw new Error(error.response?.data?.message || 'Đăng nhập thất bại');
+            throw handleApiError(error, 'Đăng nhập thất bại');
         }
     },
 
@@ -45,11 +49,11 @@ const authService = {
      */
     register: async (userData: RegisterRequest): Promise<RegisterResponse> => {
         try {
-            const response = await httpClient.post<RegisterResponse>('/auth/register', userData);
+            const response = await httpClient.post<RegisterResponse>('/auth/customer/register', userData);
             return response.data;
-        } catch (error: any) {
+        } catch (error) {
             console.error('Registration error:', error);
-            throw new Error(error.response?.data?.message || 'Đăng ký thất bại');
+            throw handleApiError(error, 'Đăng ký thất bại');
         }
     },
 
@@ -75,16 +79,16 @@ const authService = {
             }
 
             return response.data;
-        } catch (error: any) {
+        } catch (error) {
             console.error('Token refresh error:', error);
-            throw new Error(error.response?.data?.message || 'Làm mới token thất bại');
+            throw handleApiError(error, 'Làm mới token thất bại');
         }
     },
 
     /**
      * Logout the current user
      */
-    logout: () => {
+    logout: (): void => {
         localStorage.removeItem(AUTH_TOKEN_KEY);
         localStorage.removeItem(AUTH_REFRESH_TOKEN_KEY);
         localStorage.removeItem('user_role');

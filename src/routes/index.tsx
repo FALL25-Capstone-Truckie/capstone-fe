@@ -193,22 +193,22 @@ const router = createBrowserRouter([
     },
 
     // Các route bản đồ - yêu cầu đăng nhập (không kiểm tra vai trò)
-    {
-        path: '/viet-map',
-        element: (
-            <PermissionRoute authenticationRequired="authenticated">
-                <VietMapPage />
-            </PermissionRoute>
-        ),
-    },
-    {
-        path: '/open-map',
-        element: (
-            <PermissionRoute authenticationRequired="authenticated">
-                <OpenMapPage />
-            </PermissionRoute>
-        ),
-    },
+    // {
+    //     path: '/viet-map',
+    //     element: (
+    //         <PermissionRoute authenticationRequired="authenticated">
+    //             <VietMapPage />
+    //         </PermissionRoute>
+    //     ),
+    // },
+    // {
+    //     path: '/open-map',
+    //     element: (
+    //         <PermissionRoute authenticationRequired="authenticated">
+    //             <OpenMapPage />
+    //         </PermissionRoute>
+    //     ),
+    // },
     {
         path: '/trackasia-map',
         element: (

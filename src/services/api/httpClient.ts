@@ -1,10 +1,12 @@
 import axios, { AxiosError } from 'axios';
 import type { AxiosRequestConfig, AxiosResponse } from 'axios';
-import { AUTH_TOKEN_KEY } from '../config';
-import authService from './authService';
+import { AUTH_TOKEN_KEY } from '../../config';
+
+// Tạm thời import từ authService cũ, sau này sẽ cập nhật
+import authService from '../auth/authService';
 
 // Create an axios instance with default config
-const api = axios.create({
+const httpClient = axios.create({
     baseURL: 'http://localhost:8080',
     timeout: 30000,
     headers: {
@@ -33,7 +35,7 @@ const processQueue = (error: any, token: string | null = null) => {
 };
 
 // Request interceptor for adding auth token
-api.interceptors.request.use(
+httpClient.interceptors.request.use(
     (config) => {
         // Không cần thêm token vào header nếu đã sử dụng HTTP-only cookie
         // Tuy nhiên, giữ lại code này cho đến khi backend được cập nhật để hỗ trợ cookie
@@ -49,7 +51,7 @@ api.interceptors.request.use(
 );
 
 // Response interceptor for handling errors
-api.interceptors.response.use(
+httpClient.interceptors.response.use(
     (response) => response,
     async (error: AxiosError) => {
         const originalRequest = error.config as AxiosRequestConfig & { _retry?: boolean };
@@ -64,7 +66,7 @@ api.interceptors.response.use(
                     if (originalRequest.headers) {
                         originalRequest.headers.Authorization = `Bearer ${token}`;
                     }
-                    return api(originalRequest);
+                    return httpClient(originalRequest);
                 }).catch(err => {
                     return Promise.reject(err);
                 });
@@ -88,7 +90,7 @@ api.interceptors.response.use(
                 processQueue(null, newToken);
 
                 // Thực hiện lại request ban đầu với token mới
-                return api(originalRequest);
+                return httpClient(originalRequest);
             } catch (refreshError) {
                 // Nếu refresh thất bại, xử lý lỗi và đăng xuất
                 processQueue(refreshError, null);
@@ -110,4 +112,4 @@ api.interceptors.response.use(
     }
 );
 
-export default api; 
+export default httpClient; 

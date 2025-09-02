@@ -4,7 +4,7 @@ import { GoogleOutlined, EyeInvisibleOutlined, EyeTwoTone, UserOutlined, MailOut
 import { Link, useNavigate } from 'react-router-dom';
 import { AuthPageLayout } from '../components';
 import { isStrongPassword } from '../../../utils';
-import authService from '../../../services/authService';
+import { authService } from '../../../services';
 import type { UploadProps } from 'antd';
 import dayjs from 'dayjs';
 

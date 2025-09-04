@@ -19,7 +19,7 @@ const penaltyService = {
      */
     getPenalties: async (): Promise<GetPenaltiesResponse> => {
         try {
-            const response = await httpClient.get<GetPenaltiesResponse>('/api/v1/penalties');
+            const response = await httpClient.get<GetPenaltiesResponse>('/penalties');
             return response.data;
         } catch (error) {
             console.error('Get penalties error:', error);
@@ -34,7 +34,7 @@ const penaltyService = {
      */
     getPenaltyById: async (id: string): Promise<GetPenaltyResponse> => {
         try {
-            const response = await httpClient.get<GetPenaltyResponse>(`/api/v1/penalties/${id}`);
+            const response = await httpClient.get<GetPenaltyResponse>(`/penalties/${id}`);
             return response.data;
         } catch (error) {
             console.error('Get penalty error:', error);
@@ -49,7 +49,7 @@ const penaltyService = {
      */
     createPenalty: async (penaltyData: PenaltyCreateDto): Promise<CreatePenaltyResponse> => {
         try {
-            const response = await httpClient.post<CreatePenaltyResponse>('/api/v1/penalties', penaltyData);
+            const response = await httpClient.post<CreatePenaltyResponse>('/penalties', penaltyData);
             return response.data;
         } catch (error) {
             console.error('Create penalty error:', error);
@@ -65,7 +65,7 @@ const penaltyService = {
      */
     updatePenalty: async (id: string, penaltyData: PenaltyUpdateDto): Promise<UpdatePenaltyResponse> => {
         try {
-            const response = await httpClient.put<UpdatePenaltyResponse>(`/api/v1/penalties/${id}`, penaltyData);
+            const response = await httpClient.put<UpdatePenaltyResponse>(`/penalties/${id}`, penaltyData);
             return response.data;
         } catch (error) {
             console.error('Update penalty error:', error);
@@ -80,7 +80,7 @@ const penaltyService = {
      */
     deletePenalty: async (id: string): Promise<DeletePenaltyResponse> => {
         try {
-            const response = await httpClient.delete<DeletePenaltyResponse>(`/api/v1/penalties/${id}`);
+            const response = await httpClient.delete<DeletePenaltyResponse>(`/penalties/${id}`);
             return response.data;
         } catch (error) {
             console.error('Delete penalty error:', error);

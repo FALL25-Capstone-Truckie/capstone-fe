@@ -5,7 +5,7 @@ import { handleApiError } from './errorHandler';
 
 // Create an axios instance with default config
 const httpClient = axios.create({
-    baseURL: 'http://localhost:8080',
+    baseURL: 'http://localhost:8080/api/v1', // Do not remove the /api/v1
     timeout: 30000,
     headers: {
         'Content-Type': 'application/json',

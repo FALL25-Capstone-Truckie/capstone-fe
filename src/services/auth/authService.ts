@@ -69,7 +69,7 @@ const authService = {
                 throw new Error('Không tìm thấy refresh token');
             }
 
-            const response = await httpClient.post<RefreshTokenResponse>('/auth/refresh-token', {
+            const response = await httpClient.post<RefreshTokenResponse>('/auths/token/refresh', {
                 refreshToken
             });
 
@@ -79,8 +79,13 @@ const authService = {
             }
 
             return response.data;
-        } catch (error) {
+        } catch (error: any) {
             console.error('Token refresh error:', error);
+            // Xử lý trường hợp refresh token hết hạn hoặc không hợp lệ
+            if (error.response && (error.response.status === 401 || error.response.status === 403)) {
+                // Xóa token không hợp lệ và đăng xuất người dùng
+                authService.logout();
+            }
             throw handleApiError(error, 'Làm mới token thất bại');
         }
     },

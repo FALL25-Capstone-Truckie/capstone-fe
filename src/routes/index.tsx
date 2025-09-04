@@ -7,6 +7,8 @@ import TrackAsiaMapPage from '../pages/TrackAsiaMap';
 import Dashboard, { AdminDashboard, StaffDashboard } from '../pages/Dashboard';
 import PenaltyHistory from '../pages/Staff/PenaltyHistory';
 import CustomerSupport from '../pages/Staff/CustomerSupport';
+import { OrderList, OrderDetailPage } from '../pages/Staff/Order';
+import { IssueList, IssueDetail } from '../pages/Staff/Issue';
 import { PermissionRoute } from '../components/auth';
 import { MainLayout, AdminLayout } from '../components/layout';
 
@@ -76,7 +78,11 @@ const router = createBrowserRouter([
             },
             {
                 path: 'orders',
-                element: <div>Customer Orders</div>, // Thay thế bằng component thực tế
+                element: <div>Đơn hàng của tôi</div>, // Sẽ được thay thế bằng component riêng cho khách hàng
+            },
+            {
+                path: 'orders/:id',
+                element: <div>Chi tiết đơn hàng</div>, // Sẽ được thay thế bằng component riêng cho khách hàng
             },
         ]
     },
@@ -111,7 +117,19 @@ const router = createBrowserRouter([
             },
             {
                 path: 'orders',
-                element: <div>Quản lý đơn hàng</div>, // Thay thế bằng component thực tế
+                element: <OrderList />,
+            },
+            {
+                path: 'orders/:id',
+                element: <OrderDetailPage />,
+            },
+            {
+                path: 'issues',
+                element: <IssueList />,
+            },
+            {
+                path: 'issues/:id',
+                element: <IssueDetail />,
             },
             {
                 path: 'deliveries',

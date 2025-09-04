@@ -3,10 +3,7 @@ import { Input, Button, Tabs, Empty, Badge, Spin } from 'antd';
 import {
     SendOutlined,
     PaperClipOutlined,
-    MinusOutlined,
-    CloseOutlined,
-    ExpandOutlined,
-    CompressOutlined
+    CloseOutlined
 } from '@ant-design/icons';
 import { useChatContext } from '@/context/ChatContext';
 import ChatMessage from './ChatMessage';
@@ -15,7 +12,6 @@ import { useAuth } from '@/context/AuthContext';
 
 const ChatWindow: React.FC = () => {
     const [message, setMessage] = useState('');
-    const [expanded, setExpanded] = useState(true); // Mặc định đã mở rộng
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const { user } = useAuth();
     const {
@@ -25,7 +21,6 @@ const ChatWindow: React.FC = () => {
         sendMessage,
         markAsRead,
         isMinimized,
-        maximizeChat,
         toggleChat,
     } = useChatContext();
 
@@ -57,15 +52,11 @@ const ChatWindow: React.FC = () => {
         }
     };
 
-    const toggleExpand = () => {
-        setExpanded(!expanded);
-    };
-
     if (isMinimized) {
         return (
             <div
                 className="fixed bottom-4 right-4 bg-blue-600 text-white p-3 rounded-full shadow-lg cursor-pointer flex items-center z-50"
-                onClick={maximizeChat}
+                onClick={toggleChat}
             >
                 <div className="mr-2">Chat</div>
                 <div className="w-5 h-5 rounded-full bg-red-500 flex items-center justify-center text-xs">
@@ -75,16 +66,12 @@ const ChatWindow: React.FC = () => {
         );
     }
 
-    const windowWidth = expanded ? 'w-3/4' : 'w-80 sm:w-96';
-    const windowHeight = expanded ? 'h-3/4' : 'h-[500px]';
-
     return (
         <div
-            className={`fixed bottom-4 right-4 ${windowWidth} ${windowHeight} bg-white rounded-lg shadow-xl flex flex-col z-50 border border-gray-200 transition-all duration-300`}
-            style={{ maxWidth: expanded ? '1200px' : '400px', maxHeight: expanded ? '800px' : '500px' }}
+            className="fixed inset-0 bg-white flex flex-col z-50 border border-gray-200"
         >
             {/* Header */}
-            <div className="bg-blue-600 text-white px-4 py-3 rounded-t-lg flex justify-between items-center">
+            <div className="bg-blue-600 text-white px-4 py-3 flex justify-between items-center">
                 <h3 className="font-medium">Hỗ trợ trực tuyến</h3>
                 <div className="flex space-x-1">
                     <Button
@@ -100,11 +87,11 @@ const ChatWindow: React.FC = () => {
             {/* Body */}
             <div className="flex-1 flex overflow-hidden">
                 {/* Conversations List - Left Column */}
-                <div className={`${expanded ? 'w-1/3' : 'w-1/2'} border-r overflow-y-auto`}>
+                <div className="w-1/4 border-r overflow-y-auto">
                     <div className="p-2 bg-gray-50 border-b">
                         <h4 className="text-sm font-medium text-gray-700">Cuộc hội thoại</h4>
                     </div>
-                    <div className="overflow-y-auto" style={{ maxHeight: expanded ? 'calc(100% - 40px)' : '380px' }}>
+                    <div className="overflow-y-auto h-full">
                         {conversations.length > 0 ? (
                             conversations.map((conversation) => (
                                 <ChatConversationItem
@@ -123,7 +110,7 @@ const ChatWindow: React.FC = () => {
                 </div>
 
                 {/* Chat Content - Right Column */}
-                <div className={`${expanded ? 'w-2/3' : 'w-1/2'} flex flex-col`}>
+                <div className="w-3/4 flex flex-col">
                     {activeConversation ? (
                         <>
                             {/* Chat Header */}
@@ -148,7 +135,6 @@ const ChatWindow: React.FC = () => {
                             {/* Messages */}
                             <div
                                 className="flex-1 overflow-y-auto p-3"
-                                style={{ maxHeight: expanded ? 'calc(100% - 110px)' : '280px' }}
                             >
                                 {activeConversation.messages.map((msg) => (
                                     <ChatMessage

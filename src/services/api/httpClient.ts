@@ -1,6 +1,6 @@
 import axios, { AxiosError } from 'axios';
 import type { AxiosRequestConfig, AxiosResponse } from 'axios';
-import { AUTH_TOKEN_KEY } from '../../config';
+import { AUTH_ACCESS_TOKEN_KEY } from '../../config';
 import { handleApiError } from './errorHandler';
 
 // Create an axios instance with default config
@@ -35,7 +35,7 @@ const processQueue = (error: any, token: string | null = null) => {
 // Request interceptor for adding auth token
 httpClient.interceptors.request.use(
     (config) => {
-        const token = localStorage.getItem(AUTH_TOKEN_KEY);
+        const token = localStorage.getItem(AUTH_ACCESS_TOKEN_KEY);
         if (token) {
             config.headers.Authorization = `Bearer ${token}`;
         }
@@ -80,7 +80,7 @@ httpClient.interceptors.response.use(
                 const response = await authService.refreshToken();
 
                 // Nếu refresh thành công, cập nhật token cho các request trong hàng đợi
-                const newToken = response.data.authToken;
+                const newToken = response.data.accessToken;
                 if (originalRequest.headers) {
                     originalRequest.headers.Authorization = `Bearer ${newToken}`;
                 }

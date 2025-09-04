@@ -1,5 +1,5 @@
 import httpClient from '../api/httpClient';
-import { AUTH_TOKEN_KEY, AUTH_REFRESH_TOKEN_KEY } from '../../config';
+import { AUTH_REFRESH_TOKEN_KEY, AUTH_ACCESS_TOKEN_KEY } from '../../config';
 import type {
     LoginRequest,
     LoginResponse,
@@ -27,7 +27,7 @@ const authService = {
 
             // Lưu token vào localStorage (tạm thời, sau này sẽ dùng HTTP-only cookie)
             if (response.data.success) {
-                localStorage.setItem(AUTH_TOKEN_KEY, response.data.data.authToken);
+                localStorage.setItem(AUTH_ACCESS_TOKEN_KEY, response.data.data.authToken);
                 localStorage.setItem(AUTH_REFRESH_TOKEN_KEY, response.data.data.refreshToken);
                 localStorage.setItem('user_role', response.data.data.user.role.roleName.toLowerCase());
 
@@ -49,7 +49,7 @@ const authService = {
      */
     register: async (userData: RegisterRequest): Promise<RegisterResponse> => {
         try {
-            const response = await httpClient.post<RegisterResponse>('/auth/customer/register', userData);
+            const response = await httpClient.post<RegisterResponse>('/auths/customer/register', userData);
             return response.data;
         } catch (error) {
             console.error('Registration error:', error);
@@ -74,7 +74,7 @@ const authService = {
             });
 
             if (response.data.success) {
-                localStorage.setItem(AUTH_TOKEN_KEY, response.data.data.authToken);
+                localStorage.setItem(AUTH_ACCESS_TOKEN_KEY, response.data.data.accessToken);
                 localStorage.setItem(AUTH_REFRESH_TOKEN_KEY, response.data.data.refreshToken);
             }
 
@@ -94,7 +94,7 @@ const authService = {
      * Logout the current user
      */
     logout: (): void => {
-        localStorage.removeItem(AUTH_TOKEN_KEY);
+        localStorage.removeItem(AUTH_ACCESS_TOKEN_KEY);
         localStorage.removeItem(AUTH_REFRESH_TOKEN_KEY);
         localStorage.removeItem('user_role');
     },
@@ -104,7 +104,7 @@ const authService = {
      * @returns Boolean indicating if user is logged in
      */
     isLoggedIn: (): boolean => {
-        return !!localStorage.getItem(AUTH_TOKEN_KEY);
+        return !!localStorage.getItem(AUTH_ACCESS_TOKEN_KEY);
     },
 
     /**

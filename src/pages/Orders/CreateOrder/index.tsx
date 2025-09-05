@@ -4,7 +4,8 @@ import { MainLayout } from "../../../components/layout";
 import { addressService } from "../../../services/addressService";
 import { orderService } from "../../../services/orderService";
 import { orderSizeService } from "../../../services/orderSizeService";
-import type { Address, OrderSize } from "../../../types";
+import { categoryService } from "../../../services/categoryService";
+import type { Address, OrderSize, Category } from "../../../types";
 import { toast } from "react-toastify";
 import { AUTH_TOKEN_KEY } from "../../../config";
 import { useAuth } from "../../../context/AuthContext";
@@ -13,6 +14,7 @@ const CreateOrder = () => {
   const [currentStep, setCurrentStep] = useState(1);
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [orderSizes, setOrderSizes] = useState<OrderSize[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const navigate = useNavigate();
   const { user, isAuthenticated } = useAuth();
@@ -20,14 +22,14 @@ const CreateOrder = () => {
   // OrderRequest fields
   const [orderRequest, setOrderRequest] = useState({
     notes: "",
-    totalWeight: "",
+    totalWeight: 0,
     receiverName: "",
     receiverPhone: "",
     packageDescription: "",
-    estimateStartTime: "",
+    estimateStartTime: new Date().toISOString(),
     deliveryAddressId: "",
     pickupAddressId: "",
-    senderId: "",
+    senderId: "c71a95b2-6ee4-464f-aacd-bb6eae80db35",
     categoryId: "",
   });
 
@@ -65,18 +67,23 @@ const CreateOrder = () => {
         console.log("CreateOrder: User:", user);
         console.log("CreateOrder: isAuthenticated:", isAuthenticated);
 
-        const addressData = await addressService.getAllAddress();
-        console.log("Fetched addresses:", addressData);
-        setAddresses(addressData);
-        const orderSizeData = await orderSizeService.getAllOrderSize();
+        const [addressData, orderSizeData, categoryData] = await Promise.all([
+          addressService.getAllAddress(),
+          orderSizeService.getAllOrderSize(),
+          categoryService.getAllCategory(),
+        ]);
 
+        console.log("Fetched addresses:", addressData);
         console.log("Fetched order sizes:", orderSizeData);
+        console.log("Fetched categories:", categoryData);
         console.log(
           "CreateOrder: Token after successful fetch:",
           localStorage.getItem(AUTH_TOKEN_KEY)
         );
 
+        setAddresses(addressData);
         setOrderSizes(orderSizeData);
+        setCategories(categoryData);
       } catch (error) {
         console.error("Failed to fetch data:", error);
         console.log(
@@ -93,7 +100,14 @@ const CreateOrder = () => {
     fetchData();
   }, [isAuthenticated, user, navigate]);
   const handleInputChange = (field: string, value: string | boolean) => {
-    setOrderRequest((prev) => ({ ...prev, [field]: value }));
+    let processedValue = value;
+
+    // Convert datetime-local to ISO string
+    if (field === "estimateStartTime" && typeof value === "string") {
+      processedValue = new Date(value).toISOString();
+    }
+
+    setOrderRequest((prev) => ({ ...prev, [field]: processedValue }));
   };
 
   const handleOrderDetailsChange = (
@@ -142,7 +156,9 @@ const CreateOrder = () => {
       const payload = {
         orderRequest: {
           ...orderRequest,
-          totalWeight: Number(orderRequest.totalWeight),
+          // Ensure estimateStartTime is in correct ISO format
+          estimateStartTime:
+            orderRequest.estimateStartTime || new Date().toISOString(),
         },
         orderDetails,
       };
@@ -312,7 +328,13 @@ const CreateOrder = () => {
                     <input
                       type="datetime-local"
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                      value={orderRequest.estimateStartTime}
+                      value={
+                        orderRequest.estimateStartTime
+                          ? new Date(orderRequest.estimateStartTime)
+                              .toISOString()
+                              .slice(0, 16)
+                          : ""
+                      }
                       onChange={(e) =>
                         handleInputChange("estimateStartTime", e.target.value)
                       }
@@ -320,32 +342,25 @@ const CreateOrder = () => {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Loại hàng (Category ID)
+                      Loại hàng (Category)
                     </label>
-                    <input
-                      type="text"
+                    <select
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg"
                       value={orderRequest.categoryId}
                       onChange={(e) =>
                         handleInputChange("categoryId", e.target.value)
                       }
-                    />
+                    >
+                      <option value="">Chọn loại hàng hóa</option>
+                      {categories.map((category) => (
+                        <option key={category.id} value={category.id}>
+                          {category.categoryName}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Khối lượng (kg)
-                    </label>
-                    <input
-                      type="number"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                      value={orderRequest.totalWeight}
-                      onChange={(e) =>
-                        handleInputChange("totalWeight", e.target.value)
-                      }
-                    />
-                  </div>
+                <div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Mô tả kiện hàng
@@ -394,71 +409,6 @@ const CreateOrder = () => {
                 </h2>
 
                 <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Loại hàng hóa
-                    </label>
-                    <input
-                      type="text"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="Nhập loại hàng hóa (categoryId)"
-                      value={orderRequest.categoryId}
-                      onChange={(e) =>
-                        handleInputChange("categoryId", e.target.value)
-                      }
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Trọng lượng (kg)
-                      </label>
-                      <input
-                        type="number"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        placeholder="Nhập khối lượng (kg)"
-                        value={orderRequest.totalWeight}
-                        onChange={(e) =>
-                          handleInputChange("totalWeight", e.target.value)
-                        }
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Kích thước (cm)
-                      </label>
-                      <input
-                        type="text"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        placeholder="Mô tả kiện hàng"
-                        value={orderRequest.packageDescription}
-                        onChange={(e) =>
-                          handleInputChange(
-                            "packageDescription",
-                            e.target.value
-                          )
-                        }
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Yêu cầu đặc biệt
-                    </label>
-                    <textarea
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-                      rows={4}
-                      placeholder="Ghi chú cho đơn hàng"
-                      value={orderRequest.notes}
-                      onChange={(e) =>
-                        handleInputChange("notes", e.target.value)
-                      }
-                    />
-                  </div>
-
                   {/* Order Details Section */}
                   <div className="border-t pt-6">
                     <div className="flex items-center justify-between mb-4">
@@ -666,14 +616,6 @@ const CreateOrder = () => {
                         </span>
                         <span className="text-gray-900">
                           {orderRequest.categoryId || "Chưa chọn"}
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Trọng lượng:</span>
-                        <span className="text-gray-900">
-                          {orderRequest.totalWeight
-                            ? `${orderRequest.totalWeight} kg`
-                            : "Chưa nhập"}
                         </span>
                       </div>
                     </div>

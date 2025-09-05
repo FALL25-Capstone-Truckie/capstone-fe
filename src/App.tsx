@@ -1,8 +1,8 @@
-import AppRoutes from './routes';
-import { ConfigProvider } from 'antd';
-import { AuthProvider } from './context';
-import { useEffect } from 'react';
-import { APP_NAME } from './config';
+import AppRoutes from "./routes";
+import { ConfigProvider } from "antd";
+import { AuthProvider } from "./context";
+import { useEffect } from "react";
+import { APP_NAME } from "./config";
 
 function App() {
   // Set document title
@@ -14,8 +14,9 @@ function App() {
     <ConfigProvider
       theme={{
         token: {
-          colorPrimary: '#1677ff', // Blue color for primary elements
-          fontFamily: "'Be Vietnam Pro', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+          colorPrimary: "#1677ff", // Blue color for primary elements
+          fontFamily:
+            "'Be Vietnam Pro', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
         },
       }}
     >

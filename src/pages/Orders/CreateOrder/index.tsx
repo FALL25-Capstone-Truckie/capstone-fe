@@ -19,6 +19,15 @@ const CreateOrder = () => {
   const navigate = useNavigate();
   const { user, isAuthenticated } = useAuth();
 
+  // Helper function to get UTC+7 time in format YYYY-MM-DDTHH:mm:ss
+  const getVietnamTime = () => {
+    const now = new Date();
+    // Add 7 hours to UTC (Vietnam timezone)
+    const vietnamTime = new Date(now.getTime() + 7 * 60 * 60 * 1000);
+    // Format as YYYY-MM-DDTHH:mm:ss (without milliseconds and Z)
+    return vietnamTime.toISOString().slice(0, 19);
+  };
+
   // OrderRequest fields
   const [orderRequest, setOrderRequest] = useState({
     notes: "",
@@ -26,7 +35,7 @@ const CreateOrder = () => {
     receiverName: "",
     receiverPhone: "",
     packageDescription: "",
-    estimateStartTime: new Date().toISOString(),
+    estimateStartTime: getVietnamTime(),
     deliveryAddressId: "",
     pickupAddressId: "",
     senderId: "c71a95b2-6ee4-464f-aacd-bb6eae80db35",
@@ -84,6 +93,18 @@ const CreateOrder = () => {
         setAddresses(addressData);
         setOrderSizes(orderSizeData);
         setCategories(categoryData);
+
+        console.log("🏠 Addresses loaded:", addressData?.length || 0, "items");
+        console.log(
+          "📦 OrderSizes loaded:",
+          orderSizeData?.length || 0,
+          "items"
+        );
+        console.log(
+          "🏷️ Categories loaded:",
+          categoryData?.length || 0,
+          "items"
+        );
       } catch (error) {
         console.error("Failed to fetch data:", error);
         console.log(
@@ -100,14 +121,28 @@ const CreateOrder = () => {
     fetchData();
   }, [isAuthenticated, user, navigate]);
   const handleInputChange = (field: string, value: string | boolean) => {
+    console.log(`📝 handleInputChange: ${field} = "${value}"`);
     let processedValue = value;
 
-    // Convert datetime-local to ISO string
+    // Convert datetime-local to format YYYY-MM-DDTHH:mm:ss
     if (field === "estimateStartTime" && typeof value === "string") {
-      processedValue = new Date(value).toISOString();
+      const date = new Date(value);
+      // Ensure we have a valid date and format it properly
+      if (!isNaN(date.getTime())) {
+        // Convert to UTC+7 (Vietnam time) and format as YYYY-MM-DDTHH:mm:ss
+        const vietnamTime = new Date(date.getTime() + 7 * 60 * 60 * 1000);
+        processedValue = vietnamTime.toISOString().slice(0, 19);
+      } else {
+        processedValue = getVietnamTime();
+      }
+      console.log("Datetime converted (UTC+7):", value, "->", processedValue);
     }
 
-    setOrderRequest((prev) => ({ ...prev, [field]: processedValue }));
+    setOrderRequest((prev) => {
+      const updated = { ...prev, [field]: processedValue };
+      console.log(`📊 Updated orderRequest.${field}:`, processedValue);
+      return updated;
+    });
   };
 
   const handleOrderDetailsChange = (
@@ -150,20 +185,98 @@ const CreateOrder = () => {
   };
 
   const handleSubmit = async () => {
+    // Check authentication before submitting
+    if (!isAuthenticated || !user) {
+      toast.error("Vui lòng đăng nhập để tạo đơn hàng.");
+      navigate("/login");
+      return;
+    }
+
+    const token = localStorage.getItem(AUTH_TOKEN_KEY);
+    if (!token) {
+      toast.error("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.");
+      navigate("/login");
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       // Build FormOrders payload
       const payload = {
         orderRequest: {
           ...orderRequest,
-          // Ensure estimateStartTime is in correct ISO format
-          estimateStartTime:
-            orderRequest.estimateStartTime || new Date().toISOString(),
+          // Ensure estimateStartTime is in format YYYY-MM-DDTHH:mm:ss
+          estimateStartTime: (() => {
+            const time = orderRequest.estimateStartTime;
+            if (time) {
+              const date = new Date(time);
+              // Convert to UTC+7 and format as YYYY-MM-DDTHH:mm:ss
+              const vietnamTime = new Date(date.getTime() + 7 * 60 * 60 * 1000);
+              const formattedTime = vietnamTime.toISOString().slice(0, 19);
+              console.log("Final estimateStartTime format:", formattedTime);
+              return formattedTime;
+            }
+            const defaultTime = getVietnamTime();
+            console.log("Using default estimateStartTime:", defaultTime);
+            return defaultTime;
+          })(),
         },
         orderDetails,
       };
 
-      console.log("Order submitted:", payload);
+      console.log("=== REQUEST MODEL DEBUG ===");
+      console.log("🔍 Request Model Structure:");
+      console.log("📦 Full payload:", JSON.stringify(payload, null, 2));
+      console.log("📋 Request Model Type:", typeof payload);
+      console.log("📝 OrderRequest object:", payload.orderRequest);
+      console.log("📃 OrderDetails array:", payload.orderDetails);
+      console.log("🔢 OrderDetails count:", payload.orderDetails.length);
+      console.log("=== PAYLOAD DEBUG ===");
+      console.log("Full payload:", JSON.stringify(payload, null, 2));
+      console.log("OrderRequest fields:");
+      console.log("- notes:", payload.orderRequest.notes);
+      console.log("- totalWeight:", payload.orderRequest.totalWeight);
+      console.log("- receiverName:", payload.orderRequest.receiverName);
+      console.log("- receiverPhone:", payload.orderRequest.receiverPhone);
+      console.log(
+        "- packageDescription:",
+        payload.orderRequest.packageDescription
+      );
+      console.log(
+        "- estimateStartTime:",
+        payload.orderRequest.estimateStartTime
+      );
+      console.log(
+        "- deliveryAddressId:",
+        payload.orderRequest.deliveryAddressId
+      );
+      console.log("- pickupAddressId:", payload.orderRequest.pickupAddressId);
+      console.log("- senderId:", payload.orderRequest.senderId);
+      console.log("- categoryId:", payload.orderRequest.categoryId);
+      console.log("OrderDetails array:");
+      payload.orderDetails.forEach((detail, index) => {
+        console.log(`- Detail ${index}:`, {
+          weight: detail.weight,
+          description: detail.description,
+          orderSizeId: detail.orderSizeId,
+        });
+      });
+      console.log("Current token before submit:", token);
+      console.log("User authenticated:", isAuthenticated);
+      console.log("User data:", user);
+      console.log("=== END PAYLOAD DEBUG ===");
+
+      console.log("🚀 === FINAL REQUEST MODEL ===");
+      console.log("📤 Sending to API:", JSON.stringify(payload, null, 2));
+      console.log("🏷️ Model validation:");
+      console.log("  ✅ orderRequest exists:", !!payload.orderRequest);
+      console.log("  ✅ orderDetails exists:", !!payload.orderDetails);
+      console.log(
+        "  ✅ orderDetails is array:",
+        Array.isArray(payload.orderDetails)
+      );
+      console.log("  📊 orderDetails length:", payload.orderDetails.length);
+      console.log("🚀 === END FINAL REQUEST MODEL ===");
 
       // Call orderService.createOrder
       const createdOrder = await orderService.createOrder(payload);
@@ -173,7 +286,20 @@ const CreateOrder = () => {
       navigate("/orders");
     } catch (error) {
       console.error("Failed to create order:", error);
-      toast.error("Tạo đơn hàng thất bại. Vui lòng thử lại.");
+      console.log("Error response:", (error as any)?.response);
+      console.log("Error status:", (error as any)?.response?.status);
+      console.log("Error data:", (error as any)?.response?.data);
+      console.log(
+        "Current token after error:",
+        localStorage.getItem(AUTH_TOKEN_KEY)
+      );
+
+      if ((error as any)?.response?.status === 401) {
+        toast.error("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.");
+        navigate("/login");
+      } else {
+        toast.error("Tạo đơn hàng thất bại. Vui lòng thử lại.");
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -330,9 +456,7 @@ const CreateOrder = () => {
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg"
                       value={
                         orderRequest.estimateStartTime
-                          ? new Date(orderRequest.estimateStartTime)
-                              .toISOString()
-                              .slice(0, 16)
+                          ? orderRequest.estimateStartTime.slice(0, 16) // Format: YYYY-MM-DDTHH:mm
                           : ""
                       }
                       onChange={(e) =>

@@ -16,6 +16,31 @@ export const orderService = {
 
   // Create new order
   createOrder: async (orderData: FormOrders): Promise<Orders> => {
+    console.log("=== ORDER SERVICE DEBUG ===");
+    console.log("Input orderData type:", typeof orderData);
+    console.log("Input orderData keys:", Object.keys(orderData));
+    console.log("Input orderData:", JSON.stringify(orderData, null, 2));
+
+    // Validate the structure
+    console.log("=== STRUCTURE VALIDATION ===");
+    console.log("Has orderRequest:", !!orderData.orderRequest);
+    console.log("Has orderDetails:", !!orderData.orderDetails);
+    console.log(
+      "OrderDetails is array:",
+      Array.isArray(orderData.orderDetails)
+    );
+
+    if (orderData.orderRequest) {
+      console.log("OrderRequest type:", typeof orderData.orderRequest);
+      console.log("OrderRequest keys:", Object.keys(orderData.orderRequest));
+    }
+
+    if (orderData.orderDetails) {
+      console.log("OrderDetails length:", orderData.orderDetails.length);
+      console.log("First detail:", orderData.orderDetails[0]);
+    }
+    console.log("=== END ORDER SERVICE DEBUG ===");
+
     const response = await api.post("/orders", orderData);
     return response.data.data;
   },

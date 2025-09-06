@@ -27,8 +27,9 @@ function App() {
     <ConfigProvider
       theme={{
         token: {
-          colorPrimary: '#1677ff', // Blue color for primary elements
-          fontFamily: "'Be Vietnam Pro', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+          colorPrimary: "#1677ff", // Blue color for primary elements
+          fontFamily:
+            "'Be Vietnam Pro', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
         },
       }}
     >

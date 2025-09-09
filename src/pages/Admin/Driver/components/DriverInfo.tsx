@@ -21,13 +21,15 @@ interface DriverInfoProps {
     formatDate: (dateString: string) => string;
     getStatusColor: (status: string) => string;
     onStatusChange: (status: string) => void;
+    isStatusUpdating?: boolean;
 }
 
 const DriverInfo: React.FC<DriverInfoProps> = ({
     driver,
     formatDate,
     getStatusColor,
-    onStatusChange
+    onStatusChange,
+    isStatusUpdating = false
 }) => {
     const getStatusText = (status: string) => {
         switch (status.toLowerCase()) {
@@ -111,8 +113,10 @@ const DriverInfo: React.FC<DriverInfoProps> = ({
                                 onClick={() => onStatusChange('BANNED')}
                                 size="large"
                                 className="w-full"
+                                loading={isStatusUpdating}
+                                disabled={isStatusUpdating}
                             >
-                                Cấm hoạt động
+                                {isStatusUpdating ? 'Đang cập nhật...' : 'Cấm hoạt động'}
                             </Button>
                         ) : (
                             <Button
@@ -121,8 +125,10 @@ const DriverInfo: React.FC<DriverInfoProps> = ({
                                 onClick={() => onStatusChange('ACTIVE')}
                                 size="large"
                                 className="w-full bg-green-500 hover:bg-green-600"
+                                loading={isStatusUpdating}
+                                disabled={isStatusUpdating}
                             >
-                                Kích hoạt
+                                {isStatusUpdating ? 'Đang cập nhật...' : 'Kích hoạt'}
                             </Button>
                         )}
                     </div>

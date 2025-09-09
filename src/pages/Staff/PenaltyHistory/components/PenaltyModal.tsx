@@ -4,7 +4,6 @@ import {
     Form,
     Input,
     InputNumber,
-    DatePicker,
     Select,
     Button,
     Descriptions
@@ -12,6 +11,7 @@ import {
 import dayjs from 'dayjs';
 import type { Penalty, PenaltyCreateDto, PenaltyUpdateDto } from '@/models/Penalty';
 import { PenaltyStatus, violationTypes } from '@/models/Penalty';
+import { DateSelectGroup } from '@/components/common';
 
 interface PenaltyModalProps {
     visible: boolean;
@@ -168,9 +168,7 @@ const PenaltyModal: React.FC<PenaltyModalProps> = ({
                     label="Ngày vi phạm"
                     rules={[{ required: true, message: 'Vui lòng chọn ngày vi phạm' }]}
                 >
-                    <DatePicker
-                        style={{ width: '100%' }}
-                        format="DD/MM/YYYY"
+                    <DateSelectGroup
                         placeholder="Chọn ngày vi phạm"
                     />
                 </Form.Item>

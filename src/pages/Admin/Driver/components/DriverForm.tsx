@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { Form, Input, Button, DatePicker, Select, Divider, Typography, Alert, Space, Tooltip } from 'antd';
+import { Form, Input, Button, Select, Divider, Typography, Alert, Space, Tooltip } from 'antd';
 import { IdcardOutlined, CalendarOutlined, UserOutlined, MailOutlined, PhoneOutlined, LockOutlined, InfoCircleOutlined } from '@ant-design/icons';
 import type { DriverRegisterRequest } from '../../../../services/driver';
 import dayjs from 'dayjs';
+import DateSelectGroup from '../../../../components/common/DateSelectGroup';
 
 const { Option } = Select;
 const { Text } = Typography;
@@ -226,10 +227,7 @@ const DriverForm: React.FC<DriverFormProps> = ({ loading, onSubmit }) => {
                     ]}
                     dependencies={['licenseClass']}
                 >
-                    <DatePicker
-                        className="w-full"
-                        format="DD/MM/YYYY"
-                        placeholder="Chọn ngày sinh"
+                    <DateSelectGroup
                         disabledDate={date => date.isAfter(dayjs())}
                     />
                 </Form.Item>
@@ -342,10 +340,7 @@ const DriverForm: React.FC<DriverFormProps> = ({ loading, onSubmit }) => {
                     ]}
                     dependencies={['dateOfBirth', 'licenseClass']}
                 >
-                    <DatePicker
-                        className="w-full"
-                        format="DD/MM/YYYY"
-                        placeholder="Chọn ngày sát hạch"
+                    <DateSelectGroup
                         disabledDate={date => date.isAfter(dayjs())}
                     />
                 </Form.Item>
@@ -360,10 +355,7 @@ const DriverForm: React.FC<DriverFormProps> = ({ loading, onSubmit }) => {
                     ]}
                     dependencies={['dateOfPassing']}
                 >
-                    <DatePicker
-                        className="w-full"
-                        format="DD/MM/YYYY"
-                        placeholder="Chọn ngày cấp"
+                    <DateSelectGroup
                         disabledDate={date => {
                             const passingDate = form.getFieldValue('dateOfPassing');
                             return (passingDate && date.isBefore(passingDate)) || date.isAfter(dayjs());
@@ -381,10 +373,7 @@ const DriverForm: React.FC<DriverFormProps> = ({ loading, onSubmit }) => {
                     ]}
                     dependencies={['dateOfIssue']}
                 >
-                    <DatePicker
-                        className="w-full"
-                        format="DD/MM/YYYY"
-                        placeholder="Chọn ngày hết hạn"
+                    <DateSelectGroup
                         disabledDate={date => {
                             const issueDate = form.getFieldValue('dateOfIssue');
                             return issueDate && date.isBefore(issueDate);

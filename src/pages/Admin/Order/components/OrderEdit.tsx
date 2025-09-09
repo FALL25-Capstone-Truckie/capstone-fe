@@ -6,7 +6,6 @@ import {
     Button,
     Card,
     Select,
-    DatePicker,
     InputNumber,
     Space,
     Divider,
@@ -27,6 +26,7 @@ import {
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import type { ColumnsType } from 'antd/es/table';
+import { DateSelectGroup } from '@/components/common';
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -378,11 +378,8 @@ const OrderEdit: React.FC = () => {
                                         name="estimatedDeliveryTime"
                                         label="Thời gian giao hàng dự kiến"
                                     >
-                                        <DatePicker
-                                            showTime
-                                            format="DD/MM/YYYY HH:mm"
-                                            placeholder="Chọn thời gian"
-                                            style={{ width: '100%' }}
+                                        <DateSelectGroup
+                                            placeholder="Chọn ngày giao hàng dự kiến"
                                         />
                                     </Form.Item>
                                 </Col>
@@ -391,11 +388,8 @@ const OrderEdit: React.FC = () => {
                                         name="actualDeliveryTime"
                                         label="Thời gian giao hàng thực tế"
                                     >
-                                        <DatePicker
-                                            showTime
-                                            format="DD/MM/YYYY HH:mm"
-                                            placeholder="Chọn thời gian"
-                                            style={{ width: '100%' }}
+                                        <DateSelectGroup
+                                            placeholder="Chọn ngày giao hàng thực tế"
                                         />
                                     </Form.Item>
                                 </Col>

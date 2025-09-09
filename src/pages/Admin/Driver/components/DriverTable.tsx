@@ -1,5 +1,5 @@
 import React from 'react';
-import { Table, Button, Space, Tag, Avatar, Tooltip } from 'antd';
+import { Table, Button, Space, Tag, Avatar, Tooltip, Skeleton } from 'antd';
 import { EyeOutlined, SwapOutlined, IdcardOutlined, CarOutlined, PhoneOutlined, MailOutlined } from '@ant-design/icons';
 import type { DriverModel } from '../../../../services/driver';
 
@@ -18,31 +18,21 @@ const DriverTable: React.FC<DriverTableProps> = ({
 }) => {
     const getStatusColor = (status: string) => {
         switch (status.toLowerCase()) {
-            case 'active':
-                return 'green';
-            case 'banned':
-                return 'red';
-            case 'pending':
-                return 'orange';
-            case 'inactive':
-                return 'gray';
-            default:
-                return 'default';
+            case 'active': return 'green';
+            case 'banned': return 'red';
+            case 'pending': return 'orange';
+            case 'inactive': return 'gray';
+            default: return 'default';
         }
     };
 
     const getStatusText = (status: string) => {
         switch (status.toLowerCase()) {
-            case 'active':
-                return 'Hoạt động';
-            case 'banned':
-                return 'Bị cấm';
-            case 'pending':
-                return 'Chờ duyệt';
-            case 'inactive':
-                return 'Không hoạt động';
-            default:
-                return status;
+            case 'active': return 'Hoạt động';
+            case 'banned': return 'Bị cấm';
+            case 'pending': return 'Chờ duyệt';
+            case 'inactive': return 'Không hoạt động';
+            default: return status;
         }
     };
 
@@ -93,7 +83,7 @@ const DriverTable: React.FC<DriverTableProps> = ({
                         </Tooltip>
                     </div>
                     <div className="flex items-center">
-                        <CarOutlined className="text-gray-500 mr-2" />
+                        <IdcardOutlined className="text-gray-500 mr-2" />
                         <Tooltip title="Giấy phép lái xe">
                             <span>{record.driverLicenseNumber}</span>
                         </Tooltip>
@@ -136,10 +126,20 @@ const DriverTable: React.FC<DriverTableProps> = ({
         },
     ];
 
+    // Tạo dữ liệu giả cho skeleton loading
+    const skeletonData = Array(5).fill({}).map((_, index) => ({
+        key: `skeleton-${index}`,
+        name: <Skeleton.Input style={{ width: 150 }} active size="small" />,
+        contact: <Skeleton.Input style={{ width: 200 }} active size="small" />,
+        documents: <Skeleton.Input style={{ width: 150 }} active size="small" />,
+        status: <Skeleton.Input style={{ width: 80 }} active size="small" />,
+        action: <Skeleton.Button active size="small" shape="round" />
+    }));
+
     return (
         <Table
             columns={columns}
-            dataSource={data}
+            dataSource={loading ? [] : data}
             rowKey="id"
             pagination={{
                 pageSize: 10,
@@ -147,9 +147,19 @@ const DriverTable: React.FC<DriverTableProps> = ({
                 pageSizeOptions: ['10', '20', '50'],
                 showTotal: (total) => `Tổng ${total} tài xế`
             }}
-            loading={loading}
+            loading={{
+                spinning: loading,
+                indicator: <></>
+            }}
             className="driver-table"
             rowClassName="hover:bg-blue-50 transition-colors"
+            locale={{
+                emptyText: loading ? (
+                    <div className="py-5">
+                        <Skeleton active paragraph={{ rows: 5 }} />
+                    </div>
+                ) : 'Không có dữ liệu'
+            }}
         />
     );
 };

@@ -24,24 +24,22 @@ const StatusChangeModal: React.FC<StatusChangeModalProps> = ({
 }) => {
     const getStatusColor = (status: string) => {
         switch (status.toLowerCase()) {
-            case 'active':
-                return 'green';
-            case 'banned':
-                return 'red';
-            default:
-                return 'default';
+            case 'active': return 'green';
+            case 'banned': return 'red';
+            default: return 'default';
         }
     };
 
     const getStatusText = (status: string) => {
         switch (status.toLowerCase()) {
-            case 'active':
-                return 'Hoạt động';
-            case 'banned':
-                return 'Bị cấm';
-            default:
-                return status;
+            case 'active': return 'Hoạt động';
+            case 'banned': return 'Bị cấm';
+            default: return status;
         }
+    };
+
+    const handleOk = () => {
+        onOk();
     };
 
     return (
@@ -53,14 +51,21 @@ const StatusChangeModal: React.FC<StatusChangeModalProps> = ({
                 </div>
             }
             open={visible}
-            onOk={onOk}
+            onOk={handleOk}
             onCancel={onCancel}
             confirmLoading={loading}
-            okText="Cập nhật"
+            okText={loading ? "Đang cập nhật..." : "Cập nhật"}
             cancelText="Hủy"
             okButtonProps={{
-                className: status.toLowerCase() === 'active' ? 'bg-green-500 hover:bg-green-600' : 'bg-red-500 hover:bg-red-600'
+                className: status.toLowerCase() === 'active' ? 'bg-green-500 hover:bg-green-600' : 'bg-red-500 hover:bg-red-600',
+                disabled: loading
             }}
+            cancelButtonProps={{
+                disabled: loading
+            }}
+            maskClosable={!loading}
+            closable={!loading}
+            keyboard={!loading}
             className="status-change-modal"
             width={400}
         >
@@ -96,11 +101,13 @@ const StatusChangeModal: React.FC<StatusChangeModalProps> = ({
                     value={status}
                     onChange={(e) => onStatusChange(e.target.value)}
                     className="w-full"
+                    disabled={loading}
                 >
                     <div className="grid grid-cols-1 gap-3">
                         <Radio.Button
                             value="ACTIVE"
-                            className={`flex items-center h-auto py-2 px-3 ${status === 'ACTIVE' ? 'bg-green-50 border-green-500' : ''}`}
+                            className={`flex items-center h-auto py-2 px-3 ${status === 'ACTIVE' ? 'bg-green-50 border-green-500' : ''} ${loading ? 'opacity-70' : ''}`}
+                            disabled={loading}
                         >
                             <CheckCircleOutlined className="text-green-500 mr-2" />
                             <div>
@@ -111,7 +118,8 @@ const StatusChangeModal: React.FC<StatusChangeModalProps> = ({
 
                         <Radio.Button
                             value="BANNED"
-                            className={`flex items-center h-auto py-2 px-3 ${status === 'BANNED' ? 'bg-red-50 border-red-500' : ''}`}
+                            className={`flex items-center h-auto py-2 px-3 ${status === 'BANNED' ? 'bg-red-50 border-red-500' : ''} ${loading ? 'opacity-70' : ''}`}
+                            disabled={loading}
                         >
                             <StopOutlined className="text-red-500 mr-2" />
                             <div>

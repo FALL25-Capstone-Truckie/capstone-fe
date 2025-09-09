@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import type { FormEvent } from 'react';
-import { Form, Input, Button, Checkbox, Card, Alert, DatePicker, Radio, Row, Col, Upload, message } from 'antd';
+import { Form, Input, Button, Checkbox, Card, Alert, Radio, Row, Col, Upload, message } from 'antd';
 import { GoogleOutlined, EyeInvisibleOutlined, EyeTwoTone, UserOutlined, MailOutlined, PhoneOutlined, UploadOutlined, BankOutlined, IdcardOutlined, LockOutlined, CheckCircleOutlined } from '@ant-design/icons';
 import { Link, useNavigate } from 'react-router-dom';
 import { AuthPageLayout } from '../components';
@@ -9,6 +9,7 @@ import { authService } from '../../../services';
 import type { UploadProps } from 'antd';
 import dayjs from 'dayjs';
 import axios from 'axios';
+import { DateSelectGroup } from '../../../components/common';
 
 const RegisterPage: React.FC = () => {
     const [form] = Form.useForm();

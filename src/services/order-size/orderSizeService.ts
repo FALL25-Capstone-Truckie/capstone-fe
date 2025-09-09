@@ -18,7 +18,7 @@ const orderSizeService = {
      */
     getAllOrderSizes: async (): Promise<OrderSize[]> => {
         try {
-            const response = await httpClient.get<OrderSizesResponse>('/order-size');
+            const response = await httpClient.get<OrderSizesResponse>('/order-sizes');
             return response.data.data;
         } catch (error) {
             console.error('Error fetching order sizes:', error);
@@ -33,7 +33,7 @@ const orderSizeService = {
      */
     getOrderSizeById: async (id: string): Promise<OrderSize> => {
         try {
-            const response = await httpClient.get<OrderSizeResponse>(`/order-size/${id}`);
+            const response = await httpClient.get<OrderSizeResponse>(`/order-sizes/${id}`);
             return response.data.data;
         } catch (error) {
             console.error(`Error fetching order size ${id}:`, error);
@@ -48,7 +48,7 @@ const orderSizeService = {
      */
     createOrderSize: async (orderSizeData: OrderSizeCreateDto): Promise<OrderSize> => {
         try {
-            const response = await httpClient.post<OrderSizeResponse>('/order-size', orderSizeData);
+            const response = await httpClient.post<OrderSizeResponse>('/order-sizes', orderSizeData);
             return response.data.data;
         } catch (error) {
             console.error('Error creating order size:', error);
@@ -64,7 +64,7 @@ const orderSizeService = {
      */
     updateOrderSize: async (id: string, orderSizeData: OrderSizeUpdateDto): Promise<OrderSize> => {
         try {
-            const response = await httpClient.put<OrderSizeResponse>(`/order-size/${id}`, orderSizeData);
+            const response = await httpClient.put<OrderSizeResponse>(`/order-sizes/${id}`, orderSizeData);
             return response.data.data;
         } catch (error) {
             console.error(`Error updating order size ${id}:`, error);
@@ -78,7 +78,7 @@ const orderSizeService = {
      */
     deleteOrderSize: async (id: string): Promise<void> => {
         try {
-            await httpClient.delete(`/order-size/${id}`);
+            await httpClient.delete(`/order-sizes/${id}`);
         } catch (error) {
             console.error(`Error deleting order size ${id}:`, error);
             throw handleApiError(error, 'Không thể xóa kích thước đơn hàng');

@@ -169,7 +169,7 @@ const CreateOrder = () => {
       });
 
       // Redirect to orders list
-      navigate("/customer/orders");
+      navigate("/orders");
     } catch (err: any) {
       console.error("Error creating order:", err);
       notification.error({
@@ -450,7 +450,7 @@ const CreateOrder = () => {
             <p className="text-gray-600">Điền thông tin để tạo đơn hàng</p>
           </div>
           <Link
-            to="/customer/orders"
+            to="/orders"
             className="text-blue-600 hover:text-blue-800 font-medium"
           >
             Quay lại danh sách

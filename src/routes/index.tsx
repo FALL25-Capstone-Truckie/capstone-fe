@@ -21,6 +21,9 @@ import {
 import { OrdersList, CreateOrder } from "../pages/Orders";
 import { PermissionRoute } from "../components/auth";
 import { MainLayout, AdminLayout } from "../components/layout";
+import DriverPage from "../pages/Admin/Driver";
+import DriverDetail from "../pages/Admin/Driver/DriverDetail";
+import RegisterDriver from "../pages/Admin/Driver/RegisterDriver";
 
 // Định nghĩa các route với bảo vệ dựa trên vai trò và trạng thái xác thực
 const router = createBrowserRouter([
@@ -259,6 +262,18 @@ const router = createBrowserRouter([
       {
         path: "orders/:id/edit",
         element: <AdminOrderEdit />,
+      },
+      {
+        path: "drivers",
+        element: <DriverPage />,
+      },
+      {
+        path: "drivers/register",
+        element: <RegisterDriver />,
+      },
+      {
+        path: "drivers/:id",
+        element: <DriverDetail />,
       },
       {
         path: "users",

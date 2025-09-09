@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Table, Tag, Space, Button, Input, DatePicker, Select, Card, Spin, message } from 'antd';
+import { Table, Tag, Space, Button, Input, Select, Card, Spin, message } from 'antd';
 import { SearchOutlined, ReloadOutlined, EyeOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import orderService from '@/services/order/orderService';
 import type { Order, OrderStatus } from '@/models/Order';
 import dayjs from 'dayjs';
+import { DateSelectGroup } from '@/components/common';
 
-const { RangePicker } = DatePicker;
 const { Option } = Select;
 
 const OrderList: React.FC = () => {

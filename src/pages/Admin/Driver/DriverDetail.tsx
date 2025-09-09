@@ -1,6 +1,6 @@
 import React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Button, Spin, App, Typography, Breadcrumb } from 'antd';
+import { Button, Spin, App, Typography, Breadcrumb, Skeleton, Card, Row, Col } from 'antd';
 import { ArrowLeftOutlined, CarOutlined, HomeOutlined } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import driverService from '../../../services/driver';
@@ -58,11 +58,60 @@ const DriverDetail: React.FC = () => {
         }
     };
 
-    if (isLoading) return (
-        <div className="p-6 h-screen flex items-center justify-center">
-            <Spin size="large" tip="Đang tải thông tin tài xế..." />
+    const renderSkeletonLoading = () => (
+        <div className="p-6 bg-gray-50 min-h-screen">
+            <Breadcrumb className="mb-4">
+                <Breadcrumb.Item href="/">
+                    <HomeOutlined />
+                </Breadcrumb.Item>
+                <Breadcrumb.Item href="/admin/drivers">
+                    <CarOutlined />
+                    <span>Quản lý tài xế</span>
+                </Breadcrumb.Item>
+                <Breadcrumb.Item>
+                    <Skeleton.Input style={{ width: 100 }} active size="small" />
+                </Breadcrumb.Item>
+            </Breadcrumb>
+
+            <div className="flex items-center mb-6">
+                <Button
+                    icon={<ArrowLeftOutlined />}
+                    onClick={() => navigate('/admin/drivers')}
+                    className="mr-4"
+                >
+                    Quay lại
+                </Button>
+                <Title level={2} className="m-0 flex items-center">
+                    <CarOutlined className="mr-3 text-blue-500" />
+                    Chi tiết tài xế
+                </Title>
+            </div>
+
+            <Row gutter={[24, 24]}>
+                <Col xs={24} lg={8}>
+                    <Card className="shadow-sm hover:shadow-md transition-shadow">
+                        <div className="flex flex-col items-center text-center mb-6">
+                            <Skeleton.Avatar active size={120} className="mb-4" />
+                            <Skeleton.Input style={{ width: 200 }} active size="large" className="mb-2" />
+                            <Skeleton.Input style={{ width: 100 }} active size="small" />
+                        </div>
+
+                        <Skeleton active paragraph={{ rows: 4 }} />
+                    </Card>
+                </Col>
+                <Col xs={24} lg={16}>
+                    <Card className="shadow-sm hover:shadow-md transition-shadow mb-6">
+                        <Skeleton active paragraph={{ rows: 3 }} title={{ width: '40%' }} />
+                    </Card>
+                    <Card className="shadow-sm hover:shadow-md transition-shadow">
+                        <Skeleton active paragraph={{ rows: 5 }} title={{ width: '40%' }} />
+                    </Card>
+                </Col>
+            </Row>
         </div>
     );
+
+    if (isLoading) return renderSkeletonLoading();
 
     if (error) return (
         <div className="p-6 flex flex-col items-center justify-center h-64">
@@ -116,6 +165,7 @@ const DriverDetail: React.FC = () => {
                 formatDate={formatDate}
                 getStatusColor={getStatusColor}
                 onStatusChange={handleStatusChange}
+                isStatusUpdating={updateStatusMutation.isPending}
             />
         </div>
     );

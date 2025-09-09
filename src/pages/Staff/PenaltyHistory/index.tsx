@@ -9,7 +9,6 @@ import {
     Typography,
     message,
     Popconfirm,
-    DatePicker,
     Select,
     Spin,
     Result
@@ -32,9 +31,9 @@ import { PenaltyStatus, penaltyStatusColors } from '@/models/Penalty';
 import PenaltyModal from './components/PenaltyModal';
 import { useAuth } from '@/context';
 import type { GetPenaltiesResponse } from '@/services/penalty/types';
+import { DateSelectGroup } from '@/components/common';
 
 const { Title } = Typography;
-const { RangePicker } = DatePicker;
 const { Option } = Select;
 
 const PenaltyHistory: React.FC = () => {

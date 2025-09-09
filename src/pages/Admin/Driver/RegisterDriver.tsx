@@ -1,7 +1,7 @@
-import React from 'react';
-import { Card, Button, App, Typography, Breadcrumb } from 'antd';
+import React, { useState } from 'react';
+import { Card, Button, App, Typography, Breadcrumb, Result } from 'antd';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeftOutlined, HomeOutlined, IdcardOutlined, UserAddOutlined } from '@ant-design/icons';
+import { ArrowLeftOutlined, HomeOutlined, IdcardOutlined, UserAddOutlined, CheckCircleOutlined } from '@ant-design/icons';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import driverService from '../../../services/driver';
 import type { DriverRegisterRequest } from '../../../services/driver';
@@ -13,6 +13,7 @@ const RegisterDriver: React.FC = () => {
     const navigate = useNavigate();
     const { message } = App.useApp();
     const queryClient = useQueryClient();
+    const [isSuccess, setIsSuccess] = useState(false);
 
     const registerMutation = useMutation({
         mutationFn: (values: DriverRegisterRequest) => driverService.registerDriver(values),
@@ -20,7 +21,7 @@ const RegisterDriver: React.FC = () => {
             message.success('Đăng ký tài xế thành công');
             // Invalidate drivers query to refresh the list
             queryClient.invalidateQueries({ queryKey: ['drivers'] });
-            navigate('/admin/drivers');
+            setIsSuccess(true);
         },
         onError: (error: any) => {
             message.error(error.response?.data?.message || 'Đăng ký tài xế thất bại');
@@ -39,6 +40,40 @@ const RegisterDriver: React.FC = () => {
 
         registerMutation.mutate(formattedValues);
     };
+
+    const handleGoToDriversList = () => {
+        navigate('/admin/drivers');
+    };
+
+    if (isSuccess) {
+        return (
+            <div className="p-6 bg-gray-50 min-h-screen">
+                <Result
+                    status="success"
+                    title="Đăng ký tài xế thành công!"
+                    subTitle="Tài xế mới đã được thêm vào hệ thống."
+                    extra={[
+                        <Button
+                            type="primary"
+                            key="console"
+                            onClick={handleGoToDriversList}
+                            icon={<IdcardOutlined />}
+                            className="bg-blue-600 hover:bg-blue-700"
+                        >
+                            Xem danh sách tài xế
+                        </Button>,
+                        <Button
+                            key="register-another"
+                            onClick={() => setIsSuccess(false)}
+                            icon={<UserAddOutlined />}
+                        >
+                            Đăng ký tài xế khác
+                        </Button>,
+                    ]}
+                />
+            </div>
+        );
+    }
 
     return (
         <div className="p-6 bg-gray-50 min-h-screen">
@@ -61,6 +96,7 @@ const RegisterDriver: React.FC = () => {
                     icon={<ArrowLeftOutlined />}
                     onClick={() => navigate('/admin/drivers')}
                     className="mr-4"
+                    disabled={registerMutation.isPending}
                 >
                     Quay lại
                 </Button>

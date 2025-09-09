@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Button, App, Card, Input, Typography, Badge } from 'antd';
+import { Button, App, Card, Input, Typography, Badge, Skeleton } from 'antd';
 import { UserAddOutlined, IdcardOutlined, SearchOutlined, ReloadOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import driverService from '../../../services/driver';
@@ -19,7 +19,7 @@ const DriverPage: React.FC = () => {
     const [newStatus, setNewStatus] = useState<string>('');
     const [searchText, setSearchText] = useState('');
 
-    const { data: driversData, isLoading, error, refetch } = useQuery({
+    const { data: driversData, isLoading, error, refetch, isFetching } = useQuery({
         queryKey: ['drivers'],
         queryFn: driverService.getAllDrivers
     });
@@ -67,8 +67,66 @@ const DriverPage: React.FC = () => {
     const activeCount = driversData?.filter(driver => driver.status.toLowerCase() === 'active').length || 0;
     const bannedCount = driversData?.filter(driver => driver.status.toLowerCase() === 'banned').length || 0;
 
-    if (isLoading) return <div className="p-6">Đang tải...</div>;
-    if (error) return <div className="p-6 text-red-500">Đã xảy ra lỗi khi tải dữ liệu</div>;
+    if (error) return (
+        <div className="p-6 flex flex-col items-center justify-center h-64">
+            <Text type="danger" className="text-xl mb-4">Đã xảy ra lỗi khi tải dữ liệu</Text>
+            <Button type="primary" onClick={() => refetch()}>
+                Thử lại
+            </Button>
+        </div>
+    );
+
+    const renderStatCards = () => (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <Card className="bg-gradient-to-r from-blue-50 to-blue-100 border-blue-200 shadow-sm hover:shadow-md transition-shadow">
+                <div className="flex justify-between items-center">
+                    <div>
+                        <Text className="text-gray-600 block">Tổng số tài xế</Text>
+                        {isLoading ? (
+                            <Skeleton.Input style={{ width: 60 }} active size="small" />
+                        ) : (
+                            <Title level={3} className="m-0 text-blue-800">{driversData?.length || 0}</Title>
+                        )}
+                    </div>
+                    <IdcardOutlined className="text-4xl text-blue-500 opacity-80" />
+                </div>
+            </Card>
+            <Card className="bg-gradient-to-r from-green-50 to-green-100 border-green-200 shadow-sm hover:shadow-md transition-shadow">
+                <div className="flex justify-between items-center">
+                    <div>
+                        <Text className="text-gray-600 block">Tài xế hoạt động</Text>
+                        {isLoading ? (
+                            <Skeleton.Input style={{ width: 60 }} active size="small" />
+                        ) : (
+                            <Title level={3} className="m-0 text-green-700">{activeCount}</Title>
+                        )}
+                    </div>
+                    <Badge count={isLoading ? 0 : activeCount} color="green" showZero>
+                        <div className="bg-green-200 p-2 rounded-full">
+                            <IdcardOutlined className="text-3xl text-green-600" />
+                        </div>
+                    </Badge>
+                </div>
+            </Card>
+            <Card className="bg-gradient-to-r from-red-50 to-red-100 border-red-200 shadow-sm hover:shadow-md transition-shadow">
+                <div className="flex justify-between items-center">
+                    <div>
+                        <Text className="text-gray-600 block">Tài xế bị cấm</Text>
+                        {isLoading ? (
+                            <Skeleton.Input style={{ width: 60 }} active size="small" />
+                        ) : (
+                            <Title level={3} className="m-0 text-red-700">{bannedCount}</Title>
+                        )}
+                    </div>
+                    <Badge count={isLoading ? 0 : bannedCount} color="red" showZero>
+                        <div className="bg-red-200 p-2 rounded-full">
+                            <IdcardOutlined className="text-3xl text-red-600" />
+                        </div>
+                    </Badge>
+                </div>
+            </Card>
+        </div>
+    );
 
     return (
         <div className="p-6 bg-gray-50 min-h-screen">
@@ -91,43 +149,7 @@ const DriverPage: React.FC = () => {
                     </Button>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                    <Card className="bg-gradient-to-r from-blue-50 to-blue-100 border-blue-200 shadow-sm hover:shadow-md transition-shadow">
-                        <div className="flex justify-between items-center">
-                            <div>
-                                <Text className="text-gray-600 block">Tổng số tài xế</Text>
-                                <Title level={3} className="m-0 text-blue-800">{driversData?.length || 0}</Title>
-                            </div>
-                            <IdcardOutlined className="text-4xl text-blue-500 opacity-80" />
-                        </div>
-                    </Card>
-                    <Card className="bg-gradient-to-r from-green-50 to-green-100 border-green-200 shadow-sm hover:shadow-md transition-shadow">
-                        <div className="flex justify-between items-center">
-                            <div>
-                                <Text className="text-gray-600 block">Tài xế hoạt động</Text>
-                                <Title level={3} className="m-0 text-green-700">{activeCount}</Title>
-                            </div>
-                            <Badge count={activeCount} color="green" showZero>
-                                <div className="bg-green-200 p-2 rounded-full">
-                                    <IdcardOutlined className="text-3xl text-green-600" />
-                                </div>
-                            </Badge>
-                        </div>
-                    </Card>
-                    <Card className="bg-gradient-to-r from-red-50 to-red-100 border-red-200 shadow-sm hover:shadow-md transition-shadow">
-                        <div className="flex justify-between items-center">
-                            <div>
-                                <Text className="text-gray-600 block">Tài xế bị cấm</Text>
-                                <Title level={3} className="m-0 text-red-700">{bannedCount}</Title>
-                            </div>
-                            <Badge count={bannedCount} color="red" showZero>
-                                <div className="bg-red-200 p-2 rounded-full">
-                                    <IdcardOutlined className="text-3xl text-red-600" />
-                                </div>
-                            </Badge>
-                        </div>
-                    </Card>
-                </div>
+                {renderStatCards()}
 
                 <Card className="shadow-sm mb-6">
                     <div className="flex flex-col md:flex-row justify-between items-center mb-4">
@@ -139,11 +161,13 @@ const DriverPage: React.FC = () => {
                                 className="w-full md:w-64"
                                 value={searchText}
                                 onChange={(e) => setSearchText(e.target.value)}
+                                disabled={isLoading}
                             />
                             <Button
-                                icon={<ReloadOutlined />}
+                                icon={<ReloadOutlined spin={isFetching} />}
                                 onClick={() => refetch()}
                                 title="Làm mới dữ liệu"
+                                loading={isFetching}
                             />
                         </div>
                     </div>

@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
 import { App } from 'antd';
-import { UserAddOutlined, IdcardOutlined } from '@ant-design/icons';
+import { UserAddOutlined, IdcardOutlined, CheckCircleOutlined, StopOutlined, CarOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import driverService from '../../../services/driver';
 import type { DriverModel } from '../../../services/driver';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import DriverTable from './components/DriverTable';
-import StatusChangeModal from './components/StatusChangeModal';
-import UserManagementLayout from '../../../components/features/admin/UserManagementLayout';
+import StatusChangeModal from '../../../components/common/StatusChangeModal';
+import type { StatusOption } from '../../../components/common/StatusChangeModal';
+import EntityManagementLayout from '../../../components/features/admin/EntityManagementLayout';
 
 const DriverPage: React.FC = () => {
     const navigate = useNavigate();
@@ -70,6 +71,47 @@ const DriverPage: React.FC = () => {
     const activeCount = driversData?.filter(driver => driver.status.toLowerCase() === 'active').length || 0;
     const bannedCount = driversData?.filter(driver => driver.status.toLowerCase() === 'banned').length || 0;
 
+    // Status handling functions
+    const getStatusColor = (status: string | boolean) => {
+        if (typeof status === 'string') {
+            switch (status.toLowerCase()) {
+                case 'active': return 'green';
+                case 'banned': return 'red';
+                default: return 'default';
+            }
+        }
+        return 'default';
+    };
+
+    const getStatusText = (status: string | boolean) => {
+        if (typeof status === 'string') {
+            switch (status.toLowerCase()) {
+                case 'active': return 'Hoạt động';
+                case 'banned': return 'Bị cấm';
+                default: return status || 'Không xác định';
+            }
+        }
+        return 'Không xác định';
+    };
+
+    // Status options for the modal
+    const statusOptions: StatusOption[] = [
+        {
+            value: 'ACTIVE',
+            label: 'Hoạt động',
+            description: 'Tài xế có thể nhận và thực hiện đơn hàng',
+            color: 'green',
+            icon: <CheckCircleOutlined />
+        },
+        {
+            value: 'BANNED',
+            label: 'Cấm hoạt động',
+            description: 'Tài xế không thể nhận và thực hiện đơn hàng',
+            color: 'red',
+            icon: <StopOutlined />
+        }
+    ];
+
     if (error) {
         return (
             <div className="p-6 flex flex-col items-center justify-center h-64">
@@ -85,7 +127,7 @@ const DriverPage: React.FC = () => {
     }
 
     return (
-        <UserManagementLayout
+        <EntityManagementLayout
             title="Quản lý tài xế"
             icon={<IdcardOutlined />}
             description="Quản lý thông tin và trạng thái của các tài xế trong hệ thống"
@@ -113,8 +155,16 @@ const DriverPage: React.FC = () => {
                 <StatusChangeModal
                     visible={isStatusModalVisible}
                     loading={updateStatusMutation.isPending}
-                    driver={selectedDriver}
-                    status={newStatus}
+                    title="Cập nhật trạng thái tài xế"
+                    icon={<CarOutlined />}
+                    entityName={selectedDriver?.userResponse?.fullName || ''}
+                    entityDescription={selectedDriver?.userResponse?.phoneNumber || ''}
+                    avatarIcon={<CarOutlined />}
+                    currentStatus={selectedDriver?.status || ''}
+                    getStatusColor={getStatusColor}
+                    getStatusText={getStatusText}
+                    statusOptions={statusOptions}
+                    selectedStatus={newStatus}
                     onStatusChange={setNewStatus}
                     onOk={handleStatusUpdate}
                     onCancel={() => setIsStatusModalVisible(false)}

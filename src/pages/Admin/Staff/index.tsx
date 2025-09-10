@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
 import { App } from 'antd';
-import { TeamOutlined, UserAddOutlined } from '@ant-design/icons';
+import { TeamOutlined, UserAddOutlined, CheckCircleOutlined, StopOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import userService from '../../../services/user';
 import type { UserModel } from '../../../services/user/types';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import StaffTable from './components/StaffTable';
-import StatusChangeModal from './components/StatusChangeModal';
-import UserManagementLayout from '../../../components/features/admin/UserManagementLayout';
+import StatusChangeModal from '../../../components/common/StatusChangeModal';
+import type { StatusOption } from '../../../components/common/StatusChangeModal';
+import EntityManagementLayout from '../../../components/features/admin/EntityManagementLayout';
 
 const StaffPage: React.FC = () => {
     const navigate = useNavigate();
@@ -69,6 +70,47 @@ const StaffPage: React.FC = () => {
     const activeCount = staffData?.filter(staff => staff.status.toLowerCase() === 'active').length || 0;
     const bannedCount = staffData?.filter(staff => staff.status.toLowerCase() === 'banned').length || 0;
 
+    // Status handling functions
+    const getStatusColor = (status: string | boolean) => {
+        if (typeof status === 'string') {
+            switch (status.toLowerCase()) {
+                case 'active': return 'green';
+                case 'banned': return 'red';
+                default: return 'default';
+            }
+        }
+        return 'default';
+    };
+
+    const getStatusText = (status: string | boolean) => {
+        if (typeof status === 'string') {
+            switch (status.toLowerCase()) {
+                case 'active': return 'Hoạt động';
+                case 'banned': return 'Bị cấm';
+                default: return status || 'Không xác định';
+            }
+        }
+        return 'Không xác định';
+    };
+
+    // Status options for the modal
+    const statusOptions: StatusOption[] = [
+        {
+            value: 'ACTIVE',
+            label: 'Hoạt động',
+            description: 'Nhân viên có thể đăng nhập và sử dụng hệ thống',
+            color: 'green',
+            icon: <CheckCircleOutlined />
+        },
+        {
+            value: 'BANNED',
+            label: 'Cấm hoạt động',
+            description: 'Nhân viên không thể đăng nhập và sử dụng hệ thống',
+            color: 'red',
+            icon: <StopOutlined />
+        }
+    ];
+
     if (error) {
         return (
             <div className="p-6 flex flex-col items-center justify-center h-64">
@@ -84,7 +126,7 @@ const StaffPage: React.FC = () => {
     }
 
     return (
-        <UserManagementLayout
+        <EntityManagementLayout
             title="Quản lý nhân viên"
             icon={<TeamOutlined />}
             description="Quản lý thông tin và trạng thái của các nhân viên trong hệ thống"
@@ -112,8 +154,16 @@ const StaffPage: React.FC = () => {
                 <StatusChangeModal
                     visible={isStatusModalVisible}
                     loading={updateStatusMutation.isPending}
-                    staff={selectedStaff}
-                    status={newStatus}
+                    title="Cập nhật trạng thái nhân viên"
+                    icon={<TeamOutlined />}
+                    entityName={selectedStaff?.fullName || ''}
+                    entityDescription={selectedStaff?.email || ''}
+                    avatarIcon={<TeamOutlined />}
+                    currentStatus={selectedStaff?.status || ''}
+                    getStatusColor={getStatusColor}
+                    getStatusText={getStatusText}
+                    statusOptions={statusOptions}
+                    selectedStatus={newStatus}
                     onStatusChange={setNewStatus}
                     onOk={handleStatusUpdate}
                     onCancel={() => setIsStatusModalVisible(false)}

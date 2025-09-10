@@ -16,7 +16,7 @@ interface StatCardProps {
     badgeCount?: number;
 }
 
-interface UserManagementLayoutProps {
+interface EntityManagementLayoutProps {
     title: string;
     icon: ReactNode;
     description: string;
@@ -69,7 +69,7 @@ const StatCard: React.FC<StatCardProps> = ({
     </Card>
 );
 
-const UserManagementLayout: React.FC<UserManagementLayoutProps> = ({
+const EntityManagementLayout: React.FC<EntityManagementLayoutProps> = ({
     title,
     icon,
     description,
@@ -114,7 +114,7 @@ const UserManagementLayout: React.FC<UserManagementLayoutProps> = ({
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                     <StatCard
                         icon={icon}
-                        title={`Tổng số ${title.toLowerCase().replace('quản lý', '').trim()}`}
+                        title={`Tổng số ${title.toLowerCase().replace('quản lý', '').trim().replace(/^(.)/, match => match.toUpperCase())}`}
                         count={totalCount}
                         isLoading={isLoading}
                         bgColorClass="from-blue-50 to-blue-100 border-blue-200"
@@ -122,7 +122,7 @@ const UserManagementLayout: React.FC<UserManagementLayoutProps> = ({
                     />
                     <StatCard
                         icon={icon}
-                        title={`${title.replace('Quản lý', '').trim()} hoạt động`}
+                        title={`${title.replace('Quản lý', '').trim().replace(/^(.)/, match => match.toUpperCase())} Hoạt động`}
                         count={activeCount}
                         isLoading={isLoading}
                         bgColorClass="from-green-50 to-green-100 border-green-200"
@@ -132,7 +132,7 @@ const UserManagementLayout: React.FC<UserManagementLayoutProps> = ({
                     />
                     <StatCard
                         icon={icon}
-                        title={`${title.replace('Quản lý', '').trim()} bị cấm`}
+                        title={`${title.replace('Quản lý', '').trim().replace(/^(.)/, match => match.toUpperCase())} Bị cấm`}
                         count={bannedCount}
                         isLoading={isLoading}
                         bgColorClass="from-red-50 to-red-100 border-red-200"
@@ -172,4 +172,4 @@ const UserManagementLayout: React.FC<UserManagementLayoutProps> = ({
     );
 };
 
-export default UserManagementLayout; 
+export default EntityManagementLayout; 

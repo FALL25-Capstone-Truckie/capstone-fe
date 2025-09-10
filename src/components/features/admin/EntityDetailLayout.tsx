@@ -5,7 +5,7 @@ import { ArrowLeftOutlined, HomeOutlined, CheckCircleOutlined, StopOutlined } fr
 
 const { Title, Text } = Typography;
 
-interface UserDetailLayoutProps {
+interface EntityDetailLayoutProps {
     id?: string;
     title: string;
     icon: ReactNode;
@@ -16,7 +16,7 @@ interface UserDetailLayoutProps {
     }[];
     onBackClick: () => void;
     isLoading: boolean;
-    userData: {
+    entityData: {
         fullName?: string;
         imageUrl?: string;
         status?: string;
@@ -25,20 +25,21 @@ interface UserDetailLayoutProps {
         username?: string;
         gender?: boolean;
         dateOfBirth?: string;
+        [key: string]: any; // Cho phép thêm các trường khác
     } | null;
     leftSideExtra?: ReactNode;
     rightContent: ReactNode;
     statusUpdateButtons?: ReactNode;
 }
 
-const UserDetailLayout: React.FC<UserDetailLayoutProps> = ({
+const EntityDetailLayout: React.FC<EntityDetailLayoutProps> = ({
     id,
     title,
     icon,
     breadcrumbItems,
     onBackClick,
     isLoading,
-    userData,
+    entityData,
     leftSideExtra,
     rightContent,
     statusUpdateButtons
@@ -145,18 +146,18 @@ const UserDetailLayout: React.FC<UserDetailLayoutProps> = ({
                     <Card className="shadow-sm hover:shadow-md transition-shadow">
                         <div className="flex flex-col items-center text-center mb-6">
                             <Avatar
-                                src={userData?.imageUrl}
+                                src={entityData?.imageUrl}
                                 size={120}
                                 className="mb-4"
-                                icon={<UserIcon gender={userData?.gender} />}
+                                icon={<UserIcon gender={entityData?.gender} />}
                             />
-                            <Title level={4} className="m-0 mb-2">{userData?.fullName || 'Không có tên'}</Title>
+                            <Title level={4} className="m-0 mb-2">{entityData?.fullName || 'Không có tên'}</Title>
                             <Tag
-                                color={getStatusColor(userData?.status)}
+                                color={getStatusColor(entityData?.status)}
                                 className="px-3 py-1 text-sm"
-                                icon={userData?.status?.toLowerCase() === 'active' ? <CheckCircleOutlined /> : <StopOutlined />}
+                                icon={entityData?.status?.toLowerCase() === 'active' ? <CheckCircleOutlined /> : <StopOutlined />}
                             >
-                                {getStatusText(userData?.status)}
+                                {getStatusText(entityData?.status)}
                             </Tag>
                         </div>
 
@@ -165,21 +166,21 @@ const UserDetailLayout: React.FC<UserDetailLayoutProps> = ({
                                 <MailIcon className="mr-3 text-gray-500" />
                                 <div>
                                     <Text type="secondary" className="block text-xs">Email</Text>
-                                    <Text>{userData?.email || 'Không có email'}</Text>
+                                    <Text>{entityData?.email || 'Không có email'}</Text>
                                 </div>
                             </div>
                             <div className="flex items-center mb-3">
                                 <PhoneIcon className="mr-3 text-gray-500" />
                                 <div>
                                     <Text type="secondary" className="block text-xs">Số điện thoại</Text>
-                                    <Text>{userData?.phoneNumber || 'Không có số điện thoại'}</Text>
+                                    <Text>{entityData?.phoneNumber || 'Không có số điện thoại'}</Text>
                                 </div>
                             </div>
                             <div className="flex items-center mb-3">
                                 <UsernameIcon className="mr-3 text-gray-500" />
                                 <div>
                                     <Text type="secondary" className="block text-xs">Tên đăng nhập</Text>
-                                    <Text>{userData?.username || 'Không có tên đăng nhập'}</Text>
+                                    <Text>{entityData?.username || 'Không có tên đăng nhập'}</Text>
                                 </div>
                             </div>
                             {leftSideExtra}
@@ -224,4 +225,4 @@ const UsernameIcon: React.FC<{ className?: string }> = ({ className }) => (
     <span className={`anticon ${className}`}>🔑</span>
 );
 
-export default UserDetailLayout; 
+export default EntityDetailLayout; 

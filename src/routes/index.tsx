@@ -33,6 +33,7 @@ import CustomerDetail from "../pages/Admin/Customer/CustomerDetail";
 import StaffPage from "../pages/Admin/Staff";
 import StaffDetail from "../pages/Admin/Staff/StaffDetail";
 import StaffRegister from "../pages/Admin/Staff/StaffRegister";
+import DeviceManagement from "../pages/Admin/Device";
 
 // Định nghĩa các route với bảo vệ dựa trên vai trò và trạng thái xác thực
 const router = createBrowserRouter([
@@ -303,6 +304,10 @@ const router = createBrowserRouter([
       {
         path: "staff/:id",
         element: <StaffDetail />,
+      },
+      {
+        path: "devices",
+        element: <DeviceManagement />,
       },
       {
         path: "settings",

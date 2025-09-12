@@ -16,7 +16,9 @@ import {
     ToolOutlined,
     ShopOutlined,
     MobileOutlined,
-    TagsOutlined
+    TagsOutlined,
+    CarFilled,
+    IdcardOutlined
 } from '@ant-design/icons';
 
 const { Sider } = Layout;
@@ -52,8 +54,18 @@ const AdminSidebar: React.FC = () => {
                 },
                 {
                     key: '/admin/drivers',
-                    icon: <CarOutlined />,
+                    icon: <IdcardOutlined />,
                     label: <Link to="/admin/drivers">Tài xế</Link>,
+                },
+                {
+                    key: '/admin/vehicles',
+                    icon: <CarFilled />,
+                    label: <Link to="/admin/vehicles">Phương tiện</Link>,
+                },
+                {
+                    key: '/admin/vehicle-maintenances',
+                    icon: <ToolOutlined />,
+                    label: <Link to="/admin/vehicle-maintenances">Bảo trì phương tiện</Link>,
                 },
                 {
                     key: '/admin/staff',

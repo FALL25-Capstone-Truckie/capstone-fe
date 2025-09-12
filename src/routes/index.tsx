@@ -35,6 +35,9 @@ import StaffDetail from "../pages/Admin/Staff/StaffDetail";
 import StaffRegister from "../pages/Admin/Staff/StaffRegister";
 import DeviceManagement from "../pages/Admin/Device";
 import CategoryManagement from "../pages/Admin/Category";
+import VehiclePage from "../pages/Admin/Vehicle";
+import VehicleDetailPage from "../pages/Admin/Vehicle/VehicleDetail";
+import VehicleMaintenancePage from "../pages/Admin/VehicleMaintenance";
 
 // Định nghĩa các route với bảo vệ dựa trên vai trò và trạng thái xác thực
 const router = createBrowserRouter([
@@ -323,6 +326,18 @@ const router = createBrowserRouter([
       {
         path: "devices",
         element: <DeviceManagement />,
+      },
+      {
+        path: "vehicles",
+        element: <VehiclePage />,
+      },
+      {
+        path: "vehicles/:id",
+        element: <VehicleDetailPage />,
+      },
+      {
+        path: "vehicle-maintenances",
+        element: <VehicleMaintenancePage />,
       },
       {
         path: "categories",

@@ -31,13 +31,19 @@ import {
     InboxOutlined
 } from '@ant-design/icons';
 import { vehicleService } from '../../../services';
-import type { VehicleDetail, VehicleAssignment, VehicleMaintenance } from '../../../models';
+import type { VehicleDetail, VehicleAssignment, VehicleMaintenance, Vehicle } from '../../../models';
 import AssignDriverModal from './components/AssignDriverModal';
 import ScheduleMaintenanceModal from './components/ScheduleMaintenanceModal';
 import StatusChangeModal from '../../../components/common/StatusChangeModal';
 import type { StatusOption } from '../../../components/common/StatusChangeModal';
+import type { ApiResponse } from '../../../services/api/types';
 
 const { Title, Text } = Typography;
+
+// Define a type that matches the structure of ApiResponse but allows null for data
+interface VehicleDetailResponse extends Omit<ApiResponse<VehicleDetail>, 'data'> {
+    data: VehicleDetail | null;
+}
 
 const VehicleDetailPage: React.FC = () => {
     const { id } = useParams<{ id: string }>();
@@ -51,14 +57,45 @@ const VehicleDetailPage: React.FC = () => {
     const [statusModalLoading, setStatusModalLoading] = useState<boolean>(false);
     const [selectedStatus, setSelectedStatus] = useState<string>('');
 
+    // Helper function to get vehicle details and handle type casting
+    const getVehicleDetail = async (vehicleId: string): Promise<VehicleDetailResponse> => {
+        const response = await vehicleService.getVehicleById(vehicleId);
+
+        if (response.success && response.data) {
+            // Create a default VehicleDetail structure if data is missing properties
+            const vehicleData = response.data as Vehicle;
+
+            const vehicleDetail: VehicleDetail = {
+                ...vehicleData,
+                vehicleAssignmentResponse: [],
+                vehicleMaintenanceResponse: [],
+                vehicleTypeResponse: {
+                    id: vehicleData.vehicleTypeId,
+                    vehicleTypeName: '',
+                    description: ''
+                }
+            };
+
+            return {
+                ...response,
+                data: vehicleDetail
+            };
+        }
+
+        return {
+            ...response,
+            data: null
+        };
+    };
+
     useEffect(() => {
         const fetchVehicleDetail = async () => {
             if (!id) return;
 
             try {
                 setLoading(true);
-                const response = await vehicleService.getVehicleById(id);
-                if (response.success) {
+                const response = await getVehicleDetail(id);
+                if (response.success && response.data) {
                     setVehicle(response.data);
                 } else {
                     // Không phải lỗi, chỉ là không tìm thấy phương tiện
@@ -194,8 +231,8 @@ const VehicleDetailPage: React.FC = () => {
 
             if (response.success) {
                 message.success(`Phương tiện đã được ${selectedStatus === 'active' ? 'kích hoạt' : 'vô hiệu hóa'}`);
-                const detailResponse = await vehicleService.getVehicleById(id);
-                if (detailResponse.success) {
+                const detailResponse = await getVehicleDetail(id);
+                if (detailResponse.success && detailResponse.data) {
                     setVehicle(detailResponse.data);
                 }
                 setIsStatusModalOpen(false);
@@ -224,8 +261,8 @@ const VehicleDetailPage: React.FC = () => {
 
         // Refresh vehicle data
         if (id) {
-            const response = await vehicleService.getVehicleById(id);
-            if (response.success) {
+            const response = await getVehicleDetail(id);
+            if (response.success && response.data) {
                 setVehicle(response.data);
             }
         }
@@ -237,8 +274,8 @@ const VehicleDetailPage: React.FC = () => {
 
         // Refresh vehicle data
         if (id) {
-            const response = await vehicleService.getVehicleById(id);
-            if (response.success) {
+            const response = await getVehicleDetail(id);
+            if (response.success && response.data) {
                 setVehicle(response.data);
             }
         }

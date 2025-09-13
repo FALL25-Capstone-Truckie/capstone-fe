@@ -38,6 +38,9 @@ import CategoryManagement from "../pages/Admin/Category";
 import VehiclePage from "../pages/Admin/Vehicle";
 import VehicleDetailPage from "../pages/Admin/Vehicle/VehicleDetail";
 import VehicleMaintenancePage from "../pages/Admin/VehicleMaintenance";
+import VehicleMaintenanceDetail from "../pages/Admin/VehicleMaintenance/VehicleMaintenanceDetail";
+import CreateMaintenance from "../pages/Admin/VehicleMaintenance/CreateMaintenance";
+import EditMaintenance from "../pages/Admin/VehicleMaintenance/EditMaintenance";
 
 // Định nghĩa các route với bảo vệ dựa trên vai trò và trạng thái xác thực
 const router = createBrowserRouter([
@@ -338,6 +341,18 @@ const router = createBrowserRouter([
       {
         path: "vehicle-maintenances",
         element: <VehicleMaintenancePage />,
+      },
+      {
+        path: "vehicle-maintenances/:id",
+        element: <VehicleMaintenanceDetail />,
+      },
+      {
+        path: "vehicle-maintenances/create",
+        element: <CreateMaintenance />,
+      },
+      {
+        path: "vehicle-maintenances/edit/:id",
+        element: <EditMaintenance />,
       },
       {
         path: "categories",

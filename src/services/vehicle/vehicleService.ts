@@ -1,14 +1,11 @@
 import httpClient from '../api/httpClient';
 import type {
-    VehicleListResponse,
-    VehicleDetailResponse,
+    GetVehiclesResponse,
+    GetVehicleResponse,
     CreateVehicleResponse,
     UpdateVehicleResponse,
-    VehicleTypeListResponse,
-    CreateVehicleTypeRequest,
-    UpdateVehicleTypeRequest,
-    VehicleMaintenanceListResponse,
-    VehicleMaintenanceDetailResponse,
+    GetVehicleMaintenancesResponse,
+    GetVehicleMaintenanceDetailResponse,
     CreateVehicleMaintenanceResponse,
     UpdateVehicleMaintenanceResponse
 } from './types';
@@ -26,7 +23,7 @@ const vehicleService = {
      */
     getVehicles: async () => {
         try {
-            const response = await httpClient.get<VehicleListResponse>('/vehicles');
+            const response = await httpClient.get<GetVehiclesResponse>('/vehicles');
             return response.data;
         } catch (error) {
             if (axios.isAxiosError(error) && error.response?.status === 404) {
@@ -48,7 +45,7 @@ const vehicleService = {
      */
     getVehicleById: async (id: string) => {
         try {
-            const response = await httpClient.get<VehicleDetailResponse>(`/vehicles/${id}`);
+            const response = await httpClient.get<GetVehicleResponse>(`/vehicles/${id}`);
             return response.data;
         } catch (error) {
             if (axios.isAxiosError(error) && error.response?.status === 404) {
@@ -127,7 +124,7 @@ const vehicleService = {
      */
     getVehicleTypes: async () => {
         try {
-            const response = await httpClient.get<VehicleTypeListResponse>('/vehicle-types');
+            const response = await httpClient.get('/vehicle-types');
             return response.data;
         } catch (error) {
             if (axios.isAxiosError(error) && error.response?.status === 404) {
@@ -147,7 +144,7 @@ const vehicleService = {
     /**
      * Create a new vehicle type
      */
-    createVehicleType: async (vehicleTypeData: CreateVehicleTypeRequest) => {
+    createVehicleType: async (vehicleTypeData: any) => {
         try {
             const response = await httpClient.post('/vehicle-types', vehicleTypeData);
             return response.data;
@@ -160,7 +157,7 @@ const vehicleService = {
     /**
      * Update an existing vehicle type
      */
-    updateVehicleType: async (id: string, vehicleTypeData: UpdateVehicleTypeRequest) => {
+    updateVehicleType: async (id: string, vehicleTypeData: any) => {
         try {
             const response = await httpClient.put(`/vehicle-types/${id}`, vehicleTypeData);
             return response.data;
@@ -205,7 +202,44 @@ const vehicleService = {
      */
     getVehicleMaintenances: async () => {
         try {
-            const response = await httpClient.get<VehicleMaintenanceListResponse>('/vehicle-maintenances');
+            const response = await httpClient.get<GetVehicleMaintenancesResponse>('/vehicle-maintenances');
+            console.log('Raw vehicle maintenances response:', response);
+
+            // Ensure data is always an array
+            if (response.data.success) {
+                if (!Array.isArray(response.data.data)) {
+                    console.warn('Vehicle maintenances response data is not an array, returning empty array');
+                    return {
+                        ...response.data,
+                        data: []
+                    };
+                }
+
+                // Map the data to ensure it has the expected structure
+                const mappedData = response.data.data.map((item: any) => {
+                    // Nếu item đã có vehicleId và không có vehicleEntity, giữ nguyên
+                    if (item.vehicleId && !item.vehicleEntity) {
+                        return item;
+                    }
+
+                    // Nếu có vehicleEntity, thêm vehicleId
+                    if (item.vehicleEntity) {
+                        return {
+                            ...item,
+                            vehicleId: item.vehicleEntity.id,
+                            vehicle: item.vehicleEntity
+                        };
+                    }
+
+                    return item;
+                });
+
+                return {
+                    ...response.data,
+                    data: mappedData
+                };
+            }
+
             return response.data;
         } catch (error) {
             if (axios.isAxiosError(error) && error.response?.status === 404) {
@@ -227,7 +261,7 @@ const vehicleService = {
      */
     getVehicleMaintenanceById: async (id: string) => {
         try {
-            const response = await httpClient.get<VehicleMaintenanceDetailResponse>(`/vehicle-maintenances/${id}`);
+            const response = await httpClient.get<GetVehicleMaintenanceDetailResponse>(`/vehicle-maintenances/${id}`);
             return response.data;
         } catch (error) {
             if (axios.isAxiosError(error) && error.response?.status === 404) {

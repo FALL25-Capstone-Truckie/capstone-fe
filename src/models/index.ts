@@ -30,4 +30,5 @@ export * from './Driver';
 export * from './Customer';
 export * from './Device';
 export * from './Vehicle';
-export * from './VehicleMaintenance'; 
+export * from './VehicleMaintenance';
+export * from './maintenanceType'; 

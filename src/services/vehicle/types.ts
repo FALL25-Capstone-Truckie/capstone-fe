@@ -1,74 +1,13 @@
-import type { Vehicle, VehicleDetail, CreateVehicleRequest, UpdateVehicleRequest, VehicleType, VehicleMaintenance, CreateVehicleMaintenanceRequest, UpdateVehicleMaintenanceRequest, VehicleMaintenanceDetail } from '../../models';
+import type { Vehicle, VehicleMaintenance, VehicleMaintenanceDetail, CreateVehicleMaintenanceRequest, UpdateVehicleMaintenanceRequest } from '../../models';
+import type { ApiResponse } from '../api/types';
 
-export interface VehicleListResponse {
-    success: boolean;
-    message: string;
-    statusCode: number;
-    data: Vehicle[];
-}
+export type GetVehiclesResponse = ApiResponse<Vehicle[]>;
+export type GetVehicleResponse = ApiResponse<Vehicle>;
+export type CreateVehicleResponse = ApiResponse<Vehicle>;
+export type UpdateVehicleResponse = ApiResponse<Vehicle>;
 
-export interface VehicleDetailResponse {
-    success: boolean;
-    message: string;
-    statusCode: number;
-    data: VehicleDetail;
-}
-
-export interface CreateVehicleResponse {
-    success: boolean;
-    message: string;
-    statusCode: number;
-    data: Vehicle;
-}
-
-export interface UpdateVehicleResponse {
-    success: boolean;
-    message: string;
-    statusCode: number;
-    data: VehicleDetail;
-}
-
-export interface VehicleTypeListResponse {
-    success: boolean;
-    message: string;
-    statusCode: number;
-    data: VehicleType[];
-}
-
-export interface CreateVehicleTypeRequest {
-    vehicleTypeName: string;
-    description: string;
-}
-
-export interface UpdateVehicleTypeRequest {
-    vehicleTypeName: string;
-    description: string;
-}
-
-export interface VehicleMaintenanceListResponse {
-    success: boolean;
-    message: string;
-    statusCode: number;
-    data: VehicleMaintenance[];
-}
-
-export interface VehicleMaintenanceDetailResponse {
-    success: boolean;
-    message: string;
-    statusCode: number;
-    data: VehicleMaintenanceDetail;
-}
-
-export interface CreateVehicleMaintenanceResponse {
-    success: boolean;
-    message: string;
-    statusCode: number;
-    data: VehicleMaintenance;
-}
-
-export interface UpdateVehicleMaintenanceResponse {
-    success: boolean;
-    message: string;
-    statusCode: number;
-    data: VehicleMaintenance;
-} 
+export type GetVehicleMaintenancesResponse = ApiResponse<VehicleMaintenance[]>;
+export type GetVehicleMaintenanceResponse = ApiResponse<VehicleMaintenance>;
+export type GetVehicleMaintenanceDetailResponse = ApiResponse<VehicleMaintenanceDetail>;
+export type CreateVehicleMaintenanceResponse = ApiResponse<VehicleMaintenance>;
+export type UpdateVehicleMaintenanceResponse = ApiResponse<VehicleMaintenance>; 

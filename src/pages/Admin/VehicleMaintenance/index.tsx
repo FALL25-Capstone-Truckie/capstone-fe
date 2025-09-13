@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { Table, Button, Space, Modal, App, Typography, Tag, DatePicker, Select, Input, Row, Col } from 'antd';
-import { PlusOutlined, EditOutlined, EyeOutlined, ToolOutlined } from '@ant-design/icons';
+import React, { useState, useEffect, useRef } from 'react';
+import { Table, Button, Space, Modal, App, Typography, Tag, DatePicker, Select, Input, Row, Col, Tabs } from 'antd';
+import { PlusOutlined, EditOutlined, EyeOutlined, ToolOutlined, SettingOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { vehicleService } from '../../../services';
 import type { VehicleMaintenance, Vehicle } from '../../../models';
@@ -8,12 +8,16 @@ import EntityManagementLayout from '../../../components/features/admin/EntityMan
 import dayjs from 'dayjs';
 import isBetween from 'dayjs/plugin/isBetween';
 import MaintenanceForm from './components/MaintenanceForm';
+import MaintenanceTypeList from './components/MaintenanceTypeList';
+import type { MaintenanceTypeListRef } from './components/MaintenanceTypeList';
+import { useQueryClient } from '@tanstack/react-query';
 
 dayjs.extend(isBetween);
 
 const { Title } = Typography;
 const { RangePicker } = DatePicker;
 const { Search } = Input;
+const { TabPane } = Tabs;
 
 const VehicleMaintenancePage: React.FC = () => {
     const [maintenances, setMaintenances] = useState<VehicleMaintenance[]>([]);
@@ -25,8 +29,11 @@ const VehicleMaintenancePage: React.FC = () => {
     const [searchText, setSearchText] = useState<string>('');
     const [selectedVehicle, setSelectedVehicle] = useState<string | null>(null);
     const [dateRange, setDateRange] = useState<[dayjs.Dayjs | null, dayjs.Dayjs | null] | null>(null);
+    const [activeTab, setActiveTab] = useState<string>('maintenances');
     const { message } = App.useApp();
     const navigate = useNavigate();
+    const maintenanceTypeListRef = useRef<MaintenanceTypeListRef>(null);
+    const queryClient = useQueryClient();
 
     const fetchMaintenances = async () => {
         try {
@@ -51,10 +58,12 @@ const VehicleMaintenancePage: React.FC = () => {
     const fetchVehicles = async () => {
         try {
             const response = await vehicleService.getVehicles();
-            if (response.success) {
-                setVehicles(response.data || []);
+            console.log('Raw vehicles response:', response);
+            if (response.success && Array.isArray(response.data)) {
+                setVehicles(response.data);
             } else {
                 // Không phải lỗi, chỉ là không có dữ liệu
+                console.warn('Vehicles data is not an array or success is false:', response);
                 setVehicles([]);
             }
         } catch (error) {
@@ -68,14 +77,20 @@ const VehicleMaintenancePage: React.FC = () => {
         fetchVehicles();
     }, []);
 
+    // Thêm console.log để debug
+    useEffect(() => {
+        console.log('Vehicles data:', vehicles);
+        console.log('Maintenances data:', maintenances);
+    }, [vehicles, maintenances]);
+
     const handleOpenCreateModal = () => {
-        setSelectedMaintenance(null);
-        setIsModalOpen(true);
+        // Chuyển hướng đến trang thêm mới thay vì mở modal
+        navigate('/admin/vehicle-maintenances/create');
     };
 
     const handleOpenEditModal = (maintenance: VehicleMaintenance) => {
-        setSelectedMaintenance(maintenance);
-        setIsModalOpen(true);
+        // Chuyển hướng đến trang chỉnh sửa thay vì mở modal
+        navigate(`/admin/vehicle-maintenances/edit/${maintenance.id}`);
     };
 
     const handleViewDetails = (id: string) => {
@@ -88,8 +103,9 @@ const VehicleMaintenancePage: React.FC = () => {
                 // Cập nhật bảo trì
                 const response = await vehicleService.updateVehicleMaintenance(selectedMaintenance.id, {
                     ...values,
-                    maintenanceDate: values.maintenanceDate.format('YYYY-MM-DDTHH:mm:ss.SSSZ'),
-                    nextMaintenanceDate: values.nextMaintenanceDate ? values.nextMaintenanceDate.format('YYYY-MM-DDTHH:mm:ss.SSSZ') : undefined
+                    // Sử dụng định dạng ISO không có timezone để phù hợp với LocalDateTime của Java
+                    maintenanceDate: values.maintenanceDate.format('YYYY-MM-DDTHH:mm:ss'),
+                    nextMaintenanceDate: values.nextMaintenanceDate ? values.nextMaintenanceDate.format('YYYY-MM-DDTHH:mm:ss') : undefined
                 });
 
                 if (response.success) {
@@ -104,8 +120,9 @@ const VehicleMaintenancePage: React.FC = () => {
                 // Tạo mới bảo trì
                 const response = await vehicleService.createVehicleMaintenance({
                     ...values,
-                    maintenanceDate: values.maintenanceDate.format('YYYY-MM-DDTHH:mm:ss.SSSZ'),
-                    nextMaintenanceDate: values.nextMaintenanceDate ? values.nextMaintenanceDate.format('YYYY-MM-DDTHH:mm:ss.SSSZ') : undefined
+                    // Sử dụng định dạng ISO không có timezone để phù hợp với LocalDateTime của Java
+                    maintenanceDate: values.maintenanceDate.format('YYYY-MM-DDTHH:mm:ss'),
+                    nextMaintenanceDate: values.nextMaintenanceDate ? values.nextMaintenanceDate.format('YYYY-MM-DDTHH:mm:ss') : undefined
                 });
 
                 if (response.success) {
@@ -164,16 +181,30 @@ const VehicleMaintenancePage: React.FC = () => {
         return true;
     });
 
-    const getVehicleInfo = (vehicleId: string) => {
-        const vehicle = vehicles.find(v => v.id === vehicleId);
-        return vehicle ? `${vehicle.licensePlateNumber} - ${vehicle.model}` : vehicleId;
+    const getVehicleInfo = (record: any) => {
+        // Kiểm tra nếu có vehicleEntity (từ API) hoặc vehicle (từ model)
+        if (record.vehicleEntity) {
+            return `${record.vehicleEntity.licensePlateNumber || 'N/A'} - ${record.vehicleEntity.model || 'N/A'}`;
+        } else if (record.vehicle) {
+            return `${record.vehicle.licensePlateNumber || 'N/A'} - ${record.vehicle.model || 'N/A'}`;
+        } else if (record.vehicleId) {
+            // Tìm trong danh sách vehicles
+            const vehicle = vehicles.find(v => v.id === record.vehicleId);
+            if (vehicle) {
+                return `${vehicle.licensePlateNumber || 'N/A'} - ${vehicle.model || 'N/A'}`;
+            }
+        }
+
+        // Trường hợp không tìm thấy
+        console.log('Vehicle info not found for record:', record);
+        return 'Không xác định';
     };
 
     const columns = [
         {
             title: 'Phương tiện',
             key: 'vehicle',
-            render: (record: VehicleMaintenance) => getVehicleInfo(record.vehicleId),
+            render: (record: any) => getVehicleInfo(record),
         },
         {
             title: 'Ngày bảo trì',
@@ -208,18 +239,13 @@ const VehicleMaintenancePage: React.FC = () => {
             title: 'Thao tác',
             key: 'action',
             render: (_: any, record: VehicleMaintenance) => (
-                <Space size="middle">
-                    <Button
-                        icon={<EyeOutlined />}
-                        onClick={() => handleViewDetails(record.id)}
-                        title="Xem chi tiết"
-                    />
-                    <Button
-                        icon={<EditOutlined />}
-                        onClick={() => handleOpenEditModal(record)}
-                        title="Chỉnh sửa"
-                    />
-                </Space>
+                <Button
+                    type="primary"
+                    icon={<EyeOutlined />}
+                    onClick={() => handleViewDetails(record.id)}
+                >
+                    Chi tiết
+                </Button>
             ),
         },
     ];
@@ -284,35 +310,72 @@ const VehicleMaintenancePage: React.FC = () => {
         return maintenanceDate.isAfter(dayjs());
     });
 
+    const renderMaintenanceTable = () => (
+        <>
+            {renderFilters()}
+            <Table
+                dataSource={filteredMaintenances}
+                columns={columns}
+                rowKey="id"
+                pagination={{ pageSize: 10 }}
+                loading={loading}
+            />
+        </>
+    );
+
+    const handleTabChange = (key: string) => {
+        setActiveTab(key);
+    };
+
+    const renderContent = () => (
+        <Tabs activeKey={activeTab} onChange={handleTabChange}>
+            <TabPane tab="Lịch bảo dưỡng" key="maintenances">
+                {renderMaintenanceTable()}
+            </TabPane>
+            <TabPane tab="Loại bảo dưỡng" key="maintenanceTypes">
+                <MaintenanceTypeList />
+            </TabPane>
+        </Tabs>
+    );
+
+    const handleAddClick = () => {
+        if (activeTab === 'maintenances') {
+            // Chuyển hướng đến trang thêm mới lịch bảo trì
+            navigate('/admin/vehicle-maintenances/create');
+        } else {
+            // Mở modal thêm loại bảo trì
+            if (maintenanceTypeListRef.current) {
+                maintenanceTypeListRef.current.showAddModal();
+            }
+        }
+    };
+
+    // Conditionally define props based on active tab
+    const addButtonText = activeTab === 'maintenances' ? "Thêm lịch bảo trì" : "Thêm loại bảo dưỡng";
+    const addButtonIcon = <PlusOutlined />;
+    const onAddClick = handleAddClick;
+    const onSearchChange = activeTab === 'maintenances' ? handleSearch : () => { };
+    const onRefresh = activeTab === 'maintenances' ? handleRefresh : () => { };
+    const tableTitle = activeTab === 'maintenances' ? "Danh sách lịch bảo trì" : "Quản lý loại bảo dưỡng";
+
     return (
         <EntityManagementLayout
             title="Quản lý bảo trì phương tiện"
             icon={<ToolOutlined />}
             description="Quản lý lịch bảo trì phương tiện trong hệ thống"
-            addButtonText="Thêm lịch bảo trì"
-            addButtonIcon={<PlusOutlined />}
-            onAddClick={handleOpenCreateModal}
+            addButtonText={addButtonText}
+            addButtonIcon={addButtonIcon}
+            onAddClick={onAddClick}
             searchText={searchText}
-            onSearchChange={setSearchText}
-            onRefresh={handleRefresh}
+            onSearchChange={onSearchChange}
+            onRefresh={onRefresh}
             isLoading={loading}
             isFetching={isFetching}
             totalCount={maintenances.length}
             activeCount={upcomingMaintenances.length}
             bannedCount={pastMaintenances.length}
-            tableTitle="Danh sách lịch bảo trì"
-            tableComponent={
-                <>
-                    {renderFilters()}
-                    <Table
-                        dataSource={filteredMaintenances}
-                        columns={columns}
-                        rowKey="id"
-                        pagination={{ pageSize: 10 }}
-                        loading={loading}
-                    />
-                </>
-            }
+            tableTitle={tableTitle}
+            tableComponent={renderContent()}
             modalComponent={renderModal()}
         />
     );

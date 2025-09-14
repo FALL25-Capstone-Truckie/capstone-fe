@@ -2,6 +2,7 @@ import React from "react";
 import { Link } from "react-router-dom";
 import type { Order, OrderStatus } from "../../../models/Order";
 import { formatCurrency } from "../../../utils/formatters";
+import { SuggestAssignVehicles } from "../../../components/common";
 
 interface OrdersContentProps {
   orders: Order[];
@@ -146,7 +147,9 @@ const OrdersContent: React.FC<OrdersContentProps> = ({ orders }) => {
                         <p className="text-sm text-gray-500 font-medium">
                           Địa điểm lấy hàng
                         </p>
-                        <p className="text-gray-700">{getPickupAddress(order)}</p>
+                        <p className="text-gray-700">
+                          {getPickupAddress(order)}
+                        </p>
                       </div>
                     </div>
 
@@ -171,7 +174,11 @@ const OrdersContent: React.FC<OrdersContentProps> = ({ orders }) => {
                           Ngày tạo đơn
                         </p>
                         <p className="text-gray-700">
-                          {order.createdAt ? new Date(order.createdAt).toLocaleDateString("vi-VN") : "N/A"}
+                          {order.createdAt
+                            ? new Date(order.createdAt).toLocaleDateString(
+                                "vi-VN"
+                              )
+                            : "N/A"}
                         </p>
                       </div>
                     </div>
@@ -202,7 +209,9 @@ const OrdersContent: React.FC<OrdersContentProps> = ({ orders }) => {
                         <p className="text-sm text-gray-500 font-medium">
                           Địa điểm giao hàng
                         </p>
-                        <p className="text-gray-700">{getDeliveryAddress(order)}</p>
+                        <p className="text-gray-700">
+                          {getDeliveryAddress(order)}
+                        </p>
                       </div>
                     </div>
 
@@ -234,13 +243,18 @@ const OrdersContent: React.FC<OrdersContentProps> = ({ orders }) => {
                   </div>
                 </div>
 
-                <div className="ml-4">
+                <div className="ml-4 flex flex-col gap-3">
                   <Link
                     to={`/orders/${order.id}`}
-                    className="inline-block px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-medium rounded-xl shadow-md hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 hover:shadow-lg"
+                    className="inline-block px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-medium rounded-xl shadow-md hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 hover:shadow-lg text-center"
                   >
                     Xem chi tiết
                   </Link>
+
+                  <SuggestAssignVehicles
+                    orderId={order.id}
+                    orderCode={order.orderCode}
+                  />
                 </div>
               </div>
             </div>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Table, Button, Space, Modal, App, Typography, Tag, DatePicker, Select, Input, Row, Col, Tabs } from 'antd';
+import { Table, Button, Space, Modal, App, Typography, Tag, DatePicker, Select, Input, Row, Col, Tabs, Skeleton } from 'antd';
 import { PlusOutlined, EditOutlined, EyeOutlined, ToolOutlined, SettingOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { vehicleService } from '../../../services';
@@ -313,13 +313,21 @@ const VehicleMaintenancePage: React.FC = () => {
     const renderMaintenanceTable = () => (
         <>
             {renderFilters()}
-            <Table
-                dataSource={filteredMaintenances}
-                columns={columns}
-                rowKey="id"
-                pagination={{ pageSize: 10 }}
-                loading={loading}
-            />
+            {loading ? (
+                <div className="space-y-4">
+                    <Skeleton active paragraph={{ rows: 1 }} />
+                    <Skeleton.Button active block style={{ height: 40 }} />
+                    <Skeleton active paragraph={{ rows: 8 }} />
+                </div>
+            ) : (
+                <Table
+                    dataSource={filteredMaintenances}
+                    columns={columns}
+                    rowKey="id"
+                    pagination={{ pageSize: 10 }}
+                    loading={isFetching}
+                />
+            )}
         </>
     );
 
@@ -333,7 +341,7 @@ const VehicleMaintenancePage: React.FC = () => {
                 {renderMaintenanceTable()}
             </TabPane>
             <TabPane tab="Loại bảo dưỡng" key="maintenanceTypes">
-                <MaintenanceTypeList />
+                <MaintenanceTypeList ref={maintenanceTypeListRef} />
             </TabPane>
         </Tabs>
     );

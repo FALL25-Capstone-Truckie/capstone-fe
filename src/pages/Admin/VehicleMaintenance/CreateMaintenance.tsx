@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Card, Button, App, Breadcrumb } from 'antd';
+import { Card, Button, App, Breadcrumb, Skeleton } from 'antd';
 import { useNavigate, Link } from 'react-router-dom';
 import { HomeOutlined, ToolOutlined, ArrowLeftOutlined, SaveOutlined } from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
@@ -49,6 +49,23 @@ const CreateMaintenance: React.FC = () => {
     const handleCancel = () => {
         navigate('/admin/vehicle-maintenances');
     };
+
+    if (isLoadingVehicles) {
+        return (
+            <div className="bg-white p-6 rounded-lg shadow">
+                <div className="flex justify-between items-center mb-6">
+                    <div className="flex items-center">
+                        <Skeleton.Button active size="default" className="mr-4" />
+                        <Skeleton.Input active style={{ width: 300 }} />
+                    </div>
+                    <Skeleton.Button active size="default" />
+                </div>
+                <Card>
+                    <Skeleton active paragraph={{ rows: 10 }} />
+                </Card>
+            </div>
+        );
+    }
 
     return (
         <div className="bg-white p-6 rounded-lg shadow">

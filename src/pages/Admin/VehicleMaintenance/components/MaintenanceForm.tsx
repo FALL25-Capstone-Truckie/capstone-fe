@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Form, Input, Button, DatePicker, InputNumber, Select, Spin } from 'antd';
+import { Form, Input, Button, DatePicker, InputNumber, Select, Spin, Skeleton } from 'antd';
 import { useQuery } from '@tanstack/react-query';
 import type { VehicleMaintenance, Vehicle, VehicleMaintenanceDetail } from '../../../../models';
 import { maintenanceTypeService } from '../../../../services/maintenance-type';
@@ -25,8 +25,8 @@ const MaintenanceForm: React.FC<MaintenanceFormProps> = ({
     const [form] = Form.useForm();
     const [loading, setLoading] = useState<boolean>(false);
 
-    // Fetch maintenance types - API trả về mảng trực tiếp
-    const { data: maintenanceTypes, isLoading: isLoadingMaintenanceTypes } = useQuery({
+    // Fetch maintenance types - API trả về response với data là mảng
+    const { data: maintenanceTypesResponse, isLoading: isLoadingMaintenanceTypes } = useQuery({
         queryKey: ['maintenanceTypes'],
         queryFn: maintenanceTypeService.getMaintenanceTypes,
     });
@@ -48,6 +48,22 @@ const MaintenanceForm: React.FC<MaintenanceFormProps> = ({
         }
     };
 
+    // Extract maintenance types from response
+    const maintenanceTypes = maintenanceTypesResponse?.data || [];
+
+    if (isLoading || isLoadingMaintenanceTypes) {
+        return (
+            <div className="space-y-4">
+                <Skeleton.Input active block style={{ height: 40 }} />
+                <Skeleton active paragraph={{ rows: 2 }} />
+                <Skeleton.Input active block style={{ height: 40 }} />
+                <Skeleton active paragraph={{ rows: 2 }} />
+                <Skeleton.Input active block style={{ height: 40 }} />
+                <Skeleton active paragraph={{ rows: 2 }} />
+            </div>
+        );
+    }
+
     return (
         <Form
             id={formId}
@@ -66,7 +82,7 @@ const MaintenanceForm: React.FC<MaintenanceFormProps> = ({
                         cost: 0
                     }
             }
-            disabled={isLoading || loading}
+            disabled={loading}
             className="max-w-4xl mx-auto"
         >
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -109,7 +125,7 @@ const MaintenanceForm: React.FC<MaintenanceFormProps> = ({
                             return childrenText.toLowerCase().indexOf(input.toLowerCase()) >= 0;
                         }}
                     >
-                        {maintenanceTypes && maintenanceTypes.map(type => (
+                        {maintenanceTypes.map(type => (
                             <Select.Option key={type.id} value={type.id}>
                                 {type.maintenanceTypeName}
                             </Select.Option>

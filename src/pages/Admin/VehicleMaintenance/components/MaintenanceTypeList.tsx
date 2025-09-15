@@ -34,7 +34,7 @@ const MaintenanceTypeList = forwardRef<MaintenanceTypeListRef, {}>((props, ref) 
         }
     }));
 
-    const { data: maintenanceTypes, isLoading, error } = useQuery({
+    const { data: maintenanceTypesResponse, isLoading, error } = useQuery({
         queryKey: ['maintenanceTypes'],
         queryFn: maintenanceTypeService.getMaintenanceTypes,
     });
@@ -179,8 +179,9 @@ const MaintenanceTypeList = forwardRef<MaintenanceTypeListRef, {}>((props, ref) 
         return <Skeleton active paragraph={{ rows: 8 }} />;
     }
 
-    // Check if data is available - API trả về mảng trực tiếp
-    const hasData = maintenanceTypes && maintenanceTypes.length > 0;
+    // Check if data is available in the new response structure
+    const maintenanceTypes = maintenanceTypesResponse?.data || [];
+    const hasData = maintenanceTypes.length > 0;
 
     return (
         <div>
@@ -191,7 +192,7 @@ const MaintenanceTypeList = forwardRef<MaintenanceTypeListRef, {}>((props, ref) 
             ) : (
                 <Table
                     columns={columns}
-                    dataSource={maintenanceTypes || []}
+                    dataSource={maintenanceTypes}
                     rowKey="id"
                     loading={isLoading}
                     pagination={{ pageSize: 10 }}

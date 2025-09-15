@@ -13,13 +13,17 @@ const BASE_URL = '/maintenance-types';
 export const maintenanceTypeService = {
     getMaintenanceTypes: async (): Promise<GetMaintenanceTypesResponse> => {
         try {
-            // API trả về mảng trực tiếp, không có wrapper object
             const response = await httpClient.get<GetMaintenanceTypesResponse>(BASE_URL);
             return response.data;
         } catch (error) {
             if (axios.isAxiosError(error) && error.response?.status === 404) {
                 // 404 không phải lỗi mà là không có dữ liệu
-                return [];
+                return {
+                    success: false,
+                    message: 'Không tìm thấy dữ liệu loại bảo dưỡng',
+                    statusCode: 404,
+                    data: []
+                };
             }
             console.error('Error fetching maintenance types:', error);
             throw error;

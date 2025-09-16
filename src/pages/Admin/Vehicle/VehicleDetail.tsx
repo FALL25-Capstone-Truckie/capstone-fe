@@ -37,6 +37,8 @@ import ScheduleMaintenanceModal from './components/ScheduleMaintenanceModal';
 import StatusChangeModal from '../../../components/common/StatusChangeModal';
 import type { StatusOption } from '../../../components/common/StatusChangeModal';
 import type { ApiResponse } from '../../../services/api/types';
+import { VehicleStatusTag } from '@/components/common';
+import { VehicleStatusEnum } from '@/constants/enums';
 
 const { Title, Text } = Typography;
 
@@ -138,7 +140,7 @@ const VehicleDetailPage: React.FC = () => {
                 color = 'blue';
         }
 
-        return <Tag color={color}>{text}</Tag>;
+        return <VehicleStatusTag status={text as VehicleStatusEnum} />;
     };
 
     const getStatusText = (status: string | boolean) => {
@@ -336,6 +338,10 @@ const VehicleDetailPage: React.FC = () => {
         },
     ];
 
+    const renderStatus = (text: string) => {
+        return <VehicleStatusTag status={text as VehicleStatusEnum} />;
+    };
+
     if (loading) {
         return (
             <div className="p-6 bg-gray-50 min-h-screen">
@@ -398,13 +404,7 @@ const VehicleDetailPage: React.FC = () => {
                                 icon={<CarOutlined style={{ fontSize: 64 }} />}
                             />
                             <Title level={3} className="m-0 mb-2">{vehicle.licensePlateNumber}</Title>
-                            <Tag
-                                color={vehicle.status.toLowerCase() === 'active' ? 'green' : 'red'}
-                                className="px-3 py-1 text-sm"
-                                icon={vehicle.status.toLowerCase() === 'active' ? <CheckCircleOutlined /> : <StopOutlined />}
-                            >
-                                {vehicle.status.toLowerCase() === 'active' ? 'Đang hoạt động' : 'Không hoạt động'}
-                            </Tag>
+                            <VehicleStatusTag status={vehicle.status as VehicleStatusEnum} />
                         </div>
 
                         <div className="mb-6">

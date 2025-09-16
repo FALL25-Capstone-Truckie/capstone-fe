@@ -1,6 +1,24 @@
-/**
- * Utility functions for date formatting
- */
+import dayjs from 'dayjs';
+
+export const formatDate = (dateString: string | null | undefined): string => {
+  if (!dateString) return '-';
+  return dayjs(dateString).format('DD/MM/YYYY HH:mm');
+};
+
+export const formatDateShort = (dateString: string | null | undefined): string => {
+  if (!dateString) return '-';
+  return dayjs(dateString).format('DD/MM/YYYY');
+};
+
+export const formatTime = (dateString: string | null | undefined): string => {
+  if (!dateString) return '-';
+  return dayjs(dateString).format('HH:mm');
+};
+
+export const formatDateTime = (dateString: string | null | undefined): string => {
+  if (!dateString) return '-';
+  return dayjs(dateString).format('DD/MM/YYYY HH:mm:ss');
+};
 
 /**
  * Format date to Vietnam timezone (UTC+7) with format YYYY-MM-DDTHH:mm:ss

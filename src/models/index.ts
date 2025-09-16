@@ -56,4 +56,5 @@ export * from './Chat';
 export * from './Driver';
 export * from './Customer';
 export * from './Device';
-export * from './Vehicle'; 
+export * from './Vehicle';
+export * from './VehicleRule'; 

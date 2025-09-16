@@ -19,7 +19,8 @@ import {
     TagsOutlined,
     CarFilled,
     IdcardOutlined,
-    SwapOutlined
+    SwapOutlined,
+    DollarOutlined
 } from '@ant-design/icons';
 
 const { Sider } = Layout;
@@ -29,7 +30,6 @@ const AdminSidebar: React.FC = () => {
     const { user } = useAuth();
     const location = useLocation();
 
-    // Define menu items based on user role
     const getMenuItems = () => {
         const baseItems = [
             {
@@ -74,6 +74,11 @@ const AdminSidebar: React.FC = () => {
                     label: <Link to="/admin/vehicle-maintenances">Bảo trì phương tiện</Link>,
                 },
                 {
+                    key: '/admin/vehicle-rules',
+                    icon: <DollarOutlined />,
+                    label: <Link to="/admin/vehicle-rules">Bảng giá vận chuyển</Link>,
+                },
+                {
                     key: '/admin/staff',
                     icon: <TeamOutlined />,
                     label: <Link to="/admin/staff">Nhân viên</Link>,
@@ -86,12 +91,7 @@ const AdminSidebar: React.FC = () => {
                 {
                     key: '/admin/categories',
                     icon: <TagsOutlined />,
-                    label: <Link to="/admin/categories">Loại hàng</Link>,
-                },
-                {
-                    key: '/admin/reports',
-                    icon: <BarChartOutlined />,
-                    label: <Link to="/admin/reports">Thống kê</Link>,
+                    label: <Link to="/admin/categories">Danh mục</Link>,
                 },
                 {
                     key: '/admin/settings',

@@ -6,6 +6,7 @@ import type {
   CreateContractResponse,
   GeneratePdfResponse,
 } from "./types";
+import { at } from "lodash";
 
 /**
  * Service for handling contract-related API calls
@@ -39,9 +40,15 @@ const contractService = {
     contractData: CreateContractRequest
   ): Promise<CreateContractResponse> => {
     try {
+      const staffId = localStorage.getItem("userId") || "unknown";
+      const data = {
+        ...contractData,
+        attachFileUrl: "string",
+        staffId,
+      };
       const response = await httpClient.post<CreateContractResponse>(
         `/contracts/both`,
-        contractData
+        data
       );
       return response.data;
     } catch (error) {

@@ -8,7 +8,6 @@ import {
   Timeline,
   Card,
   Steps,
-  Space,
   Form,
   Input,
   DatePicker,
@@ -18,7 +17,6 @@ import {
   ArrowLeftOutlined,
   CheckCircleOutlined,
   CloseCircleOutlined,
-  ExclamationCircleOutlined,
   CarOutlined,
   HistoryOutlined,
   ToolOutlined,
@@ -43,9 +41,7 @@ import {
   VehicleAssignmentCard,
 } from "@/components/features/order";
 
-const { confirm } = Modal;
 const { TabPane } = Tabs;
-const { Step } = Steps;
 
 const OrderDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();

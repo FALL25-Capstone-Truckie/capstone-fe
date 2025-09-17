@@ -24,7 +24,7 @@ import {
   VehicleAssignmentCard,
 } from "../../components/features/order";
 
-const { TabPane } = Tabs;
+const { confirm } = Modal;
 
 const OrderDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -37,14 +37,12 @@ const OrderDetailPage: React.FC = () => {
   const [contractForm] = Form.useForm();
   const [creatingContract, setCreatingContract] = useState<boolean>(false);
 
-  // Lấy thông tin đơn hàng khi component mount
   useEffect(() => {
     if (id) {
       fetchOrderDetails(id);
     }
   }, [id]);
 
-  // Hàm lấy thông tin chi tiết đơn hàng từ API
   const fetchOrderDetails = async (orderId: string) => {
     setLoading(true);
     try {
@@ -58,7 +56,6 @@ const OrderDetailPage: React.FC = () => {
     }
   };
 
-  // Xử lý khi click nút xóa đơn hàng
   const handleDelete = () => {
     if (!id) return;
 
@@ -83,17 +80,13 @@ const OrderDetailPage: React.FC = () => {
     });
   };
 
-  // Xử lý khi click nút sửa đơn hàng
   const handleEdit = () => {
     if (!id) return;
     navigate(`/orders/${id}/edit`);
   };
 
-  // Xử lý khi click nút tạo hợp đồng
   const handleCreateContract = () => {
     if (!id || !order) return;
-
-    // Set initial values for the form
     contractForm.setFieldsValue({
       contractName: `Hợp đồng đơn hàng ${order.orderCode}`,
       effectiveDate: dayjs(),
@@ -101,7 +94,7 @@ const OrderDetailPage: React.FC = () => {
       supportedValue: order.totalPrice || 0,
       description: `Hợp đồng vận chuyển cho đơn hàng ${order.orderCode}`,
       orderId: id,
-      staffId: "current-staff-id", // TODO: Get from auth context
+      staffId: "",
     });
 
     setContractModalVisible(true);
@@ -116,7 +109,7 @@ const OrderDetailPage: React.FC = () => {
         effectiveDate: values.effectiveDate.format("YYYY-MM-DDTHH:mm:ss"),
         expirationDate: values.expirationDate.format("YYYY-MM-DDTHH:mm:ss"),
         orderId: id!,
-        staffId: "current-staff-id", // TODO: Get from auth context
+        staffId: "", // TODO: Get from auth context
       };
 
       const result = await contractService.createContract(contractData);

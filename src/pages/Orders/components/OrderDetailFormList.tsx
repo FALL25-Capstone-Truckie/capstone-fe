@@ -70,7 +70,8 @@ const OrderDetailFormList: React.FC<OrderDetailFormListProps> = ({
                     <Select placeholder="Chọn kích thước">
                       {orderSizes.map((size) => (
                         <Select.Option key={size.id} value={size.id}>
-                          {size.name} - {size.description}
+                          {size.minWidth} - {size.maxWidth} x {size.minLength} -{" "}
+                          {size.maxLength} x {size.minHeight} - {size.maxHeight}{" "}
                         </Select.Option>
                       ))}
                     </Select>

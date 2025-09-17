@@ -4,96 +4,105 @@ import orderService from "../../services/order";
 import type { Order } from "../../models/Order";
 import { Skeleton, Alert, App } from "antd";
 import { useAuth } from "../../context";
+import { addressService } from "@/services";
 
 const OrdersPage: React.FC = () => {
-    const [orders, setOrders] = useState<Order[]>([]);
-    const [loading, setLoading] = useState<boolean>(true);
-    const [error, setError] = useState<string | null>(null);
-    const { message } = App.useApp();
-    const { user } = useAuth();
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+  const { message } = App.useApp();
+  const { user } = useAuth();
 
-    useEffect(() => {
-        const fetchOrders = async () => {
-            try {
-                setLoading(true);
+  useEffect(() => {
+    const fetchOrders = async () => {
+      try {
+        setLoading(true);
 
-                // Kiểm tra xem có userId không
-                const userId = user?.id || localStorage.getItem('userId');
-                if (!userId) {
-                    throw new Error("Không tìm thấy thông tin người dùng");
-                }
+        // Kiểm tra xem có userId không
+        const userId = user?.id || localStorage.getItem("userId");
+        if (!userId) {
+          throw new Error("Không tìm thấy thông tin người dùng");
+        }
 
-                // Sử dụng API endpoint mới để lấy đơn hàng theo userId
-                const data = await orderService.getOrdersByUserId(userId);
-                setOrders(data);
-                setError(null);
-            } catch (err: any) {
-                setError(err.message || "Không thể tải danh sách đơn hàng");
-                message.error(err.message || "Không thể tải danh sách đơn hàng");
-                console.error("Error fetching orders:", err);
-            } finally {
-                setLoading(false);
-            }
-        };
+        // Sử dụng API endpoint mới để lấy đơn hàng theo userId
+        const data = await orderService.getOrdersByUserId(userId);
 
-        fetchOrders();
+        setOrders(data);
+        setError(null);
+      } catch (err: any) {
+        setError(err.message || "Không thể tải danh sách đơn hàng");
+        message.error(err.message || "Không thể tải danh sách đơn hàng");
+        console.error("Error fetching orders:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-        // Cleanup function to prevent memory leaks
-        return () => {
-            // Cancel any pending requests if needed
-        };
-    }, [user, message]);
+    fetchOrders();
 
-    return (
-        <>
-            <OrdersHeader />
-            {loading ? (
-                <div className="p-6">
-                    <div className="mb-6">
-                        <Skeleton.Input active size="large" style={{ width: '40%' }} />
+    // Cleanup function to prevent memory leaks
+    return () => {
+      // Cancel any pending requests if needed
+    };
+  }, [user, message]);
+
+  return (
+    <>
+      <OrdersHeader />
+      {loading ? (
+        <div className="p-6">
+          <div className="mb-6">
+            <Skeleton.Input active size="large" style={{ width: "40%" }} />
+            <div className="mt-2">
+              <Skeleton.Input active size="small" style={{ width: "60%" }} />
+            </div>
+          </div>
+
+          <div className="space-y-6">
+            {[1, 2, 3].map((i) => (
+              <div
+                key={i}
+                className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6"
+              >
+                <div className="flex justify-between items-start">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-4 mb-4">
+                      <Skeleton.Avatar active size="large" shape="circle" />
+                      <div className="w-full">
+                        <Skeleton.Input active style={{ width: "60%" }} />
                         <div className="mt-2">
-                            <Skeleton.Input active size="small" style={{ width: '60%' }} />
+                          <Skeleton.Input
+                            active
+                            size="small"
+                            style={{ width: "40%" }}
+                          />
                         </div>
+                      </div>
                     </div>
-
-                    <div className="space-y-6">
-                        {[1, 2, 3].map((i) => (
-                            <div key={i} className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6">
-                                <div className="flex justify-between items-start">
-                                    <div className="flex-1">
-                                        <div className="flex items-center gap-4 mb-4">
-                                            <Skeleton.Avatar active size="large" shape="circle" />
-                                            <div className="w-full">
-                                                <Skeleton.Input active style={{ width: '60%' }} />
-                                                <div className="mt-2">
-                                                    <Skeleton.Input active size="small" style={{ width: '40%' }} />
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                            <Skeleton active paragraph={{ rows: 2 }} />
-                                            <Skeleton active paragraph={{ rows: 2 }} />
-                                        </div>
-                                    </div>
-                                    <Skeleton.Button active shape="round" />
-                                </div>
-                            </div>
-                        ))}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <Skeleton active paragraph={{ rows: 2 }} />
+                      <Skeleton active paragraph={{ rows: 2 }} />
                     </div>
+                  </div>
+                  <Skeleton.Button active shape="round" />
                 </div>
-            ) : error ? (
-                <Alert
-                    message="Lỗi"
-                    description={error}
-                    type="error"
-                    showIcon
-                    className="my-4"
-                />
-            ) : (
-                <OrdersContent orders={orders} />
-            )}
-        </>
-    );
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : error ? (
+        <Alert
+          message="Lỗi"
+          description={error}
+          type="error"
+          showIcon
+          className="my-4"
+        />
+      ) : (
+        <OrdersContent orders={orders} />
+      )}
+    </>
+  );
 };
 
-export default OrdersPage; 
+export default OrdersPage;

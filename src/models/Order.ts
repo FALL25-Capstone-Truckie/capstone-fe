@@ -20,6 +20,55 @@ export interface Order {
   pickupAddress?: Address;
   sender?: Sender;
   orderDetails?: OrderDetail[];
+
+  // New fields for enhanced order details
+  depositAmount?: number;
+  depositStatus?: "paid" | "pending" | "unpaid";
+  depositPaidDate?: string;
+
+  // Trip information
+  outboundDepartureTime?: string;
+  outboundArrivalTime?: string;
+  outboundStatus?: "completed" | "in-progress" | "pending";
+  returnDepartureTime?: string;
+  returnArrivalTime?: string;
+  returnStatus?: "completed" | "in-progress" | "pending";
+
+  // Proof documentation
+  deliveryProofImages?: DeliveryProofImage[];
+  shippingProofDocuments?: ShippingProofDocument[];
+
+  // Incident reports
+  incidents?: Incident[];
+}
+
+export interface DeliveryProofImage {
+  id: string;
+  url: string;
+  description?: string;
+  timestamp?: string;
+  orderId: string;
+}
+
+export interface ShippingProofDocument {
+  id: string;
+  fileName: string;
+  url: string;
+  documentType?: string;
+  description?: string;
+  uploadDate?: string;
+  orderId: string;
+}
+
+export interface Incident {
+  id: string;
+  incidentType?: string;
+  description?: string;
+  severity?: "high" | "medium" | "low";
+  reportedDate?: string;
+  resolution?: string;
+  status?: "open" | "investigating" | "resolved";
+  orderId: string;
 }
 
 export interface OrderDetail {
@@ -52,7 +101,21 @@ export interface OrderDetail {
     vehicleId: string;
     driverId: string;
     description: string;
-    status: string;
+    status: "assigned" | "in-transit" | "completed" | "cancelled";
+    assignedDate?: string;
+    priority?: "high" | "medium" | "low";
+    vehicle?: {
+      id: string;
+      licensePlate?: string;
+      vehicleType?: string;
+      capacity?: string;
+    };
+    driver?: {
+      id: string;
+      fullName?: string;
+      phoneNumber?: string;
+      experience?: string;
+    };
   };
 }
 

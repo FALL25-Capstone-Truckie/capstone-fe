@@ -22,9 +22,17 @@ import {
   CarOutlined,
 } from "@ant-design/icons";
 import { PackageIcon } from "lucide-react";
+import dayjs from "dayjs";
+import timezone from "dayjs/plugin/timezone";
+import utc from "dayjs/plugin/utc";
 import type { Order, OrderStatus } from "../../../models/Order";
 
 import { formatDate } from "../../../utils/formatters";
+
+// Initialize dayjs plugins
+dayjs.extend(utc);
+dayjs.extend(timezone);
+
 const { Text, Title } = Typography;
 const { Option } = Select;
 

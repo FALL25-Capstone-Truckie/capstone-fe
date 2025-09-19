@@ -38,17 +38,7 @@ export default function CreateOrder() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [formValues, setFormValues] = useState<any>({
-    notes: "Không có ghi chú",
-    packageDescription: "Gói hàng thông thường",
-    orderDetailsList: [
-      {
-        weight: 1,
-        orderSizeId: null,
-        description: "",
-      },
-    ], // Initialize với 1 OrderDetail
-  });
+  const [formValues, setFormValues] = useState<any>();
 
   const [form] = Form.useForm();
 
@@ -113,12 +103,22 @@ export default function CreateOrder() {
         throw new Error("Vui lòng thêm ít nhất một gói hàng!");
       }
 
-      // Chuẩn bị orderDetails cho API
-      const orderDetailsForAPI = orderDetails.map((detail: any) => ({
-        weight: detail.weight,
-        description: detail.description,
-        orderSizeId: detail.orderSizeId,
-      }));
+      // Chuẩn bị orderDetails cho API với xử lý số lượng
+      const orderDetailsForAPI: any[] = [];
+
+      orderDetails.forEach((detail: any) => {
+        const quantity = detail.quantity || 1;
+
+        // Tạo nhiều bản sao dựa trên số lượng
+        for (let i = 0; i < quantity; i++) {
+          orderDetailsForAPI.push({
+            weight: detail.weight,
+            unit: detail.unit,
+            description: detail.description,
+            orderSizeId: detail.orderSizeId,
+          });
+        }
+      });
 
       // Xử lý estimateStartTime - format theo UTC+7 định dạng YYYY-MM-DDTHH:mm:ss
       const estimateStartTime = finalValues.estimateStartTime
@@ -131,6 +131,7 @@ export default function CreateOrder() {
           notes: finalValues.notes,
           receiverName: finalValues.receiverName,
           receiverPhone: finalValues.receiverPhone,
+          receiverIdentity: finalValues.receiverIdentity,
           packageDescription: finalValues.packageDescription,
           estimateStartTime: estimateStartTime,
           deliveryAddressId: finalValues.deliveryAddressId,
@@ -221,35 +222,60 @@ export default function CreateOrder() {
   const renderForm = () => {
     if (loading) {
       return (
-        <div className="py-8">
-          <div className="mb-6">
-            <Skeleton.Input active size="large" style={{ width: '50%' }} />
+        <div className="py-12">
+          <div className="text-center mb-6">
+            <Skeleton.Input active size="large" style={{ width: "300px" }} />
             <div className="mt-3">
-              <Skeleton.Input active size="small" style={{ width: '70%' }} />
+              <Skeleton.Input active size="small" style={{ width: "400px" }} />
             </div>
           </div>
 
-          <Card>
-            <Skeleton.Button active size="large" shape="circle" className="mb-4" />
-            <Skeleton active paragraph={{ rows: 8 }} />
-            <div className="mt-6 flex justify-end">
-              <Skeleton.Button active size="large" shape="round" className="mr-3" />
-              <Skeleton.Button active size="large" shape="round" />
+          <div className="space-y-6">
+            <Skeleton.Button
+              active
+              size="large"
+              shape="round"
+              style={{ width: "100%", height: "48px" }}
+            />
+            <Skeleton active paragraph={{ rows: 6 }} />
+            <div className="flex justify-between items-center pt-6">
+              <Skeleton.Button
+                active
+                size="large"
+                shape="round"
+                style={{ width: "100px" }}
+              />
+              <Skeleton.Button
+                active
+                size="large"
+                shape="round"
+                style={{ width: "100px" }}
+              />
             </div>
-          </Card>
+          </div>
         </div>
       );
     }
 
     if (error) {
       return (
-        <div className="p-6 bg-red-50 rounded-md">
-          <Title level={4} className="text-red-500">
-            Đã xảy ra lỗi
-          </Title>
-          <Text className="text-red-500">{error}</Text>
-          <div className="mt-4">
-            <Button onClick={() => window.location.reload()}>Thử lại</Button>
+        <div className="text-center py-12">
+          <div className="max-w-md mx-auto">
+            <div className="bg-red-50 border border-red-200 rounded-xl p-8">
+              <div className="text-red-500 text-5xl mb-4">⚠️</div>
+              <Title level={4} className="text-red-600 mb-3">
+                Đã xảy ra lỗi
+              </Title>
+              <Text className="text-red-500 block mb-6">{error}</Text>
+              <Button
+                type="primary"
+                size="large"
+                onClick={() => window.location.reload()}
+                className="bg-red-500 hover:bg-red-600 border-red-500"
+              >
+                Thử lại
+              </Button>
+            </div>
           </div>
         </div>
       );
@@ -283,46 +309,71 @@ export default function CreateOrder() {
   };
 
   return (
-    <div className="p-6">
-      <div className="flex justify-between items-center mb-6">
-        <Title level={2}>Tạo đơn hàng mới</Title>
-        <Link to="/orders">
-          <Button>Quay lại danh sách</Button>
-        </Link>
+    <div className="min-h-screen bg-gray-50 py-6">
+      <div className="max-w-5xl mx-auto px-4">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
+          <div>
+            <Title level={2} className="mb-2">
+              Tạo đơn hàng mới
+            </Title>
+            <Text className="text-gray-600">
+              Điền thông tin chi tiết để tạo đơn hàng vận chuyển
+            </Text>
+          </div>
+          <Link to="/orders">
+            <Button type="default" size="large" className="shrink-0">
+              ← Quay lại danh sách
+            </Button>
+          </Link>
+        </div>
+
+        {/* Main Form Card */}
+        <Card className="shadow-lg border-0 rounded-2xl overflow-hidden">
+          {/* Steps Navigation */}
+          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 px-8 py-6">
+            <Steps current={currentStep} className="mb-0">
+              <Step
+                title="Thông tin cơ bản"
+                //description="Nhập thông tin người nhận"
+              />
+              <Step
+                title="Thông tin lô hàng"
+                //description="Nhập thông tin gói hàng"
+              />
+              <Step
+                title="Địa chỉ vận chuyển"
+                //description="Chọn địa chỉ giao và nhận"
+              />
+              <Step
+                title="Xác nhận"
+                //description="Xác nhận thông tin đơn hàng"
+              />
+            </Steps>
+          </div>
+
+          {/* Form Content */}
+          <div className="p-8">
+            <Form
+              form={form}
+              layout="vertical"
+              onFinish={handleSubmit}
+              initialValues={formValues}
+            >
+              {renderForm()}
+
+              <StepActions
+                currentStep={currentStep}
+                totalSteps={4}
+                onPrev={prev}
+                onNext={next}
+                onSubmit={() => form.submit()}
+                isSubmitting={isSubmitting}
+              />
+            </Form>
+          </div>
+        </Card>
       </div>
-
-      <Card className="mb-6">
-        <Steps current={currentStep} className="mb-8">
-          <Step
-            title="Thông tin người nhận"
-            description="Nhập thông tin người nhận"
-          />
-          <Step
-            title="Kích thước & Trọng lượng & trọng lượng"
-            description="Nhập thông tin gói hàng"
-          />
-          <Step title="Địa chỉ" description="Chọn địa chỉ giao và nhận" />
-          <Step title="Xác nhận" description="Xác nhận thông tin đơn hàng" />
-        </Steps>
-
-        <Form
-          form={form}
-          layout="vertical"
-          onFinish={handleSubmit}
-          initialValues={formValues}
-        >
-          {renderForm()}
-
-          <StepActions
-            currentStep={currentStep}
-            totalSteps={4}
-            onPrev={prev}
-            onNext={next}
-            onSubmit={() => form.submit()}
-            isSubmitting={isSubmitting}
-          />
-        </Form>
-      </Card>
     </div>
   );
 }

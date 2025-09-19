@@ -121,6 +121,7 @@ export interface OrderDetail {
 
 export interface OrderDetailCreateRequest {
   weight: number;
+  unit: string;
   description?: string;
   orderSizeId: string;
 }
@@ -153,6 +154,7 @@ export interface OrderRequest {
   notes?: string;
   receiverName: string;
   receiverPhone: string;
+  receiverIdentity: string;
   packageDescription: string;
   estimateStartTime?: string;
   deliveryAddressId: string;

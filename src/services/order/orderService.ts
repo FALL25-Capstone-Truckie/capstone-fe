@@ -70,7 +70,9 @@ const orderService = {
    */
   getOrderById: async (id: string): Promise<Order> => {
     try {
-      const response = await httpClient.get<OrderResponse>(`/orders/get-by-id/${id}`);
+      const response = await httpClient.get<OrderResponse>(
+        `/orders/get-by-id/${id}`
+      );
       return response.data.data;
     } catch (error) {
       console.error(`Error fetching order ${id}:`, error);
@@ -109,6 +111,7 @@ const orderService = {
       const requiredOrderRequestFields = [
         "receiverName",
         "receiverPhone",
+        "receiverIdentity",
         "categoryId",
         "packageDescription",
         "pickupAddressId",
@@ -127,6 +130,9 @@ const orderService = {
         orderData.orderDetails.forEach((detail, index) => {
           if (!detail.weight || detail.weight <= 0) {
             missingOrderRequestFields.push(`orderDetails[${index}].weight`);
+          }
+          if (!detail.unit) {
+            missingOrderRequestFields.push(`orderDetails[${index}].unit`);
           }
           if (!detail.orderSizeId) {
             missingOrderRequestFields.push(
@@ -182,7 +188,7 @@ const orderService = {
       const apiOrderData = {
         orderRequest: {
           ...orderData.orderRequest,
-          totalWeight: totalWeight,
+          //totalWeight: totalWeight,
           senderId: customerData.id, // Sử dụng customerId thay vì userId
           estimateStartTime: finalEstimateStartTime,
           notes: orderData.orderRequest.notes || "Không có ghi chú",
@@ -267,7 +273,9 @@ const orderService = {
    * @param orderId Order ID
    * @returns Promise with updated order details
    */
-  updateVehicleAssignmentForDetails: async (orderId: string): Promise<OrderDetail[]> => {
+  updateVehicleAssignmentForDetails: async (
+    orderId: string
+  ): Promise<OrderDetail[]> => {
     try {
       // Get token from localStorage to ensure it's included
       const token = localStorage.getItem(AUTH_ACCESS_TOKEN_KEY);
@@ -277,23 +285,31 @@ const orderService = {
         {}, // Empty body
         {
           headers: {
-            Authorization: `Bearer ${token}`
-          }
+            Authorization: `Bearer ${token}`,
+          },
         }
       );
       return response.data.data;
     } catch (error) {
-      console.error(`Error updating vehicle assignment for order ${orderId}:`, error);
-      throw handleApiError(error, "Không thể cập nhật phân công xe cho đơn hàng");
+      console.error(
+        `Error updating vehicle assignment for order ${orderId}:`,
+        error
+      );
+      throw handleApiError(
+        error,
+        "Không thể cập nhật phân công xe cho đơn hàng"
+      );
     }
   },
 
   /**
- * Update vehicle assignment for a specific order detail
- * @param orderDetailId Order Detail ID or tracking code
- * @returns Promise with updated order detail
- */
-  updateVehicleAssignmentForOrderDetail: async (orderId: string): Promise<OrderDetail> => {
+   * Update vehicle assignment for a specific order detail
+   * @param orderDetailId Order Detail ID or tracking code
+   * @returns Promise with updated order detail
+   */
+  updateVehicleAssignmentForOrderDetail: async (
+    orderId: string
+  ): Promise<OrderDetail> => {
     try {
       // Get token from localStorage to ensure it's included
       const token = localStorage.getItem(AUTH_ACCESS_TOKEN_KEY);
@@ -303,14 +319,20 @@ const orderService = {
         {}, // Empty body
         {
           headers: {
-            Authorization: `Bearer ${token}`
-          }
+            Authorization: `Bearer ${token}`,
+          },
         }
       );
       return response.data.data;
     } catch (error) {
-      console.error(`Error updating vehicle assignment for order ${orderId}:`, error);
-      throw handleApiError(error, "Không thể cập nhật phân công xe cho đơn hàng");
+      console.error(
+        `Error updating vehicle assignment for order ${orderId}:`,
+        error
+      );
+      throw handleApiError(
+        error,
+        "Không thể cập nhật phân công xe cho đơn hàng"
+      );
     }
   },
 
@@ -321,7 +343,9 @@ const orderService = {
    */
   getOrdersByUserId: async (userId: string): Promise<Order[]> => {
     try {
-      const response = await httpClient.get<OrdersResponse>(`/orders/get-orders-for-cus-by-user-id/${userId}`);
+      const response = await httpClient.get<OrdersResponse>(
+        `/orders/get-orders-for-cus-by-user-id/${userId}`
+      );
       return response.data.data;
     } catch (error) {
       console.error(`Error fetching orders for user ${userId}:`, error);
@@ -336,26 +360,34 @@ const orderService = {
    */
   getOrderForCustomerByOrderId: async (orderId: string): Promise<any> => {
     try {
-      const response = await httpClient.get<any>(`/orders/get-order-for-customer-by-order-id/${orderId}`);
+      const response = await httpClient.get<any>(
+        `/orders/get-order-for-customer-by-order-id/${orderId}`
+      );
       return response.data.data;
     } catch (error) {
-      console.error(`Error fetching customer order details for order ${orderId}:`, error);
+      console.error(
+        `Error fetching customer order details for order ${orderId}:`,
+        error
+      );
       throw handleApiError(error, "Không thể tải thông tin chi tiết đơn hàng");
     }
   },
 
   /**
- * Get orders with filters for a specific user
- * @param userId User ID
- * @param filters Filter parameters (year, quarter, status, addressId)
- * @returns Promise with filtered orders
- */
-  getFilteredOrdersByUserId: async (userId: string, filters: {
-    year?: number;
-    quarter?: number;
-    status?: string;
-    addressId?: string;
-  }): Promise<Order[]> => {
+   * Get orders with filters for a specific user
+   * @param userId User ID
+   * @param filters Filter parameters (year, quarter, status, addressId)
+   * @returns Promise with filtered orders
+   */
+  getFilteredOrdersByUserId: async (
+    userId: string,
+    filters: {
+      year?: number;
+      quarter?: number;
+      status?: string;
+      addressId?: string;
+    }
+  ): Promise<Order[]> => {
     try {
       // Build query parameters
       const params: Record<string, string> = {};
@@ -371,7 +403,10 @@ const orderService = {
       );
       return response.data.data;
     } catch (error) {
-      console.error(`Error fetching filtered orders for user ${userId}:`, error);
+      console.error(
+        `Error fetching filtered orders for user ${userId}:`,
+        error
+      );
       throw handleApiError(error, "Không thể tải danh sách đơn hàng đã lọc");
     }
   },

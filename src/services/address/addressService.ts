@@ -27,6 +27,20 @@ const addressService = {
     },
 
     /**
+     * Get my addresses (for the logged in user)
+     * @returns Promise with array of addresses
+     */
+    getMyAddresses: async (): Promise<Address[]> => {
+        try {
+            const response = await httpClient.get<AddressesResponse>('/address/my-addresses');
+            return response.data.data;
+        } catch (error) {
+            console.error('Error fetching my addresses:', error);
+            throw handleApiError(error, 'Không thể tải danh sách địa chỉ của bạn');
+        }
+    },
+
+    /**
      * Get address by ID
      * @param id Address ID
      * @returns Promise with address data

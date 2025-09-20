@@ -16,6 +16,8 @@ import type {
   UnitsListResponse,
   CustomerOrdersResponse,
   CustomerOrder,
+  RecentReceiversResponse,
+  ReceiverDetailsResponse,
 } from "./types";
 import type { PaginationParams } from "../api/types";
 import { handleApiError } from "../api/errorHandler";
@@ -104,14 +106,15 @@ const orderService = {
   /**
    * Create new order
    * @param orderData Order data
-   * @returns Promise with created order
+   * @returns Promise with created order response
    */
-  createOrder: async (orderData: OrderCreateRequest): Promise<Order> => {
+  createOrder: async (orderData: OrderCreateRequest): Promise<OrderResponse> => {
     try {
       // Validate required fields in orderRequest
       const requiredOrderRequestFields = [
         "receiverName",
         "receiverPhone",
+        "receiverIdentity",
         "categoryId",
         "packageDescription",
         "pickupAddressId",
@@ -134,16 +137,6 @@ const orderService = {
           if (!detail.orderSizeId) {
             missingOrderRequestFields.push(
               `orderDetails[${index}].orderSizeId`
-            );
-          }
-          if (!detail.description) {
-            missingOrderRequestFields.push(
-              `orderDetails[${index}].description`
-            );
-          }
-          if (!detail.unit) {
-            missingOrderRequestFields.push(
-              `orderDetails[${index}].unit`
             );
           }
         });
@@ -189,6 +182,7 @@ const orderService = {
           senderId: customerData.id, // Sử dụng customerId thay vì userId
           estimateStartTime: finalEstimateStartTime,
           notes: orderData.orderRequest.notes || "Không có ghi chú",
+          receiverIdentity: orderData.orderRequest.receiverIdentity || "",
         },
         orderDetails: orderData.orderDetails.map(detail => ({
           weight: detail.weight,
@@ -205,7 +199,9 @@ const orderService = {
         "/orders",
         apiOrderData
       );
-      return response.data.data;
+
+      // Trả về toàn bộ response thay vì chỉ trả về data
+      return response.data;
     } catch (error) {
       console.error("Error creating order:", error);
       throw handleApiError(error, "Không thể tạo đơn hàng");
@@ -440,6 +436,35 @@ const orderService = {
     } catch (error) {
       console.error("Error fetching filtered orders:", error);
       throw handleApiError(error, "Không thể tải danh sách đơn hàng đã lọc");
+    }
+  },
+
+  /**
+   * Get list of recent receivers for suggestions
+   * @returns Promise with recent receivers data
+   */
+  getRecentReceivers: async () => {
+    try {
+      const response = await httpClient.get<RecentReceiversResponse>("/orders/suggestions/recent-receivers");
+      return response.data;
+    } catch (error) {
+      console.error("Error fetching recent receivers:", error);
+      throw handleApiError(error, "Không thể tải danh sách người nhận gần đây");
+    }
+  },
+
+  /**
+   * Get receiver details by order ID for autofill
+   * @param orderId Order ID to get receiver details from
+   * @returns Promise with receiver details
+   */
+  getReceiverDetails: async (orderId: string) => {
+    try {
+      const response = await httpClient.get<ReceiverDetailsResponse>(`/orders/suggestions/receiver-details/${orderId}`);
+      return response.data;
+    } catch (error) {
+      console.error(`Error fetching receiver details for order ${orderId}:`, error);
+      throw handleApiError(error, "Không thể tải thông tin người nhận");
     }
   },
 };

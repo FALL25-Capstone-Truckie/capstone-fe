@@ -154,6 +154,7 @@ export interface OrderRequest {
   notes?: string;
   receiverName: string;
   receiverPhone: string;
+  receiverIdentity: string; // Thay đổi từ optional thành required
   packageDescription: string;
   estimateStartTime?: string;
   deliveryAddressId: string;

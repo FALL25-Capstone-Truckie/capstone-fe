@@ -1,5 +1,6 @@
 import React from "react";
 import { Form, Input, Button, InputNumber, Select, Card } from "antd";
+import type { FormInstance } from "antd";
 import { PlusOutlined, DeleteOutlined } from "@ant-design/icons";
 import type { OrderSize } from "../../../models/OrderSize";
 
@@ -8,6 +9,7 @@ interface OrderDetailFormListProps {
   label?: string;
   orderSizes: OrderSize[];
   units: string[];
+  form?: FormInstance;
 }
 
 const OrderDetailFormList: React.FC<OrderDetailFormListProps> = ({
@@ -15,6 +17,7 @@ const OrderDetailFormList: React.FC<OrderDetailFormListProps> = ({
   label = "Danh sách lô hàng",
   orderSizes,
   units = ["Kí", "Yến", "Tạ", "Tấn"], // Default units if API fails
+  form,
 }) => {
   return (
     <Form.Item label={label}>
@@ -64,12 +67,13 @@ const OrderDetailFormList: React.FC<OrderDetailFormListProps> = ({
                     {...restField}
                     name={[fieldName, "unit"]}
                     label="Đơn vị"
-                    initialValue={units[0] || "kg"}
+                    initialValue={units.length > 0 ? units[0] : undefined}
                     rules={[
                       { required: true, message: "Vui lòng chọn đơn vị!" },
                     ]}
                     style={{ marginBottom: 16 }}
                   >
+                    {/* Chỉ sử dụng đơn vị từ API, không hardcode giá trị mặc định */}
                     <Select placeholder="Chọn đơn vị">
                       {units.map((unit) => (
                         <Select.Option key={unit} value={unit}>

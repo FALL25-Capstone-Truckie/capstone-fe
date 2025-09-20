@@ -50,4 +50,53 @@ export type OrdersResponse = ApiResponse<Order[]>;
 export type OrderDetailsResponse = ApiResponse<OrderDetail[]>;
 export type PaginatedOrdersResponse = ApiResponse<PaginatedResponse<Order>>;
 export type OrderTrackingApiResponse = ApiResponse<OrderTrackingResponse>;
-export type VehicleAssignmentResponse = ApiResponse<OrderDetail[]>; 
+export type VehicleAssignmentResponse = ApiResponse<OrderDetail[]>;
+
+export interface RecentReceiverSuggestion {
+    orderId: string;
+    receiverName: string;
+    receiverPhone: string;
+    receiverIdentity: string;
+    partialAddress: string;
+    orderDate: string;
+}
+
+export interface RecentReceiversResponse {
+    success: boolean;
+    message: string;
+    statusCode: number;
+    data: RecentReceiverSuggestion[];
+}
+
+export interface ReceiverDetailsResponse {
+    success: boolean;
+    message: string;
+    statusCode: number;
+    data: {
+        receiverName: string;
+        receiverPhone: string;
+        receiverIdentity: string;
+        pickupAddressId: string;
+        deliveryAddressId: string;
+        pickupAddress: {
+            id: string;
+            province: string;
+            ward: string;
+            street: string;
+            addressType: boolean;
+            latitude: number;
+            longitude: number;
+            customerId: string;
+        };
+        deliveryAddress: {
+            id: string;
+            province: string;
+            ward: string;
+            street: string;
+            addressType: boolean;
+            latitude: number;
+            longitude: number;
+            customerId: string;
+        };
+    };
+} 

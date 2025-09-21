@@ -414,7 +414,7 @@ const OrderDetailPage: React.FC = () => {
                       <AddressCard
                         address={order.pickupAddress}
                         title="Địa chỉ lấy hàng"
-                        type="pickup"
+                        isPickup={true}
                       />
                     )}
 
@@ -423,7 +423,7 @@ const OrderDetailPage: React.FC = () => {
                       <AddressCard
                         address={order.deliveryAddress}
                         title="Địa chỉ giao hàng"
-                        type="delivery"
+                        isPickup={false}
                       />
                     )}
                   </div>

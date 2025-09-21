@@ -6,14 +6,14 @@ import type { Address, Order } from '../../../models';
 interface AddressCardProps {
     address?: Address;
     title?: string;
-    type?: 'pickup' | 'delivery';
+    isPickup?: boolean; // true là địa chỉ gửi, false là địa chỉ nhận
     order?: Order;
 }
 
-const AddressCard: React.FC<AddressCardProps> = ({ address, title, type, order }) => {
+const AddressCard: React.FC<AddressCardProps> = ({ address, title, isPickup, order }) => {
     // Nếu có order, lấy địa chỉ từ order
     let addressData: Address | undefined = address;
-    let addressType: 'pickup' | 'delivery' = type || 'pickup';
+    let isPickupAddress: boolean = isPickup !== undefined ? isPickup : true; // Mặc định là địa chỉ gửi (true)
 
     if (order) {
         if (order.pickupAddress && order.deliveryAddress) {
@@ -53,10 +53,10 @@ const AddressCard: React.FC<AddressCardProps> = ({ address, title, type, order }
             );
         } else if (order.pickupAddress) {
             addressData = order.pickupAddress;
-            addressType = 'pickup';
+            isPickupAddress = true; // Địa chỉ gửi
         } else if (order.deliveryAddress) {
             addressData = order.deliveryAddress;
-            addressType = 'delivery';
+            isPickupAddress = false; // Địa chỉ nhận
         }
     }
 
@@ -79,10 +79,9 @@ const AddressCard: React.FC<AddressCardProps> = ({ address, title, type, order }
         );
     }
 
-    const isPickup = addressType === 'pickup';
-    const colorClass = isPickup ? 'text-blue-500' : 'text-red-500';
-    const bgColorClass = isPickup ? 'bg-blue-50' : 'bg-red-50';
-    const displayTitle = title || (isPickup ? 'Địa chỉ lấy hàng' : 'Địa chỉ giao hàng');
+    const colorClass = isPickupAddress ? 'text-blue-500' : 'text-red-500';
+    const bgColorClass = isPickupAddress ? 'bg-blue-50' : 'bg-red-50';
+    const displayTitle = title || (isPickupAddress ? 'Địa chỉ lấy hàng' : 'Địa chỉ giao hàng');
 
     return (
         <Card

@@ -21,14 +21,19 @@ import {
   HistoryOutlined,
   ToolOutlined,
   InfoCircleOutlined,
-  CarryOutOutlined,
   FileTextOutlined,
+  DollarOutlined,
+  CameraOutlined,
+  TruckOutlined,
+  UserOutlined,
+  WarningOutlined,
 } from "@ant-design/icons";
 import orderService from "@/services/order/orderService";
 import { contractService } from "@/services/contract";
 import type { Order } from "@/models/Order";
 import type { CreateContractRequest } from "@/services/contract/types";
 import { OrderStatusEnum } from "@/constants/enums";
+
 import dayjs from "dayjs";
 import {
   OrderDetailSkeleton,
@@ -84,6 +89,7 @@ const OrderDetailPage: React.FC = () => {
     // Implement status update functionality
   };
 
+
   // Hàm xử lý phân công xe cho đơn hàng
   const handleAssignVehicle = async () => {
     if (!id) return;
@@ -102,6 +108,7 @@ const OrderDetailPage: React.FC = () => {
     }
   };
 
+
   // Xử lý khi click nút tạo hợp đồng
   const handleCreateContract = () => {
     if (!id || !order) return;
@@ -115,6 +122,7 @@ const OrderDetailPage: React.FC = () => {
       description: `Hợp đồng vận chuyển cho đơn hàng ${order.orderCode}`,
       orderId: id,
       staffId: "current-staff-id", // TODO: Get from auth context
+
     });
 
     setContractModalVisible(true);
@@ -147,7 +155,6 @@ const OrderDetailPage: React.FC = () => {
       setCreatingContract(false);
     }
   };
-
   // Render lịch sử đơn hàng
   const renderOrderHistory = () => {
     return (

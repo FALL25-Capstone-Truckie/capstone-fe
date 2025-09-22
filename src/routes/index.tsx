@@ -12,7 +12,6 @@ import CustomerSupport from "../pages/Staff/CustomerSupport";
 import ProfilePage from "../pages/Profile";
 import {
   OrderList as StaffOrderList,
-  OrderDetailPage as StaffOrderDetailPage,
 } from "../pages/Staff/Order";
 import { IssueList, IssueDetail } from "../pages/Staff/Issue";
 import {
@@ -20,8 +19,10 @@ import {
   OrderDetailPage as AdminOrderDetailPage,
   OrderEdit as AdminOrderEdit,
 } from "../pages/Admin/Order";
+import StaffOrderDetailPage from "../pages/Admin/Order/StaffOrderDetailPage";
 import OrdersPage from "../pages/Orders";
 import OrderDetailPage from "../pages/Orders/OrderDetail";
+import CustomerOrderDetailPage from "../pages/Orders/CustomerOrderDetailPage";
 import CreateOrder from "../pages/Orders/CreateOrder";
 import { PermissionRoute } from "../components/auth";
 import { MainLayout, AdminLayout } from "../components/layout";
@@ -150,7 +151,7 @@ const router = createBrowserRouter([
             authRedirectPath="/auth/login"
             roleRedirectPath="/"
           >
-            <OrderDetailPage />
+            <CustomerOrderDetailPage />
           </PermissionRoute>
         ),
       },
@@ -301,7 +302,7 @@ const router = createBrowserRouter([
       },
       {
         path: "orders/:id",
-        element: <AdminOrderDetailPage />,
+        element: <StaffOrderDetailPage />,
       },
       {
         path: "orders/:id/edit",

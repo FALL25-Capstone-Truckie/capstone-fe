@@ -6,7 +6,7 @@ import {
   Steps,
   Card,
   Typography,
-  notification,
+  App,
   Skeleton,
 } from "antd";
 import orderService from "../../services/order";
@@ -17,11 +17,12 @@ import type { OrderCreateRequest } from "../../models/Order";
 import type { Category } from "../../models/Category";
 import type { Address } from "../../models/Address";
 import type { OrderSize } from "../../models/OrderSize";
+import type { OrderResponse } from "../../services/order/types";
 import { OrderDetailFormList } from "./components";
+import OrderCreationSuccess from "./components/OrderCreationSuccess";
 import { formatToVietnamTime } from "../../utils/dateUtils";
 import {
-  ReceiverInfoStep,
-  AddressInfoStep,
+  ReceiverAndAddressStep,
   OrderSummaryStep,
   StepActions,
 } from "./components/CreateOrderSteps";
@@ -31,10 +32,12 @@ const { Title, Text } = Typography;
 
 export default function CreateOrder() {
   const navigate = useNavigate();
+  const { message } = App.useApp();
   const [currentStep, setCurrentStep] = useState(0);
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [orderSizes, setOrderSizes] = useState<OrderSize[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [units, setUnits] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -44,41 +47,47 @@ export default function CreateOrder() {
 
   // Cập nhật giá trị form từ state khi component mount
   useEffect(() => {
+    console.log("Setting form values from state:", formValues);
     form.setFieldsValue(formValues);
   }, [form, formValues]);
 
   // Fetch data on component mount
   useEffect(() => {
     const fetchData = async () => {
+      setLoading(true);
+      setError(null);
       try {
-        setLoading(true);
+        // Fetch categories
+        const categoriesResponse = await categoryService.getAllCategories();
+        setCategories(categoriesResponse);
 
-        const [addressesData, orderSizesData, categoriesData] =
-          await Promise.all([
-            addressService.getAllAddresses(),
-            orderSizeService.getAllOrderSizes(),
-            categoryService.getAllCategories(),
-          ]);
+        // Fetch order sizes
+        const orderSizesResponse = await orderSizeService.getAllOrderSizes();
+        setOrderSizes(orderSizesResponse);
 
-        // Thêm trường fullAddress nếu chưa có
-        const addressesWithFullAddress = addressesData.map((address) => ({
-          ...address,
-          fullAddress:
-            address.fullAddress ||
-            `${address.street}, ${address.ward}, ${address.province}`,
-        }));
+        // Fetch units
+        const unitsResponse = await orderService.getUnitsList();
+        setUnits(unitsResponse);
 
-        setAddresses(addressesWithFullAddress);
-        setOrderSizes(orderSizesData);
-        setCategories(categoriesData);
-        setError(null);
-      } catch (err: any) {
-        setError(err.message || "Không thể tải dữ liệu");
-        notification.error({
-          message: "Lỗi",
-          description: "Không thể tải dữ liệu cần thiết. Vui lòng thử lại sau.",
-        });
-      } finally {
+        // Cập nhật unit trong formValues với giá trị từ API
+        if (unitsResponse && unitsResponse.length > 0) {
+          setFormValues((prev: any) => ({
+            ...prev,
+            orderDetailsList: prev.orderDetailsList.map((detail: any) => ({
+              ...detail,
+              unit: unitsResponse[0]
+            }))
+          }));
+        }
+
+        // Fetch addresses using the new my-addresses endpoint
+        const addressesResponse = await addressService.getMyAddresses();
+        setAddresses(addressesResponse);
+
+        setLoading(false);
+      } catch (error) {
+        console.error("Error fetching data:", error);
+        setError("Không thể tải dữ liệu. Vui lòng thử lại sau.");
         setLoading(false);
       }
     };
@@ -86,30 +95,26 @@ export default function CreateOrder() {
     fetchData();
   }, []);
 
-  const handleSubmit = async (values: any) => {
-    // Kết hợp giá trị từ form và state
-    const finalValues = {
-      ...formValues,
-      ...values,
-    };
-
+  // Refresh addresses after creating/updating
+  const refreshAddresses = async () => {
     try {
-      setIsSubmitting(true);
+      const addressesResponse = await addressService.getMyAddresses();
+      setAddresses(addressesResponse);
+    } catch (error) {
+      console.error("Error refreshing addresses:", error);
+    }
+  };
 
-      // Xử lý orderDetailsList - lấy item đầu tiên để tạo đơn hàng chính
-      // (Tùy theo API có hỗ trợ multiple OrderDetails hay không)
-      const orderDetails = finalValues.orderDetailsList || [];
-      if (orderDetails.length === 0) {
-        throw new Error("Vui lòng thêm ít nhất một gói hàng!");
-      }
+  // Handle receiver details loaded from suggestion
+  const handleReceiverDetailsLoaded = (data: any) => {
+    form.setFieldsValue({
+      pickupAddressId: data.pickupAddressId,
+      deliveryAddressId: data.deliveryAddressId,
+    });
 
-      // Chuẩn bị orderDetails cho API với xử lý số lượng
       const orderDetailsForAPI: any[] = [];
-
       orderDetails.forEach((detail: any) => {
         const quantity = detail.quantity || 1;
-
-        // Tạo nhiều bản sao dựa trên số lượng
         for (let i = 0; i < quantity; i++) {
           orderDetailsForAPI.push({
             weight: detail.weight,
@@ -120,12 +125,11 @@ export default function CreateOrder() {
         }
       });
 
-      // Xử lý estimateStartTime - format theo UTC+7 định dạng YYYY-MM-DDTHH:mm:ss
-      const estimateStartTime = finalValues.estimateStartTime
-        ? formatToVietnamTime(finalValues.estimateStartTime.toDate())
-        : undefined;
 
-      // Prepare data for API theo cấu trúc mới
+  const next = async () => {
+    try {
+      // Validate current step fields before proceeding
+      await form.validateFields();
       const orderData: OrderCreateRequest = {
         orderRequest: {
           notes: finalValues.notes,
@@ -141,82 +145,141 @@ export default function CreateOrder() {
         orderDetails: orderDetailsForAPI,
       };
 
-      console.log("Submitting order data:", orderData);
+      setCurrentStep(currentStep + 1);
+    } catch (error) {
+      console.error("Validation error:", error);
+    }
+  };
 
-      // Call API to create order
-      const response = await orderService.createOrder(orderData);
+  const prev = () => {
+    // Lưu giá trị form hiện tại trước khi quay lại bước trước
+    const currentValues = form.getFieldsValue(true);
+    setFormValues((prev: any) => ({ ...prev, ...currentValues }));
+    setCurrentStep(currentStep - 1);
+  };
 
-      notification.success({
-        message: "Đặt hàng thành công",
-        description: `Đơn hàng của bạn đã được tạo thành công với mã ${response.orderCode}.`,
-      });
+  const handleSubmit = async (values: any) => {
+    setIsSubmitting(true);
+    try {
+      // Lấy giá trị trực tiếp từ form để đảm bảo có dữ liệu mới nhất
+      const currentFormValues = form.getFieldsValue(true);
+      console.log("Current form values:", currentFormValues);
 
-      // Redirect to order list page
-      navigate("/orders");
-    } catch (err: any) {
-      notification.error({
-        message: "Đặt hàng thất bại",
-        description:
-          err.message ||
-          "Có lỗi xảy ra khi tạo đơn hàng. Vui lòng thử lại sau.",
-      });
+      // Format date - Xử lý đúng đối tượng Moment từ DatePicker
+      let formattedEstimateStartTime;
+      if (currentFormValues.estimateStartTime) {
+        // Kiểm tra xem estimateStartTime có phải là đối tượng Moment không
+        if (currentFormValues.estimateStartTime._isAMomentObject) {
+          // Chuyển đổi từ Moment sang Date
+          const dateObj = currentFormValues.estimateStartTime.toDate();
+          formattedEstimateStartTime = formatToVietnamTime(dateObj);
+        } else if (currentFormValues.estimateStartTime instanceof Date) {
+          // Nếu đã là Date thì sử dụng trực tiếp
+          formattedEstimateStartTime = formatToVietnamTime(currentFormValues.estimateStartTime);
+        } else {
+          // Trường hợp là string hoặc định dạng khác
+          formattedEstimateStartTime = currentFormValues.estimateStartTime;
+        }
+      }
+
+      const formattedValues = {
+        ...currentFormValues,
+        estimateStartTime: formattedEstimateStartTime,
+      };
+
+      // Đảm bảo orderDetailsList luôn là một mảng
+      const orderDetailsList = Array.isArray(formattedValues.orderDetailsList)
+        ? formattedValues.orderDetailsList
+        : [];
+
+      if (orderDetailsList.length === 0) {
+        throw new Error("Vui lòng thêm ít nhất một lô hàng");
+      }
+
+      // Kiểm tra các trường bắt buộc trong orderDetailsList
+      const invalidDetails = orderDetailsList.filter(
+        (detail: any) => !detail.weight || !detail.orderSizeId || !detail.description
+      );
+
+      if (invalidDetails.length > 0) {
+        throw new Error("Một số lô hàng thiếu thông tin. Vui lòng kiểm tra lại trọng lượng, kích thước và mô tả.");
+      }
+
+      // Extract orderDetailsList from formValues
+      const { orderDetailsList: _, ...orderRequestData } = formattedValues;
+
+      // Create order request
+      const orderRequest: OrderCreateRequest = {
+        orderRequest: {
+          notes: orderRequestData.notes || "Không có ghi chú",
+          receiverName: orderRequestData.receiverName,
+          receiverPhone: orderRequestData.receiverPhone,
+          receiverIdentity: orderRequestData.receiverIdentity || "",
+          packageDescription: orderRequestData.packageDescription || "Đơn hàng thông thường",
+          estimateStartTime: formattedEstimateStartTime,
+          deliveryAddressId: orderRequestData.deliveryAddressId?.value || orderRequestData.deliveryAddressId,
+          pickupAddressId: orderRequestData.pickupAddressId?.value || orderRequestData.pickupAddressId,
+          categoryId: orderRequestData.categoryId
+        },
+        orderDetails: orderDetailsList.map((detail: any) => ({
+          weight: detail.weight,
+          unit: detail.unit || "kg",
+          description: detail.description || "",
+          orderSizeId: detail.orderSizeId
+        }))
+      };
+
+      // Log để debug
+      console.log("Order request:", orderRequest);
+
+      // Kiểm tra dữ liệu trước khi gửi
+      if (!orderRequest.orderRequest.receiverName ||
+        !orderRequest.orderRequest.receiverPhone ||
+        !orderRequest.orderRequest.receiverIdentity ||
+        !orderRequest.orderRequest.pickupAddressId ||
+        !orderRequest.orderRequest.deliveryAddressId ||
+        !orderRequest.orderRequest.categoryId) {
+        throw new Error("Vui lòng điền đầy đủ thông tin bắt buộc (tên người nhận, số điện thoại, CMND/CCCD, địa chỉ gửi/nhận, loại hàng hóa)");
+      }
+
+      // Submit order
+      const response = await orderService.createOrder(orderRequest);
+
+      if (response && response.success === true) {
+        message.success("Đơn hàng đã được tạo thành công");
+        if (response.data && response.data.id) {
+          setCreatedOrder({
+            id: response.data.id,
+            orderCode: response.data.orderCode
+          });
+          // Don't navigate, show success component instead
+        } else {
+          navigate('/orders');
+        }
+      } else {
+        message.error(response?.message || "Có lỗi xảy ra khi tạo đơn hàng");
+      }
+    } catch (error: any) {
+      console.error("Error creating order:", error);
+      message.error(error.message || "Có lỗi xảy ra khi tạo đơn hàng");
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // Validate form fields in current step
-  const validateForm = async () => {
-    try {
-      let fieldsToValidate: string[] = [];
-
-      switch (currentStep) {
-        case 0:
-          fieldsToValidate = [
-            "receiverName",
-            "receiverPhone",
-            "categoryId",
-            "packageDescription",
-          ];
-          break;
-        case 1:
-          fieldsToValidate = ["weight", "orderSizeId", "description"];
-          break;
-        case 2:
-          fieldsToValidate = ["pickupAddressId", "deliveryAddressId", "notes"];
-          break;
-        default:
-          fieldsToValidate = [];
-      }
-
-      await form.validateFields(fieldsToValidate);
-      return true;
-    } catch (errorInfo) {
-      console.log("Failed form validation:", errorInfo);
-      return false;
-    }
-  };
-
-  // Move to next step
-  const next = () => {
-    validateForm().then((isValid) => {
-      if (isValid) {
-        // Save current step form values
-        const values = form.getFieldsValue();
-        setFormValues((prev: any) => ({
-          ...prev,
-          ...values,
-        }));
-
-        setCurrentStep(currentStep + 1);
-      }
-    });
-  };
-
-  // Move to previous step
-  const prev = () => {
-    setCurrentStep(currentStep - 1);
-  };
+  // If order was created successfully, show success component
+  if (createdOrder) {
+    return (
+      <div className="p-6">
+        <Card>
+          <OrderCreationSuccess
+            orderId={createdOrder.id}
+            orderCode={createdOrder.orderCode}
+          />
+        </Card>
+      </div>
+    );
+  }
 
   // Render form based on current step
   const renderForm = () => {
@@ -276,31 +339,46 @@ export default function CreateOrder() {
                 Thử lại
               </Button>
             </div>
+
           </div>
         </div>
       );
     }
 
+    // Đảm bảo form đã được cập nhật với giá trị mới nhất từ formValues
+    form.setFieldsValue(formValues);
+
     switch (currentStep) {
       case 0:
-        return <ReceiverInfoStep categories={categories} />;
-      case 1:
         return (
           <OrderDetailFormList
             name="orderDetailsList"
-            label="Danh sách gói hàng"
+            label="Danh sách lô hàng"
             orderSizes={orderSizes}
+            units={units}
+          />
+        );
+      case 1:
+        return (
+          <ReceiverAndAddressStep
+            categories={categories}
+            addresses={addresses}
+            onReceiverDetailsLoaded={handleReceiverDetailsLoaded}
+            onAddressesUpdated={refreshAddresses}
           />
         );
       case 2:
-        return <AddressInfoStep addresses={addresses} />;
-      case 3:
+        // Lấy lại giá trị form mới nhất trước khi hiển thị trang tóm tắt
+        const currentFormValues = form.getFieldsValue(true);
+        const updatedFormValues = { ...formValues, ...currentFormValues };
+        console.log("Summary step - Updated form values:", updatedFormValues);
+
         return (
           <OrderSummaryStep
-            formValues={formValues}
+            formValues={updatedFormValues}
             categories={categories}
-            orderSizes={orderSizes}
             addresses={addresses}
+            orderSizes={orderSizes}
           />
         );
       default:
@@ -374,6 +452,9 @@ export default function CreateOrder() {
           </div>
         </Card>
       </div>
+
     </div>
   );
 }
+
+

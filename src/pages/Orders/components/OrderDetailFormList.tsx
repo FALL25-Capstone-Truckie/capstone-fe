@@ -7,12 +7,16 @@ interface OrderDetailFormListProps {
   name?: string;
   label?: string;
   orderSizes: OrderSize[];
+  units: string[];
+  form?: FormInstance;
 }
 
 const OrderDetailFormList: React.FC<OrderDetailFormListProps> = ({
   name = "orderDetailsList",
   label = "Danh sách lô hàng",
   orderSizes,
+  units = ["Kí", "Yến", "Tạ", "Tấn"], // Default units if API fails
+  form,
 }) => {
   const weightUnits = [
     { value: "Kí", label: "Kilogram" },
@@ -30,7 +34,7 @@ const OrderDetailFormList: React.FC<OrderDetailFormListProps> = ({
               <Card
                 key={key}
                 size="small"
-                title={`Gói hàng ${index + 1}`}
+                title={`Lô hàng ${index + 1}`}
                 extra={
                   fields.length > 1 && (
                     <Button
@@ -176,6 +180,7 @@ const OrderDetailFormList: React.FC<OrderDetailFormListProps> = ({
                     </Form.Item>
                   </Col>
                 </Row>
+
               </Card>
             ))}
 
@@ -187,7 +192,7 @@ const OrderDetailFormList: React.FC<OrderDetailFormListProps> = ({
                 icon={<PlusOutlined />}
                 size="large"
               >
-                Thêm gói hàng mới
+                Thêm lô hàng mới
               </Button>
             </Form.Item>
           </>

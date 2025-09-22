@@ -2,15 +2,16 @@ import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   Button,
+  Modal,
   App,
   Tabs,
   Timeline,
   Card,
   Steps,
-  Modal,
   Form,
   Input,
   DatePicker,
+  InputNumber,
 } from "antd";
 import {
   ArrowLeftOutlined,
@@ -31,6 +32,8 @@ import orderService from "@/services/order/orderService";
 import { contractService } from "@/services/contract";
 import type { Order } from "@/models/Order";
 import type { CreateContractRequest } from "@/services/contract/types";
+import { OrderStatusEnum } from "@/constants/enums";
+
 import dayjs from "dayjs";
 import {
   OrderDetailSkeleton,
@@ -52,6 +55,7 @@ const OrderDetailPage: React.FC = () => {
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [activeTab, setActiveTab] = useState<string>("info");
+  const [assigningVehicle, setAssigningVehicle] = useState<boolean>(false);
   const [contractModalVisible, setContractModalVisible] =
     useState<boolean>(false);
   const [contractForm] = Form.useForm();
@@ -85,6 +89,26 @@ const OrderDetailPage: React.FC = () => {
     // Implement status update functionality
   };
 
+
+  // Hàm xử lý phân công xe cho đơn hàng
+  const handleAssignVehicle = async () => {
+    if (!id) return;
+
+    try {
+      setAssigningVehicle(true);
+      await orderService.updateVehicleAssignmentForDetails(id);
+      messageApi.success("Đã phân công xe cho đơn hàng thành công");
+      // Refresh order details
+      fetchOrderDetails(id);
+    } catch (error) {
+      messageApi.error("Không thể phân công xe cho đơn hàng");
+      console.error("Error assigning vehicle:", error);
+    } finally {
+      setAssigningVehicle(false);
+    }
+  };
+
+
   // Xử lý khi click nút tạo hợp đồng
   const handleCreateContract = () => {
     if (!id || !order) return;
@@ -94,9 +118,11 @@ const OrderDetailPage: React.FC = () => {
       contractName: `Hợp đồng đơn hàng ${order.orderCode}`,
       effectiveDate: dayjs(),
       expirationDate: dayjs().add(1, "year"),
+      supportedValue: order.totalPrice || 0,
       description: `Hợp đồng vận chuyển cho đơn hàng ${order.orderCode}`,
-      attachFileUrl: "",
       orderId: id,
+      staffId: "current-staff-id", // TODO: Get from auth context
+
     });
 
     setContractModalVisible(true);
@@ -111,6 +137,7 @@ const OrderDetailPage: React.FC = () => {
         effectiveDate: values.effectiveDate.format("YYYY-MM-DDTHH:mm:ss"),
         expirationDate: values.expirationDate.format("YYYY-MM-DDTHH:mm:ss"),
         orderId: id!,
+        staffId: "current-staff-id", // TODO: Get from auth context
       };
 
       const result = await contractService.createContract(contractData);
@@ -128,7 +155,6 @@ const OrderDetailPage: React.FC = () => {
       setCreatingContract(false);
     }
   };
-
   // Render lịch sử đơn hàng
   const renderOrderHistory = () => {
     return (
@@ -326,6 +352,17 @@ const OrderDetailPage: React.FC = () => {
               </p>
             </div>
             <div className="flex gap-3">
+              {order?.status === OrderStatusEnum.ON_PLANNING && (
+                <Button
+                  type="primary"
+                  icon={<CarryOutOutlined />}
+                  onClick={handleAssignVehicle}
+                  loading={assigningVehicle}
+                  className="bg-green-500 hover:bg-green-600"
+                >
+                  Phân công xe
+                </Button>
+              )}
               <Button
                 type="primary"
                 icon={<FileTextOutlined />}
@@ -384,7 +421,7 @@ const OrderDetailPage: React.FC = () => {
                       <AddressCard
                         address={order.pickupAddress}
                         title="Địa chỉ lấy hàng"
-                        type="pickup"
+                        isPickup={true}
                       />
                     )}
 
@@ -393,7 +430,7 @@ const OrderDetailPage: React.FC = () => {
                       <AddressCard
                         address={order.deliveryAddress}
                         title="Địa chỉ giao hàng"
-                        type="delivery"
+                        isPickup={false}
                       />
                     )}
                   </div>
@@ -403,12 +440,7 @@ const OrderDetailPage: React.FC = () => {
 
                   {/* Chi tiết vận chuyển */}
                   {order.orderDetails && order.orderDetails.length > 0 && (
-                    <OrderDetailsTable
-                      order={order}
-                      orderDetails={order.orderDetails}
-                      showAssignButton={true}
-                      onRefresh={() => fetchOrderDetails(id as string)}
-                    />
+                    <OrderDetailsTable orderDetails={order.orderDetails} />
                   )}
 
                   {/* Order Size Information */}
@@ -430,241 +462,6 @@ const OrderDetailPage: React.FC = () => {
                         }
                       />
                     )}
-
-                  {/* Deposit Information */}
-                  <Card className="shadow-md rounded-xl mb-6">
-                    <div className="flex items-center mb-4">
-                      <DollarOutlined className="text-2xl text-green-600 mr-3" />
-                      <h3 className="text-lg font-semibold">
-                        Thông tin cọc tiền
-                      </h3>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="bg-gray-50 p-4 rounded-lg">
-                        <p className="font-medium text-gray-700">Số tiền cọc</p>
-                        <p className="text-lg font-bold text-green-600">
-                          {(order as any)?.depositAmount
-                            ? `${(
-                                order as any
-                              ).depositAmount?.toLocaleString()} VNĐ`
-                            : "Chưa có thông tin"}
-                        </p>
-                      </div>
-                      <div className="bg-gray-50 p-4 rounded-lg">
-                        <p className="font-medium text-gray-700">
-                          Trạng thái thanh toán
-                        </p>
-                        <p className="text-lg font-semibold">
-                          {(order as any)?.depositStatus || "Chưa có thông tin"}
-                        </p>
-                      </div>
-                    </div>
-                  </Card>
-
-                  {/* Driver Information */}
-                  <Card className="shadow-md rounded-xl mb-6">
-                    <div className="flex items-center mb-4">
-                      <UserOutlined className="text-2xl text-blue-600 mr-3" />
-                      <h3 className="text-lg font-semibold">
-                        Thông tin tài xế
-                      </h3>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="bg-gray-50 p-4 rounded-lg">
-                        <p className="font-medium text-gray-700">Tên tài xế</p>
-                        <p className="text-lg font-semibold">
-                          {(order as any)?.driverName || "Chưa có thông tin"}
-                        </p>
-                      </div>
-                      <div className="bg-gray-50 p-4 rounded-lg">
-                        <p className="font-medium text-gray-700">
-                          Số điện thoại
-                        </p>
-                        <p className="text-lg font-semibold">
-                          {(order as any)?.driverPhone || "Chưa có thông tin"}
-                        </p>
-                      </div>
-                    </div>
-                  </Card>
-
-                  {/* Vehicle Information */}
-                  <Card className="shadow-md rounded-xl mb-6">
-                    <div className="flex items-center mb-4">
-                      <TruckOutlined className="text-2xl text-purple-600 mr-3" />
-                      <h3 className="text-lg font-semibold">
-                        Thông tin xe nhận đơn
-                      </h3>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <div className="bg-gray-50 p-4 rounded-lg">
-                        <p className="font-medium text-gray-700">Biển số xe</p>
-                        <p className="text-lg font-semibold">
-                          {(order as any)?.vehiclePlate || "Chưa có thông tin"}
-                        </p>
-                      </div>
-                      <div className="bg-gray-50 p-4 rounded-lg">
-                        <p className="font-medium text-gray-700">Loại xe</p>
-                        <p className="text-lg font-semibold">
-                          {(order as any)?.vehicleType || "Chưa có thông tin"}
-                        </p>
-                      </div>
-                      <div className="bg-gray-50 p-4 rounded-lg">
-                        <p className="font-medium text-gray-700">Tải trọng</p>
-                        <p className="text-lg font-semibold">
-                          {(order as any)?.vehicleCapacity ||
-                            "Chưa có thông tin"}
-                        </p>
-                      </div>
-                    </div>
-                  </Card>
-
-                  {/* Delivery Proof Images */}
-                  <Card className="shadow-md rounded-xl mb-6">
-                    <div className="flex items-center mb-4">
-                      <CameraOutlined className="text-2xl text-orange-600 mr-3" />
-                      <h3 className="text-lg font-semibold">
-                        Minh chứng giao hàng
-                      </h3>
-                    </div>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                      {(order as any)?.deliveryImages &&
-                      (order as any).deliveryImages.length > 0 ? (
-                        (order as any).deliveryImages.map(
-                          (image: string, index: number) => (
-                            <div
-                              key={index}
-                              className="border rounded-lg overflow-hidden"
-                            >
-                              <img
-                                src={image}
-                                alt={`Ảnh giao hàng ${index + 1}`}
-                                className="w-full h-32 object-cover cursor-pointer hover:opacity-80"
-                                onClick={() => window.open(image, "_blank")}
-                              />
-                            </div>
-                          )
-                        )
-                      ) : (
-                        <div className="col-span-4 bg-gray-50 p-8 rounded-lg text-center">
-                          <CameraOutlined className="text-4xl text-gray-400 mb-2" />
-                          <p className="text-gray-500">
-                            Chưa có hình ảnh minh chứng giao hàng
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  </Card>
-
-                  {/* Transport Fee Proof */}
-                  <Card className="shadow-md rounded-xl mb-6">
-                    <div className="flex items-center mb-4">
-                      <DollarOutlined className="text-2xl text-teal-600 mr-3" />
-                      <h3 className="text-lg font-semibold">
-                        Minh chứng chuyển phí
-                      </h3>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="bg-gray-50 p-4 rounded-lg">
-                        <p className="font-medium text-gray-700">
-                          Số tiền chuyển phí
-                        </p>
-                        <p className="text-lg font-bold text-teal-600">
-                          {(order as any)?.transportFee
-                            ? `${(
-                                order as any
-                              ).transportFee?.toLocaleString()} VNĐ`
-                            : "Chưa có thông tin"}
-                        </p>
-                      </div>
-                      <div className="bg-gray-50 p-4 rounded-lg">
-                        <p className="font-medium text-gray-700">
-                          Hình thức thanh toán
-                        </p>
-                        <p className="text-lg font-semibold">
-                          {(order as any)?.paymentMethod || "Chưa có thông tin"}
-                        </p>
-                      </div>
-                    </div>
-                    {(order as any)?.transportFeeProof ? (
-                      <div className="mt-4">
-                        <p className="font-medium text-gray-700 mb-2">
-                          Hình ảnh minh chứng:
-                        </p>
-                        <img
-                          src={(order as any).transportFeeProof}
-                          alt="Minh chứng chuyển phí"
-                          className="max-w-xs h-48 object-cover rounded border cursor-pointer hover:opacity-80"
-                          onClick={() =>
-                            window.open(
-                              (order as any).transportFeeProof,
-                              "_blank"
-                            )
-                          }
-                        />
-                      </div>
-                    ) : (
-                      <div className="mt-4 bg-gray-50 p-4 rounded-lg text-center">
-                        <p className="text-gray-500">
-                          Chưa có hình ảnh minh chứng chuyển phí
-                        </p>
-                      </div>
-                    )}
-                  </Card>
-
-                  {/* Issues Information */}
-                  <Card className="shadow-md rounded-xl mb-6">
-                    <div className="flex items-center mb-4">
-                      <WarningOutlined className="text-2xl text-red-600 mr-3" />
-                      <h3 className="text-lg font-semibold">Thông tin sự cố</h3>
-                    </div>
-                    {(order as any)?.issues &&
-                    (order as any).issues.length > 0 ? (
-                      <div className="space-y-4">
-                        {(order as any).issues.map(
-                          (issue: any, index: number) => (
-                            <div
-                              key={index}
-                              className="border-l-4 border-red-500 bg-red-50 p-4 rounded"
-                            >
-                              <div className="flex items-center mb-2">
-                                <WarningOutlined className="text-red-600 mr-2" />
-                                <p className="font-semibold text-red-800">
-                                  {issue.title || `Sự cố #${index + 1}`}
-                                </p>
-                              </div>
-                              <p className="text-gray-700 mb-2">
-                                {issue.description || "Không có mô tả"}
-                              </p>
-                              <div className="flex justify-between text-sm text-gray-500">
-                                <span>
-                                  Thời gian:{" "}
-                                  {issue.createdAt || "Chưa xác định"}
-                                </span>
-                                <span
-                                  className={`px-2 py-1 rounded ${
-                                    issue.status === "RESOLVED"
-                                      ? "bg-green-100 text-green-800"
-                                      : "bg-yellow-100 text-yellow-800"
-                                  }`}
-                                >
-                                  {issue.status === "RESOLVED"
-                                    ? "Đã giải quyết"
-                                    : "Đang xử lý"}
-                                </span>
-                              </div>
-                            </div>
-                          )
-                        )}
-                      </div>
-                    ) : (
-                      <div className="bg-green-50 p-4 rounded-lg text-center">
-                        <CheckCircleOutlined className="text-2xl text-green-600 mb-2" />
-                        <p className="text-green-700 font-medium">
-                          Không có sự cố nào được báo cáo
-                        </p>
-                      </div>
-                    )}
-                  </Card>
                 </>
               )}
             </TabPane>
@@ -753,13 +550,21 @@ const OrderDetailPage: React.FC = () => {
           </div>
 
           <Form.Item
-            label="URL file đính kèm"
-            name="attachFileUrl"
+            label="Giá trị hỗ trợ"
+            name="supportedValue"
             rules={[
-              { required: true, message: "Vui lòng nhập URL file đính kèm" },
+              { required: true, message: "Vui lòng nhập giá trị hỗ trợ" },
             ]}
           >
-            <Input placeholder="Nhập URL file đính kèm" />
+            <InputNumber
+              style={{ width: "100%" }}
+              placeholder="Nhập giá trị hỗ trợ"
+              formatter={(value) =>
+                `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ",")
+              }
+              parser={(value) => value!.replace(/\$\s?|(,*)/g, "")}
+              addonAfter="VNĐ"
+            />
           </Form.Item>
 
           <Form.Item

@@ -1,16 +1,52 @@
-import React from "react";
-import { Form, Input, Select, Typography, Row, Col, DatePicker } from "antd";
+import React, { useState } from "react";
+import { Form, Input, Select, Typography, DatePicker, Divider, Skeleton, App, Row, Col, DatePicker } from "antd";
 import type { Category } from "../../../../models/Category";
 import dayjs from "dayjs";
+import ReceiverSuggestions from "./ReceiverSuggestions";
+import orderService from "@/services/order/orderService";
 
-const { Title } = Typography;
+const { Title, Text } = Typography;
 const { Option } = Select;
 
 interface ReceiverInfoStepProps {
   categories: Category[];
+  onReceiverDetailsLoaded: (data: any) => void;
 }
 
-const ReceiverInfoStep: React.FC<ReceiverInfoStepProps> = ({ categories }) => {
+const ReceiverInfoStep: React.FC<ReceiverInfoStepProps> = ({
+  categories,
+  onReceiverDetailsLoaded
+}) => {
+  const [loadingReceiverDetails, setLoadingReceiverDetails] = useState(false);
+  const { message } = App.useApp();
+  const form = Form.useFormInstance();
+
+  const handleSuggestionSelect = async (orderId: string) => {
+    setLoadingReceiverDetails(true);
+    try {
+      const response = await orderService.getReceiverDetails(orderId);
+      if (response.success) {
+        const { data } = response;
+
+        // Update form values
+        form.setFieldsValue({
+          receiverName: data.receiverName,
+          receiverPhone: data.receiverPhone,
+        });
+
+        // Pass data to parent component for address fields
+        onReceiverDetailsLoaded(data);
+
+        message.success("Đã điền thông tin người nhận");
+      }
+    } catch (error) {
+      message.error("Không thể tải thông tin người nhận");
+      console.error("Error loading receiver details:", error);
+    } finally {
+      setLoadingReceiverDetails(false);
+    }
+  };
+
   return (
     <>
       <Title level={4}>Thông tin cơ bản</Title>
@@ -63,6 +99,7 @@ const ReceiverInfoStep: React.FC<ReceiverInfoStepProps> = ({ categories }) => {
 
       <Row gutter={16}>
         <Col span={8}>
+
           <Form.Item
             name="categoryId"
             label="Loại hàng hóa"
@@ -88,6 +125,7 @@ const ReceiverInfoStep: React.FC<ReceiverInfoStepProps> = ({ categories }) => {
             <DatePicker
               showTime
               placeholder="Chọn ngày và giờ lấy hàng"
+
               style={{ width: "100%" }}
               disabledDate={(current) =>
                 current && current < dayjs().startOf("day")

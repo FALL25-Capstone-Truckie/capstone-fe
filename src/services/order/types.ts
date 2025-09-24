@@ -86,9 +86,16 @@ export interface VehicleSuggestion {
   vehicleRuleId: string;
   vehicleRuleName: string;
   currentLoad: number;
-  assignedDetails: string[];
+  assignedDetails: AssignedDetail[];
 }
 
+export interface AssignedDetail {
+  id: string;
+  weight: number;
+  weightBaseUnit: number;
+  unit: string;
+  trackingCode: string;
+}
 export interface VehicleSuggestionsResponse {
   success: boolean;
   message: string;

@@ -13,12 +13,14 @@ import {
   Row,
   Col,
   Modal,
+  Timeline,
 } from "antd";
 import {
   ArrowLeftOutlined,
   InfoCircleOutlined,
   FileTextOutlined,
   CarOutlined,
+  TruckOutlined,
   BoxPlotOutlined,
   ToolOutlined,
   HistoryOutlined,
@@ -295,7 +297,8 @@ const CustomerOrderDetail: React.FC = () => {
     }
 
     // Kiểm tra xem đơn hàng đã được phân công cho tài xế chưa
-    const isAssignedToDriver = order.status === "ASSIGNED_TO_DRIVER" ||
+    const isAssignedToDriver =
+      order.status === "ASSIGNED_TO_DRIVER" ||
       order.status === "DRIVER_CONFIRM" ||
       order.status === "PICKED_UP" ||
       order.status === "SEALED_COMPLETED" ||
@@ -313,13 +316,13 @@ const CustomerOrderDetail: React.FC = () => {
 
       const vehicleAssignmentMap = new Map<string, VehicleAssignmentGroup>();
 
-      order.orderDetails.forEach(detail => {
+      order.orderDetails.forEach((detail) => {
         if (detail.vehicleAssignment) {
           const vaId = detail.vehicleAssignment.id;
           if (!vehicleAssignmentMap.has(vaId)) {
             vehicleAssignmentMap.set(vaId, {
               vehicleAssignment: detail.vehicleAssignment,
-              orderDetails: []
+              orderDetails: [],
             });
           }
           vehicleAssignmentMap.get(vaId)?.orderDetails.push(detail);
@@ -343,7 +346,8 @@ const CustomerOrderDetail: React.FC = () => {
             <TabPane
               tab={
                 <span>
-                  <CarOutlined /> Chuyến xe #{index + 1} - {vaGroup.vehicleAssignment.trackingCode || "Chưa có mã"}
+                  <CarOutlined /> Chuyến xe #{index + 1} -{" "}
+                  {vaGroup.vehicleAssignment.trackingCode || "Chưa có mã"}
                 </span>
               }
               key={index.toString()}
@@ -358,16 +362,29 @@ const CustomerOrderDetail: React.FC = () => {
                   <div className="mb-4 bg-blue-50 p-4 rounded-lg">
                     <div className="flex items-center mb-3">
                       <CarOutlined className="text-xl text-blue-500 mr-3" />
-                      <span className="text-lg font-medium">{vaGroup.vehicleAssignment.licensePlateNumber || "Chưa có thông tin"}</span>
-                      <Tag className="ml-3" color={getStatusColor(vaGroup.vehicleAssignment.status || "")}>
+                      <span className="text-lg font-medium">
+                        {vaGroup.vehicleAssignment.licensePlateNumber ||
+                          "Chưa có thông tin"}
+                      </span>
+                      <Tag
+                        className="ml-3"
+                        color={getStatusColor(
+                          vaGroup.vehicleAssignment.status || ""
+                        )}
+                      >
                         {vaGroup.vehicleAssignment.status}
                       </Tag>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       <div className="flex items-center">
                         <InfoCircleOutlined className="mr-2 text-gray-500" />
-                        <span className="font-medium mr-1">Tên phương tiện:</span>
-                        <span>{vaGroup.vehicleAssignment.vehicleName || "Chưa có thông tin"}</span>
+                        <span className="font-medium mr-1">
+                          Tên phương tiện:
+                        </span>
+                        <span>
+                          {vaGroup.vehicleAssignment.vehicleName ||
+                            "Chưa có thông tin"}
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -382,15 +399,24 @@ const CustomerOrderDetail: React.FC = () => {
                         <div className="ml-6">
                           <div className="flex items-center mb-1">
                             <UserOutlined className="mr-2 text-gray-500" />
-                            <span>{vaGroup.vehicleAssignment.primaryDriver.fullName}</span>
+                            <span>
+                              {vaGroup.vehicleAssignment.primaryDriver.fullName}
+                            </span>
                           </div>
                           <div className="flex items-center">
                             <PhoneOutlined className="mr-2 text-gray-500" />
-                            <span>{vaGroup.vehicleAssignment.primaryDriver.phoneNumber}</span>
+                            <span>
+                              {
+                                vaGroup.vehicleAssignment.primaryDriver
+                                  .phoneNumber
+                              }
+                            </span>
                           </div>
                         </div>
                       ) : (
-                        <div className="ml-6 text-gray-500">Chưa có thông tin</div>
+                        <div className="ml-6 text-gray-500">
+                          Chưa có thông tin
+                        </div>
                       )}
                     </div>
 
@@ -403,15 +429,27 @@ const CustomerOrderDetail: React.FC = () => {
                         <div className="ml-6">
                           <div className="flex items-center mb-1">
                             <UserOutlined className="mr-2 text-gray-500" />
-                            <span>{vaGroup.vehicleAssignment.secondaryDriver.fullName}</span>
+                            <span>
+                              {
+                                vaGroup.vehicleAssignment.secondaryDriver
+                                  .fullName
+                              }
+                            </span>
                           </div>
                           <div className="flex items-center">
                             <PhoneOutlined className="mr-2 text-gray-500" />
-                            <span>{vaGroup.vehicleAssignment.secondaryDriver.phoneNumber}</span>
+                            <span>
+                              {
+                                vaGroup.vehicleAssignment.secondaryDriver
+                                  .phoneNumber
+                              }
+                            </span>
                           </div>
                         </div>
                       ) : (
-                        <div className="ml-6 text-gray-500">Chưa có thông tin</div>
+                        <div className="ml-6 text-gray-500">
+                          Chưa có thông tin
+                        </div>
                       )}
                     </div>
                   </div>
@@ -458,13 +496,21 @@ const CustomerOrderDetail: React.FC = () => {
                                 </div>
                               </td>
                               <td className="border border-gray-300 p-2">
-                                <Tag color={
-                                  detail.status === "PENDING" ? "orange" :
-                                    detail.status === "PROCESSING" ? "blue" :
-                                      detail.status === "DELIVERED" || detail.status === "SUCCESSFUL" ? "green" :
-                                        detail.status === "CANCELLED" || detail.status === "IN_TROUBLES" ? "red" :
-                                          "default"
-                                }>
+                                <Tag
+                                  color={
+                                    detail.status === "PENDING"
+                                      ? "orange"
+                                      : detail.status === "PROCESSING"
+                                      ? "blue"
+                                      : detail.status === "DELIVERED" ||
+                                        detail.status === "SUCCESSFUL"
+                                      ? "green"
+                                      : detail.status === "CANCELLED" ||
+                                        detail.status === "IN_TROUBLES"
+                                      ? "red"
+                                      : "default"
+                                  }
+                                >
                                   {detail.status}
                                 </Tag>
                               </td>
@@ -496,41 +542,57 @@ const CustomerOrderDetail: React.FC = () => {
                     }
                     key="journey"
                   >
-                    {vaGroup.vehicleAssignment.journeyHistory && vaGroup.vehicleAssignment.journeyHistory.length > 0 ? (
+                    {vaGroup.vehicleAssignment.journeyHistory &&
+                    vaGroup.vehicleAssignment.journeyHistory.length > 0 ? (
                       <Timeline
                         mode="left"
-                        items={vaGroup.vehicleAssignment.journeyHistory.map((journey: any) => ({
-                          label: formatDate(journey.startTime),
-                          children: (
-                            <div className="bg-blue-50 p-3 rounded-lg">
-                              <div className="flex items-center mb-2">
-                                <TagOutlined className="mr-2 text-blue-500" />
-                                <span className="font-medium mr-1">Trạng thái:</span>
-                                <Tag color={
-                                  journey.status === "COMPLETED" ? "green" :
-                                    journey.status === "IN_PROGRESS" ? "blue" : "orange"
-                                }>
-                                  {journey.status}
-                                </Tag>
-                              </div>
-                              <div className="flex items-center mb-2">
-                                <ClockCircleOutlined className="mr-2 text-gray-500" />
-                                <span className="font-medium mr-1">Thời gian kết thúc:</span>
-                                <span>{formatDate(journey.endTime)}</span>
-                              </div>
-                              <div className="flex items-center">
-                                <DashboardOutlined className="mr-2 text-gray-500" />
-                                <span className="font-medium mr-1">Tổng quãng đường:</span>
-                                <span>{journey.totalDistance} km</span>
-                              </div>
-                              {journey.isReportedIncident && (
-                                <div className="mt-2">
-                                  <Tag color="red" icon={<ToolOutlined />}>Có báo cáo sự cố</Tag>
+                        items={vaGroup.vehicleAssignment.journeyHistory.map(
+                          (journey: any) => ({
+                            label: formatDate(journey.startTime),
+                            children: (
+                              <div className="bg-blue-50 p-3 rounded-lg">
+                                <div className="flex items-center mb-2">
+                                  <TagOutlined className="mr-2 text-blue-500" />
+                                  <span className="font-medium mr-1">
+                                    Trạng thái:
+                                  </span>
+                                  <Tag
+                                    color={
+                                      journey.status === "COMPLETED"
+                                        ? "green"
+                                        : journey.status === "IN_PROGRESS"
+                                        ? "blue"
+                                        : "orange"
+                                    }
+                                  >
+                                    {journey.status}
+                                  </Tag>
                                 </div>
-                              )}
-                            </div>
-                          ),
-                        }))}
+                                <div className="flex items-center mb-2">
+                                  <ClockCircleOutlined className="mr-2 text-gray-500" />
+                                  <span className="font-medium mr-1">
+                                    Thời gian kết thúc:
+                                  </span>
+                                  <span>{formatDate(journey.endTime)}</span>
+                                </div>
+                                <div className="flex items-center">
+                                  <DashboardOutlined className="mr-2 text-gray-500" />
+                                  <span className="font-medium mr-1">
+                                    Tổng quãng đường:
+                                  </span>
+                                  <span>{journey.totalDistance} km</span>
+                                </div>
+                                {journey.isReportedIncident && (
+                                  <div className="mt-2">
+                                    <Tag color="red" icon={<ToolOutlined />}>
+                                      Có báo cáo sự cố
+                                    </Tag>
+                                  </div>
+                                )}
+                              </div>
+                            ),
+                          })
+                        )}
                       />
                     ) : (
                       <Empty description="Không có lịch sử hành trình nào" />
@@ -546,11 +608,14 @@ const CustomerOrderDetail: React.FC = () => {
                     }
                     key="photos"
                   >
-                    {vaGroup.vehicleAssignment.photoCompletions && vaGroup.vehicleAssignment.photoCompletions.length > 0 ? (
+                    {vaGroup.vehicleAssignment.photoCompletions &&
+                    vaGroup.vehicleAssignment.photoCompletions.length > 0 ? (
                       <div className="p-2">
                         <div className="flex items-center mb-3">
                           <CameraOutlined className="mr-2 text-blue-500" />
-                          <span className="font-medium">Hình ảnh hoàn thành:</span>
+                          <span className="font-medium">
+                            Hình ảnh hoàn thành:
+                          </span>
                         </div>
                         <div className="flex flex-wrap gap-2">
                           {vaGroup.vehicleAssignment.photoCompletions.map(
@@ -587,32 +652,61 @@ const CustomerOrderDetail: React.FC = () => {
                           <div className="flex items-center mb-3">
                             <ToolOutlined className="text-red-500 mr-2" />
                             <span className="font-medium">Mô tả sự cố:</span>
-                            <span className="ml-2">{vaGroup.vehicleAssignment.issue.issue.description}</span>
-                            <Tag className="ml-2" color={getStatusColor(vaGroup.vehicleAssignment.issue.issue.status)}>
+                            <span className="ml-2">
+                              {
+                                vaGroup.vehicleAssignment.issue.issue
+                                  .description
+                              }
+                            </span>
+                            <Tag
+                              className="ml-2"
+                              color={getStatusColor(
+                                vaGroup.vehicleAssignment.issue.issue.status
+                              )}
+                            >
                               {vaGroup.vehicleAssignment.issue.issue.status}
                             </Tag>
                           </div>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                             <div className="flex items-center">
                               <TagOutlined className="mr-2 text-gray-500" />
-                              <span className="font-medium mr-1">Loại sự cố:</span>
-                              <span>{vaGroup.vehicleAssignment.issue.issue.issueTypeName}</span>
+                              <span className="font-medium mr-1">
+                                Loại sự cố:
+                              </span>
+                              <span>
+                                {
+                                  vaGroup.vehicleAssignment.issue.issue
+                                    .issueTypeName
+                                }
+                              </span>
                             </div>
                             <div className="flex items-center">
                               <UserOutlined className="mr-2 text-gray-500" />
-                              <span className="font-medium mr-1">Nhân viên xử lý:</span>
-                              <span>{vaGroup.vehicleAssignment.issue.issue.staff.name}</span>
+                              <span className="font-medium mr-1">
+                                Nhân viên xử lý:
+                              </span>
+                              <span>
+                                {
+                                  vaGroup.vehicleAssignment.issue.issue.staff
+                                    .name
+                                }
+                              </span>
                             </div>
                             <div className="flex items-center">
                               <PhoneOutlined className="mr-2 text-gray-500" />
                               <span className="font-medium mr-1">Liên hệ:</span>
-                              <span>{vaGroup.vehicleAssignment.issue.issue.staff.phone}</span>
+                              <span>
+                                {
+                                  vaGroup.vehicleAssignment.issue.issue.staff
+                                    .phone
+                                }
+                              </span>
                             </div>
                           </div>
                         </div>
 
                         {vaGroup.vehicleAssignment.issue.imageUrls &&
-                          vaGroup.vehicleAssignment.issue.imageUrls.length > 0 ? (
+                        vaGroup.vehicleAssignment.issue.imageUrls.length > 0 ? (
                           <div className="mt-4">
                             <div className="flex items-center mb-2">
                               <CameraOutlined className="mr-2 text-blue-500" />
@@ -654,29 +748,41 @@ const CustomerOrderDetail: React.FC = () => {
                     }
                     key="seals"
                   >
-                    {vaGroup.vehicleAssignment.orderSeals && vaGroup.vehicleAssignment.orderSeals.length > 0 ? (
+                    {vaGroup.vehicleAssignment.orderSeals &&
+                    vaGroup.vehicleAssignment.orderSeals.length > 0 ? (
                       <div className="p-2">
-                        {vaGroup.vehicleAssignment.orderSeals.map((seal: any, sealIdx: number) => (
-                          <div key={seal.id} className={`${sealIdx > 0 ? "mt-3" : ""} bg-gray-50 p-4 rounded-lg`}>
-                            <div className="flex items-center mb-2">
-                              <FileTextOutlined className="mr-2 text-blue-500" />
-                              <span className="font-medium mr-1">Mô tả:</span>
-                              <span>{seal.description}</span>
+                        {vaGroup.vehicleAssignment.orderSeals.map(
+                          (seal: any, sealIdx: number) => (
+                            <div
+                              key={seal.id}
+                              className={`${
+                                sealIdx > 0 ? "mt-3" : ""
+                              } bg-gray-50 p-4 rounded-lg`}
+                            >
+                              <div className="flex items-center mb-2">
+                                <FileTextOutlined className="mr-2 text-blue-500" />
+                                <span className="font-medium mr-1">Mô tả:</span>
+                                <span>{seal.description}</span>
+                              </div>
+                              <div className="flex items-center mb-2">
+                                <CalendarOutlined className="mr-2 text-gray-500" />
+                                <span className="font-medium mr-1">
+                                  Ngày niêm phong:
+                                </span>
+                                <span>{formatDate(seal.sealDate)}</span>
+                              </div>
+                              <div className="flex items-center">
+                                <TagOutlined className="mr-2 text-gray-500" />
+                                <span className="font-medium mr-1">
+                                  Trạng thái:
+                                </span>
+                                <Tag color={getStatusColor(seal.status)}>
+                                  {seal.status}
+                                </Tag>
+                              </div>
                             </div>
-                            <div className="flex items-center mb-2">
-                              <CalendarOutlined className="mr-2 text-gray-500" />
-                              <span className="font-medium mr-1">Ngày niêm phong:</span>
-                              <span>{formatDate(seal.sealDate)}</span>
-                            </div>
-                            <div className="flex items-center">
-                              <TagOutlined className="mr-2 text-gray-500" />
-                              <span className="font-medium mr-1">Trạng thái:</span>
-                              <Tag color={getStatusColor(seal.status)}>
-                                {seal.status}
-                              </Tag>
-                            </div>
-                          </div>
-                        ))}
+                          )
+                        )}
                       </div>
                     ) : (
                       <Empty description="Không có thông tin niêm phong" />
@@ -747,18 +853,19 @@ const CustomerOrderDetail: React.FC = () => {
                           </td>
                           <td className="border border-gray-300 p-2">
                             <span
-                              className={`px-2 py-1 rounded text-white bg-${detail.status === "PENDING"
-                                ? "orange-500"
-                                : detail.status === "PROCESSING"
+                              className={`px-2 py-1 rounded text-white bg-${
+                                detail.status === "PENDING"
+                                  ? "orange-500"
+                                  : detail.status === "PROCESSING"
                                   ? "blue-500"
                                   : detail.status === "DELIVERED" ||
                                     detail.status === "SUCCESSFUL"
-                                    ? "green-500"
-                                    : detail.status === "CANCELLED" ||
-                                      detail.status === "IN_TROUBLES"
-                                      ? "red-500"
-                                      : "gray-500"
-                                }`}
+                                  ? "green-500"
+                                  : detail.status === "CANCELLED" ||
+                                    detail.status === "IN_TROUBLES"
+                                  ? "red-500"
+                                  : "gray-500"
+                              }`}
                             >
                               {detail.status}
                             </span>
@@ -808,8 +915,8 @@ const CustomerOrderDetail: React.FC = () => {
                           <td className="border border-gray-300 p-2">
                             {detail.startTime
                               ? new Date(detail.startTime).toLocaleString(
-                                "vi-VN"
-                              )
+                                  "vi-VN"
+                                )
                               : "Chưa có thông tin"}
                           </td>
                         </tr>
@@ -830,8 +937,8 @@ const CustomerOrderDetail: React.FC = () => {
                           <td className="border border-gray-300 p-2">
                             {detail.estimatedStartTime
                               ? new Date(
-                                detail.estimatedStartTime
-                              ).toLocaleString("vi-VN")
+                                  detail.estimatedStartTime
+                                ).toLocaleString("vi-VN")
                               : "Chưa có thông tin"}
                           </td>
                         </tr>
@@ -842,8 +949,8 @@ const CustomerOrderDetail: React.FC = () => {
                           <td className="border border-gray-300 p-2">
                             {detail.estimatedEndTime
                               ? new Date(
-                                detail.estimatedEndTime
-                              ).toLocaleString("vi-VN")
+                                  detail.estimatedEndTime
+                                ).toLocaleString("vi-VN")
                               : "Chưa có thông tin"}
                           </td>
                         </tr>
@@ -982,7 +1089,7 @@ const CustomerOrderDetail: React.FC = () => {
                           <td className="border border-gray-300 p-2">
                             {detail.vehicleAssignment.primaryDriver
                               ? detail.vehicleAssignment.primaryDriver
-                                .phoneNumber
+                                  .phoneNumber
                               : "Chưa có thông tin"}
                           </td>
                         </tr>
@@ -993,7 +1100,7 @@ const CustomerOrderDetail: React.FC = () => {
                           <td className="border border-gray-300 p-2">
                             {detail.vehicleAssignment.secondaryDriver
                               ? detail.vehicleAssignment.secondaryDriver
-                                .fullName
+                                  .fullName
                               : "Chưa có thông tin"}
                           </td>
                         </tr>
@@ -1004,7 +1111,7 @@ const CustomerOrderDetail: React.FC = () => {
                           <td className="border border-gray-300 p-2">
                             {detail.vehicleAssignment.secondaryDriver
                               ? detail.vehicleAssignment.secondaryDriver
-                                .phoneNumber
+                                  .phoneNumber
                               : "Chưa có thông tin"}
                           </td>
                         </tr>
@@ -1091,7 +1198,7 @@ const CustomerOrderDetail: React.FC = () => {
                         </table>
 
                         {detail.vehicleAssignment.issue.imageUrls &&
-                          detail.vehicleAssignment.issue.imageUrls.length > 0 ? (
+                        detail.vehicleAssignment.issue.imageUrls.length > 0 ? (
                           <div className="mt-4">
                             <p className="font-medium mb-2">Hình ảnh:</p>
                             <div className="flex flex-wrap gap-2">
@@ -1467,9 +1574,9 @@ const CustomerOrderDetail: React.FC = () => {
                   <div>
                     <div className="text-xs text-gray-500 mb-2">Kiện hàng:</div>
                     <div className="flex flex-wrap gap-1">
-                      {suggestion.assignedDetails.map((detailId, idx) => (
+                      {suggestion.assignedDetails.map((detail, idx) => (
                         <Tag key={idx} color="blue" className="text-xs">
-                          {detailId.substring(0, 6)}...
+                          {detail.id} - {detail.weight} {detail.unit}
                         </Tag>
                       ))}
                     </div>

@@ -21,6 +21,7 @@ import type {
   CustomerOrderDetailResponse,
   StaffOrderDetailResponse,
   VehicleSuggestionsResponse,
+  BillOfLadingPreviewResponse,
 } from "./types";
 import type { PaginationParams } from "../api/types";
 import { handleApiError } from "../api/errorHandler";
@@ -563,6 +564,23 @@ const orderService = {
       }
       console.error(`Error checking contract for order ${orderId}:`, error);
       throw handleApiError(error, "Không thể kiểm tra hợp đồng");
+    }
+  },
+
+  /**
+   * Preview bill of lading for an order
+   * @param orderId Order ID
+   * @returns Promise with bill of lading preview data
+   */
+  previewBillOfLading: async (orderId: string): Promise<BillOfLadingPreviewResponse['data']> => {
+    try {
+      const response = await httpClient.get<BillOfLadingPreviewResponse>(
+        `/bill-of-ladings/order/${orderId}/preview`
+      );
+      return response.data.data;
+    } catch (error) {
+      console.error(`Error previewing bill of lading for order ${orderId}:`, error);
+      throw handleApiError(error, "Không thể tải vận đơn");
     }
   },
 };

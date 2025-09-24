@@ -1,0 +1,121 @@
+/* Modal styles */
+.bill-of-lading-modal-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.bill-of-lading-modal-wrapper .ant-modal {
+    top: 0 !important;
+    padding-bottom: 0;
+    margin: 0 auto;
+}
+
+.bill-of-lading-preview-modal {
+    max-width: 90vw;
+}
+
+.bill-of-lading-preview-modal .ant-modal-content {
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.bill-of-lading-preview-modal .ant-modal-header {
+    background-color: #f0f7ff;
+    padding: 16px 24px;
+    border-bottom: 1px solid #e6f0ff;
+}
+
+.bill-of-lading-preview-modal .ant-modal-title {
+    font-weight: 600;
+}
+
+.bill-of-lading-preview-modal .ant-modal-body {
+    padding: 20px;
+}
+
+.bill-of-lading-tabs .ant-tabs-nav {
+    margin-bottom: 16px;
+}
+
+.bill-of-lading-tabs .ant-tabs-tab {
+    padding: 8px 16px;
+    transition: all 0.3s;
+}
+
+.bill-of-lading-tabs .ant-tabs-tab:hover {
+    color: #1890ff;
+}
+
+.bill-of-lading-tabs .ant-tabs-tab-active {
+    background-color: #e6f7ff;
+    border-bottom-color: #1890ff;
+}
+
+.preview-container {
+    transition: all 0.3s;
+}
+
+.preview-container:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* Carousel styles */
+.carousel-container .slick-slide {
+    padding: 4px;
+}
+
+.carousel-container .slick-dots li button {
+    background-color: #1890ff;
+}
+
+.carousel-container .slick-dots li.slick-active button {
+    background-color: #096dd9;
+}
+
+/* Ensure modal is centered on all screen sizes */
+@media (max-width: 768px) {
+    .bill-of-lading-preview-modal {
+        max-width: 95vw;
+    }
+
+    .bill-of-lading-preview-modal .ant-modal-body {
+        padding: 12px;
+    }
+}
+
+/* Fix for modal positioning */
+.modal-open {
+    overflow: hidden;
+}
+
+/* Improve button styling */
+.bill-of-lading-preview-modal .ant-btn-primary {
+    border: none;
+    height: 36px;
+    padding: 0 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s;
+}
+
+.bill-of-lading-preview-modal .ant-btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+/* Improve tab styling */
+.bill-of-lading-tabs .ant-tabs-nav-wrap {
+    display: flex;
+    align-items: center;
+}
+
+/* Ensure modal is always in view */
+.ant-modal-wrap.bill-of-lading-modal-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow-y: auto;
+}

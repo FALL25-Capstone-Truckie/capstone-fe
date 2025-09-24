@@ -30,6 +30,8 @@ import {
   FileTextOutlined,
   BoxPlotOutlined,
   ColumnWidthOutlined,
+  CreditCardOutlined,
+  PrinterOutlined,
 } from "@ant-design/icons";
 import orderService from "../../../../services/order/orderService";
 import type { StaffOrderDetailResponse } from "../../../../services/order/types";
@@ -39,6 +41,7 @@ import VehicleInfoSection from "./StaffOrderDetail/VehicleInfoSection";
 import ContractSection from "../../../Orders/components/CustomerOrderDetail/ContractSection";
 import TransactionSection from "../../../Orders/components/CustomerOrderDetail/TransactionSection";
 import VehicleAssignmentModal from "./VehicleAssignmentModal";
+import BillOfLadingPreviewModal from "./StaffOrderDetail/BillOfLadingPreviewModal";
 import { OrderStatusEnum } from "../../../../constants/enums";
 import dayjs from "dayjs";
 import timezone from "dayjs/plugin/timezone";
@@ -60,6 +63,13 @@ const StaffOrderDetail: React.FC = () => {
   const [activeDetailTab, setActiveDetailTab] = useState<string>("0");
   const [vehicleAssignmentModalVisible, setVehicleAssignmentModalVisible] =
     useState<boolean>(false);
+  const [billOfLadingPreviewVisible, setBillOfLadingPreviewVisible] = useState<boolean>(false);
+  const [billOfLadingPreviewLoading, setBillOfLadingPreviewLoading] = useState<boolean>(false);
+  const [billOfLadingPreviewData, setBillOfLadingPreviewData] = useState<Array<{
+    fileName: string;
+    base64Content: string;
+    mimeType: string;
+  }> | null>(null);
 
   useEffect(() => {
     if (id) {
@@ -91,6 +101,48 @@ const StaffOrderDetail: React.FC = () => {
     if (id) {
       fetchOrderDetails(id);
     }
+  };
+
+  const handlePreviewBillOfLading = async () => {
+    if (!id) return;
+
+    setBillOfLadingPreviewLoading(true);
+    try {
+      const data = await orderService.previewBillOfLading(id);
+      setBillOfLadingPreviewData(data);
+      setBillOfLadingPreviewVisible(true);
+    } catch (error) {
+      messageApi.error("Không thể tải vận đơn");
+      console.error("Error previewing bill of lading:", error);
+    } finally {
+      setBillOfLadingPreviewLoading(false);
+    }
+  };
+
+  // Check if order status is ASSIGNED_TO_DRIVER or later
+  const canPrintBillOfLading = () => {
+    if (!orderData || !orderData.order) return false;
+
+    const orderStatus = orderData.order.status;
+    const statusesAllowingPrint = [
+      OrderStatusEnum.ASSIGNED_TO_DRIVER,
+      OrderStatusEnum.DRIVER_CONFIRM,
+      OrderStatusEnum.PICKED_UP,
+      OrderStatusEnum.SEALED_COMPLETED,
+      OrderStatusEnum.ON_DELIVERED,
+      OrderStatusEnum.ONGOING_DELIVERED,
+      OrderStatusEnum.IN_DELIVERED,
+      OrderStatusEnum.IN_TROUBLES,
+      OrderStatusEnum.RESOLVED,
+      OrderStatusEnum.COMPENSATION,
+      OrderStatusEnum.DELIVERED,
+      OrderStatusEnum.SUCCESSFUL,
+      OrderStatusEnum.REJECT_ORDER,
+      OrderStatusEnum.RETURNING,
+      OrderStatusEnum.RETURNED
+    ];
+
+    return statusesAllowingPrint.includes(orderStatus as OrderStatusEnum);
   };
 
   if (loading) {
@@ -140,27 +192,40 @@ const StaffOrderDetail: React.FC = () => {
           totalPrice={order.totalPrice}
         />
 
-        {/* Vehicle Assignment Button for ON_PLANNING status */}
-        {order.status === OrderStatusEnum.ON_PLANNING && (
-          <div className="mb-6">
-            <Button
-              type="primary"
-              icon={<CarOutlined />}
-              onClick={() => setVehicleAssignmentModalVisible(true)}
-              className="bg-blue-500 hover:bg-blue-600"
-            >
-              Phân công xe và tài xế
-            </Button>
-          </div>
-        )}
-
         {/* Order Information */}
         <Card
           className="mb-6 shadow-md rounded-xl"
           title={
-            <div className="flex items-center">
-              <InfoCircleOutlined className="mr-2 text-blue-500" />
-              <span className="font-medium">Thông tin đơn hàng</span>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                <InfoCircleOutlined className="mr-2 text-blue-500" />
+                <span className="font-medium">Thông tin đơn hàng</span>
+              </div>
+              <div className="flex gap-2">
+                {order.status === OrderStatusEnum.ON_PLANNING && (
+                  <Button
+                    type="primary"
+                    icon={<CarOutlined />}
+                    onClick={() => setVehicleAssignmentModalVisible(true)}
+                    className="bg-blue-500 hover:bg-blue-600"
+                  >
+                    Phân công xe và tài xế
+                  </Button>
+                )}
+
+                {/* Print Bill of Lading Button */}
+                {/* {canPrintBillOfLading() && (
+                  <Button
+                    type="primary"
+                    icon={<PrinterOutlined />}
+                    onClick={handlePreviewBillOfLading}
+                    className="bg-green-600 hover:bg-green-700"
+                    loading={billOfLadingPreviewLoading}
+                  >
+                    In vận đơn
+                  </Button>
+                )} */}
+              </div>
             </div>
           }
         >
@@ -217,12 +282,12 @@ const StaffOrderDetail: React.FC = () => {
         />
 
         {/* Contract Information */}
-        {contract && <ContractSection contract={contract} orderId={id} />}
+        {/* {contract && <ContractSection contract={contract} orderId={id} />} */}
 
         {/* Transaction Information */}
-        {transactions && transactions.length > 0 && (
+        {/* {transactions && transactions.length > 0 && (
           <TransactionSection transactions={transactions} />
-        )}
+        )} */}
       </div>
     );
   };
@@ -241,7 +306,15 @@ const StaffOrderDetail: React.FC = () => {
         className="order-detail-tabs"
       >
         {order.orderDetails.map((detail, index) => (
-          <TabPane tab={`Kiện hàng #${index + 1}`} key={index.toString()}>
+          <TabPane
+            tab={
+              <span>
+                <BoxPlotOutlined /> Kiện {index + 1}{" "}
+                {detail.trackingCode ? `- ${detail.trackingCode} ` : ""}
+              </span>
+            }
+            key={index.toString()}
+          >
             <Card
               className="mb-6 shadow-md rounded-xl"
               title={
@@ -285,14 +358,14 @@ const StaffOrderDetail: React.FC = () => {
                             detail.status === "PENDING"
                               ? "orange"
                               : detail.status === "PROCESSING"
-                              ? "blue"
-                              : detail.status === "DELIVERED" ||
-                                detail.status === "SUCCESSFUL"
-                              ? "green"
-                              : detail.status === "CANCELLED" ||
-                                detail.status === "IN_TROUBLES"
-                              ? "red"
-                              : "default"
+                                ? "blue"
+                                : detail.status === "DELIVERED" ||
+                                  detail.status === "SUCCESSFUL"
+                                  ? "green"
+                                  : detail.status === "CANCELLED" ||
+                                    detail.status === "IN_TROUBLES"
+                                    ? "red"
+                                    : "default"
                           }
                         >
                           {detail.status}
@@ -422,9 +495,104 @@ const StaffOrderDetail: React.FC = () => {
               <Row>
                 <Col xs={24}>
                   {detail.vehicleAssignment ? (
-                    <VehicleInfoSection
-                      vehicleAssignment={detail.vehicleAssignment}
-                    />
+                    <Card
+                      className="mb-4"
+                      size="small"
+                      title={
+                        <div className="flex items-center">
+                          <CarOutlined className="mr-2 text-blue-500" />
+                          <span className="font-medium">
+                            Thông tin phương tiện vận chuyển
+                          </span>
+                        </div>
+                      }
+                    >
+                      <Tabs defaultActiveKey="vehicle" type="card">
+                        <TabPane
+                          tab={
+                            <span>
+                              <CarOutlined /> Thông tin phương tiện
+                            </span>
+                          }
+                          key="vehicle"
+                        >
+                          <VehicleInfoSection
+                            vehicleAssignment={detail.vehicleAssignment}
+                          />
+                        </TabPane>
+
+                        <TabPane
+                          tab={
+                            <span>
+                              <BoxPlotOutlined /> Danh sách lô hàng
+                            </span>
+                          }
+                          key="orderDetails"
+                        >
+                          <div className="overflow-x-auto">
+                            <table className="w-full border-collapse">
+                              <thead>
+                                <tr>
+                                  <th className="border border-gray-300 bg-gray-50 p-2 text-left">
+                                    Mã theo dõi
+                                  </th>
+                                  <th className="border border-gray-300 bg-gray-50 p-2 text-left">
+                                    Trạng thái
+                                  </th>
+                                  <th className="border border-gray-300 bg-gray-50 p-2 text-left">
+                                    Trọng lượng
+                                  </th>
+                                  <th className="border border-gray-300 bg-gray-50 p-2 text-left">
+                                    Mô tả
+                                  </th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                <tr>
+                                  <td className="border border-gray-300 p-2">
+                                    <div className="flex items-center">
+                                      <NumberOutlined className="mr-2 text-blue-500" />
+                                      {detail.trackingCode || "Chưa có"}
+                                    </div>
+                                  </td>
+                                  <td className="border border-gray-300 p-2">
+                                    <Tag
+                                      color={
+                                        detail.status === "PENDING"
+                                          ? "orange"
+                                          : detail.status === "PROCESSING"
+                                            ? "blue"
+                                            : detail.status === "DELIVERED" ||
+                                              detail.status === "SUCCESSFUL"
+                                              ? "green"
+                                              : detail.status === "CANCELLED" ||
+                                                detail.status === "IN_TROUBLES"
+                                                ? "red"
+                                                : "default"
+                                      }
+                                    >
+                                      {detail.status}
+                                    </Tag>
+                                  </td>
+                                  <td className="border border-gray-300 p-2">
+                                    <div className="flex items-center">
+                                      <ColumnWidthOutlined className="mr-2 text-blue-500" />
+                                      {detail.weightBaseUnit} {detail.unit}
+                                    </div>
+                                  </td>
+                                  <td className="border border-gray-300 p-2">
+                                    <div className="flex items-center">
+                                      <FileTextOutlined className="mr-2 text-blue-500" />
+                                      {detail.description || "Không có mô tả"}
+                                    </div>
+                                  </td>
+                                </tr>
+                              </tbody>
+                            </table>
+                          </div>
+                        </TabPane>
+                      </Tabs>
+                    </Card>
                   ) : (
                     <Card
                       className="mb-4"
@@ -466,6 +634,27 @@ const StaffOrderDetail: React.FC = () => {
     );
   };
 
+  // Tab 3: Hợp đồng và thanh toán
+  const renderContractAndPaymentTab = () => {
+    return (
+      <div>
+        {/* Contract Information */}
+        {contract && <ContractSection contract={contract} orderId={id} />}
+
+        {/* Transaction Information */}
+        {transactions && transactions.length > 0 && (
+          <TransactionSection transactions={transactions} />
+        )}
+
+        {!contract && !transactions && (
+          <Card className="shadow-md rounded-xl">
+            <Empty description="Không có thông tin hợp đồng và thanh toán" />
+          </Card>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div className="max-w-6xl mx-auto px-4 py-6">
       <div className="mb-6 flex flex-wrap items-center justify-between">
@@ -481,6 +670,19 @@ const StaffOrderDetail: React.FC = () => {
             Chi tiết đơn hàng {order.orderCode}
           </Title>
         </div>
+        {/* Add print button to header for better visibility */}
+        {canPrintBillOfLading() && (
+          <Button
+            type="primary"
+            icon={<PrinterOutlined />}
+            onClick={handlePreviewBillOfLading}
+            className="bg-green-600 hover:bg-green-700"
+            loading={billOfLadingPreviewLoading}
+            size="large"
+          >
+            In vận đơn
+          </Button>
+        )}
       </div>
 
       <Tabs
@@ -512,14 +714,12 @@ const StaffOrderDetail: React.FC = () => {
         <TabPane
           tab={
             <span>
-              <ProfileOutlined /> Lịch sử đơn hàng
+              <CreditCardOutlined /> Hợp đồng & Thanh toán
             </span>
           }
-          key="history"
+          key="contract"
         >
-          <Card className="shadow-md rounded-xl">
-            <Empty description="Tính năng đang phát triển" />
-          </Card>
+          {renderContractAndPaymentTab()}
         </TabPane>
       </Tabs>
 
@@ -533,6 +733,14 @@ const StaffOrderDetail: React.FC = () => {
           onSuccess={handleVehicleAssignmentSuccess}
         />
       )}
+
+      {/* Bill of Lading Preview Modal */}
+      <BillOfLadingPreviewModal
+        visible={billOfLadingPreviewVisible}
+        loading={billOfLadingPreviewLoading}
+        documents={billOfLadingPreviewData}
+        onClose={() => setBillOfLadingPreviewVisible(false)}
+      />
     </div>
   );
 };

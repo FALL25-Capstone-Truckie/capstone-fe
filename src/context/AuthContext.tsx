@@ -76,14 +76,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             const response = await authService.login(username, password);
 
             // If we get here, the login was successful
-            const apiUser = response.data.user;
+            const apiUser = response.data;
 
             // Map API user to our User type
             const userData: User = {
-                id: apiUser.id,
+                id: apiUser.userId,
                 username: apiUser.username,
                 email: apiUser.email,
-                role: apiUser.role.roleName.toLowerCase() as
+                role: apiUser.roleName.toLowerCase() as
                     | "admin"
                     | "customer"
                     | "staff"

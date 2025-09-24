@@ -120,3 +120,17 @@ export type OrderDetailsResponse = ApiResponse<OrderDetail[]>;
 export type PaginatedOrdersResponse = ApiResponse<PaginatedResponse<Order>>;
 export type OrderTrackingApiResponse = ApiResponse<OrderTrackingResponse>;
 export type VehicleAssignmentResponse = ApiResponse<OrderDetail[]>;
+
+/**
+ * Response type for bill of lading preview API
+ */
+export interface BillOfLadingPreviewResponse {
+  success: boolean;
+  message: string;
+  statusCode: number;
+  data: {
+    fileName: string;
+    base64Content: string;
+    mimeType: string;
+  }[];
+}

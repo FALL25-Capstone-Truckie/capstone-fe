@@ -41,9 +41,10 @@ export interface UserApiResponse {
 }
 
 export interface LoginResponseData {
-    authToken: string;
-    refreshToken: string;
-    user: UserApiResponse;
+    userId: string;
+    username: string;
+    email: string;
+    roleName: string;
 }
 
 export type LoginResponse = ApiResponse<LoginResponseData>;

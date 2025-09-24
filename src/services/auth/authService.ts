@@ -31,13 +31,13 @@ const authService = {
             }
 
             // Lưu thông tin người dùng vào localStorage (không lưu token)
-            localStorage.setItem('user_role', response.data.data.user.role.roleName.toLowerCase());
-            localStorage.setItem('userId', response.data.data.user.id);
-            localStorage.setItem('username', response.data.data.user.username);
-            localStorage.setItem('email', response.data.data.user.email);
+            localStorage.setItem('user_role', response.data.data.roleName.toLowerCase());
+            localStorage.setItem('userId', response.data.data.userId);
+            localStorage.setItem('username', response.data.data.username);
+            localStorage.setItem('email', response.data.data.email);
 
             // Thêm dòng hello username
-            response.data.message = `Hello ${response.data.data.user.username}! ${response.data.message}`;
+            response.data.message = `Hello ${response.data.data.username}! ${response.data.message}`;
 
             return response.data;
         } catch (error) {

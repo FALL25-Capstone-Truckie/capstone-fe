@@ -48,6 +48,7 @@ import {
   StaffContractPreview,
 } from "@/components/features/order";
 import type { Contract } from "@/models";
+import { CarryOutOutlined } from "@ant-design/icons";
 
 const { TabPane } = Tabs;
 

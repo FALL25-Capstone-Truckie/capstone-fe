@@ -20,6 +20,7 @@ import type {
   ReceiverDetailsResponse,
   CustomerOrderDetailResponse,
   StaffOrderDetailResponse,
+  VehicleSuggestionsResponse,
 } from "./types";
 import type { PaginationParams } from "../api/types";
 import { handleApiError } from "../api/errorHandler";
@@ -93,10 +94,15 @@ const orderService = {
    */
   getOrderForCustomerByOrderId: async (orderId: string): Promise<any> => {
     try {
-      const response = await httpClient.get<CustomerOrderDetailResponse>(`/orders/get-order-for-customer-by-order-id/${orderId}`);
+      const response = await httpClient.get<CustomerOrderDetailResponse>(
+        `/orders/get-order-for-customer-by-order-id/${orderId}`
+      );
       return response.data.data;
     } catch (error) {
-      console.error(`Error fetching customer order details for order ${orderId}:`, error);
+      console.error(
+        `Error fetching customer order details for order ${orderId}:`,
+        error
+      );
       throw handleApiError(error, "Không thể tải thông tin đơn hàng");
     }
   },
@@ -108,10 +114,15 @@ const orderService = {
    */
   getOrderForStaffByOrderId: async (orderId: string): Promise<any> => {
     try {
-      const response = await httpClient.get<StaffOrderDetailResponse>(`/orders/get-order-for-staff-by-order-id/${orderId}`);
+      const response = await httpClient.get<StaffOrderDetailResponse>(
+        `/orders/get-order-for-staff-by-order-id/${orderId}`
+      );
       return response.data.data;
     } catch (error) {
-      console.error(`Error fetching staff order details for order ${orderId}:`, error);
+      console.error(
+        `Error fetching staff order details for order ${orderId}:`,
+        error
+      );
       throw handleApiError(error, "Không thể tải thông tin đơn hàng");
     }
   },
@@ -141,7 +152,9 @@ const orderService = {
    * @param orderData Order data
    * @returns Promise with created order response
    */
-  createOrder: async (orderData: OrderCreateRequest): Promise<OrderResponse> => {
+  createOrder: async (
+    orderData: OrderCreateRequest
+  ): Promise<OrderResponse> => {
     try {
       // Validate required fields in orderRequest
       const requiredOrderRequestFields = [
@@ -220,12 +233,12 @@ const orderService = {
           notes: orderData.orderRequest.notes || "Không có ghi chú",
           receiverIdentity: orderData.orderRequest.receiverIdentity || "",
         },
-        orderDetails: orderData.orderDetails.map(detail => ({
+        orderDetails: orderData.orderDetails.map((detail) => ({
           weight: detail.weight,
           unit: detail.unit || "kg",
           description: detail.description || "",
-          orderSizeId: detail.orderSizeId
-        }))
+          orderSizeId: detail.orderSizeId,
+        })),
       };
 
       // Debug log
@@ -372,18 +385,20 @@ const orderService = {
   },
 
   /**
- * Get orders with filters for a specific user
- * @param userId User ID
- * @param filters Filter parameters (year, quarter, status, addressId)
- * @returns Promise with filtered orders
- */
-  getFilteredOrdersByUserId: async (userId: string, filters: {
-    year?: number;
-    quarter?: number;
-    status?: string;
-    addressId?: string;
-  }): Promise<Order[]> => {
-
+   * Get orders with filters for a specific user
+   * @param userId User ID
+   * @param filters Filter parameters (year, quarter, status, addressId)
+   * @returns Promise with filtered orders
+   */
+  getFilteredOrdersByUserId: async (
+    userId: string,
+    filters: {
+      year?: number;
+      quarter?: number;
+      status?: string;
+      addressId?: string;
+    }
+  ): Promise<Order[]> => {
     try {
       // Build query parameters
       const params: Record<string, string> = {};
@@ -408,12 +423,14 @@ const orderService = {
   },
 
   /**
- * Get list of available units
- * @returns Promise with array of unit strings
- */
+   * Get list of available units
+   * @returns Promise with array of unit strings
+   */
   getUnitsList: async (): Promise<string[]> => {
     try {
-      const response = await httpClient.get<UnitsListResponse>("/orders/list-unit");
+      const response = await httpClient.get<UnitsListResponse>(
+        "/orders/list-unit"
+      );
       return response.data.data;
     } catch (error) {
       console.error("Error fetching units list:", error);
@@ -422,12 +439,14 @@ const orderService = {
   },
 
   /**
- * Get all orders for the current customer
- * @returns Promise with array of customer orders
- */
+   * Get all orders for the current customer
+   * @returns Promise with array of customer orders
+   */
   getMyOrders: async (): Promise<CustomerOrder[]> => {
     try {
-      const response = await httpClient.get<CustomerOrdersResponse>("/orders/get-my-orders");
+      const response = await httpClient.get<CustomerOrdersResponse>(
+        "/orders/get-my-orders"
+      );
       return response.data.data;
     } catch (error) {
       console.error("Error fetching customer orders:", error);
@@ -436,10 +455,10 @@ const orderService = {
   },
 
   /**
- * Get filtered orders for the current customer
- * @param filters Filter parameters (year, quarter, status, deliveryAddressId)
- * @returns Promise with filtered customer orders
- */
+   * Get filtered orders for the current customer
+   * @param filters Filter parameters (year, quarter, status, deliveryAddressId)
+   * @returns Promise with filtered customer orders
+   */
   getFilteredOrders: async (filters: {
     year?: number;
     quarter?: number;
@@ -453,7 +472,8 @@ const orderService = {
       if (filters.year) params.year = filters.year.toString();
       if (filters.quarter) params.quarter = filters.quarter.toString();
       if (filters.status) params.status = filters.status;
-      if (filters.deliveryAddressId) params.deliveryAddressId = filters.deliveryAddressId;
+      if (filters.deliveryAddressId)
+        params.deliveryAddressId = filters.deliveryAddressId;
 
       const response = await httpClient.get<CustomerOrdersResponse>(
         "/orders/get-my-orders",
@@ -472,7 +492,9 @@ const orderService = {
    */
   getRecentReceivers: async () => {
     try {
-      const response = await httpClient.get<RecentReceiversResponse>("/orders/suggestions/recent-receivers");
+      const response = await httpClient.get<RecentReceiversResponse>(
+        "/orders/suggestions/recent-receivers"
+      );
       return response.data;
     } catch (error) {
       console.error("Error fetching recent receivers:", error);
@@ -487,11 +509,60 @@ const orderService = {
    */
   getReceiverDetails: async (orderId: string) => {
     try {
-      const response = await httpClient.get<ReceiverDetailsResponse>(`/orders/suggestions/receiver-details/${orderId}`);
+      const response = await httpClient.get<ReceiverDetailsResponse>(
+        `/orders/suggestions/receiver-details/${orderId}`
+      );
       return response.data;
     } catch (error) {
-      console.error(`Error fetching receiver details for order ${orderId}:`, error);
+      console.error(
+        `Error fetching receiver details for order ${orderId}:`,
+        error
+      );
       throw handleApiError(error, "Không thể tải thông tin người nhận");
+    }
+  },
+
+  /**
+   * Get suggest assign vehicles for order
+   * @param orderId Order ID to get vehicle suggestions
+   * @returns Promise with vehicle assignment suggestions
+   */
+  getSuggestAssignVehicles: async (orderId: string) => {
+    try {
+      const response = await httpClient.get<VehicleSuggestionsResponse>(
+        `/contracts/${orderId}/suggest-assign-vehicles`
+      );
+      return response.data;
+    } catch (error) {
+      console.error(
+        `Error fetching vehicle suggestions for order ${orderId}:`,
+        error
+      );
+      throw handleApiError(error, "Không thể tải đề xuất phân xe");
+    }
+  },
+
+  /**
+   * Check if contract exists for order
+   * @param orderId Order ID to check contract
+   * @returns Promise with contract check result
+   */
+  checkContractByOrderId: async (orderId: string) => {
+    try {
+      const response = await httpClient.get(`/contracts/order/${orderId}`);
+      return response.data;
+    } catch (error) {
+      // If contract doesn't exist, API might return 404, that's expected
+      if (
+        error &&
+        typeof error === "object" &&
+        "status" in error &&
+        error.status === 404
+      ) {
+        return { success: false, data: null, message: "Contract not found" };
+      }
+      console.error(`Error checking contract for order ${orderId}:`, error);
+      throw handleApiError(error, "Không thể kiểm tra hợp đồng");
     }
   },
 };

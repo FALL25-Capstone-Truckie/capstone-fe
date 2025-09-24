@@ -75,6 +75,29 @@ const OrderDetailPage: React.FC = () => {
     }
   }, [id]);
 
+  // Tự động load contract data khi order status là CONTRACT_DRAFT
+  useEffect(() => {
+    console.log(
+      "Order status:",
+      order?.status,
+      "ID:",
+      id,
+      "Contract data:",
+      contractData
+    );
+    if (order?.status === "CONTRACT_DRAFT") {
+      // Tự động chuyển sang tab contract
+      if (activeTab !== "contract") {
+        setActiveTab("contract");
+      }
+      // Tự động load contract data nếu chưa có
+      if (id && !contractData && !loadingContractData) {
+        console.log("Auto-loading contract data...");
+        handlePreviewContract();
+      }
+    }
+  }, [order?.status, id, contractData, activeTab, loadingContractData]);
+
   // Hàm lấy thông tin chi tiết đơn hàng từ API
   const fetchOrderDetails = async (orderId: string) => {
     setLoading(true);
@@ -95,7 +118,6 @@ const OrderDetailPage: React.FC = () => {
     messageApi.info(`Đã cập nhật trạng thái đơn hàng thành: ${status}`);
     // Implement status update functionality
   };
-
 
   // Hàm xử lý phân công xe cho đơn hàng
   const handleAssignVehicle = async () => {
@@ -118,16 +140,18 @@ const OrderDetailPage: React.FC = () => {
   const handlePreviewContract = async () => {
     if (!id) return;
 
+    console.log("handlePreviewContract called with ID:", id);
     setLoadingContractData(true);
     try {
-      const response = await contractService.getContractPdfData(
-        "70c19e40-bb9a-4808-8753-283a60613732"
-      );
+      const response = await contractService.getContractPdfData(id);
+      console.log("Contract PDF data response:", response);
       if (response.success) {
         setContractData(response.data);
         setContractPreviewVisible(true);
+        console.log("Contract data set successfully");
       } else {
         messageApi.error(response.message);
+        console.error("Contract service returned error:", response.message);
       }
     } catch (error) {
       messageApi.error("Không thể tải dữ liệu hợp đồng");
@@ -135,6 +159,11 @@ const OrderDetailPage: React.FC = () => {
     } finally {
       setLoadingContractData(false);
     }
+  };
+
+  const handleSaveContract = (editedData: any) => {
+    console.log("Saving contract with data:", editedData);
+    messageApi.success("Đã lưu thay đổi hợp đồng");
   };
 
   const handleCreateContract = () => {
@@ -146,13 +175,11 @@ const OrderDetailPage: React.FC = () => {
       supportedValue: order.totalPrice || 0,
       description: `Hợp đồng vận chuyển cho đơn hàng ${order.orderCode}`,
       orderId: id,
-      staffId: "current-staff-id", 
-
+      staffId: "current-staff-id",
     });
 
     setContractModalVisible(true);
   };
-
 
   const handleContractSave = (editedData: any) => {
     console.log("Contract data saved:", editedData);
@@ -167,7 +194,7 @@ const OrderDetailPage: React.FC = () => {
         effectiveDate: values.effectiveDate.format("YYYY-MM-DDTHH:mm:ss"),
         expirationDate: values.expirationDate.format("YYYY-MM-DDTHH:mm:ss"),
         orderId: id!,
-        staffId: "current-staff-id", 
+        staffId: "current-staff-id",
       };
 
       const result = await contractService.createContract(contractData);
@@ -385,7 +412,7 @@ const OrderDetailPage: React.FC = () => {
               {order?.status === OrderStatusEnum.ON_PLANNING && (
                 <Button
                   type="primary"
-                  icon={<CarryOutOutlined />}
+                  icon={<CarOutlined />}
                   onClick={handleAssignVehicle}
                   loading={assigningVehicle}
                   className="bg-green-500 hover:bg-green-600"
@@ -393,15 +420,7 @@ const OrderDetailPage: React.FC = () => {
                   Phân công xe
                 </Button>
               )}
-              <Button
-                type="primary"
-                icon={<FileTextOutlined />}
-                onClick={handlePreviewContract}
-                loading={loadingContractData}
-                className="bg-blue-500 hover:bg-blue-600"
-              >
-                Xem trước hợp đồng
-              </Button>
+
               <Button
                 type="primary"
                 icon={<FileTextOutlined />}
@@ -502,6 +521,65 @@ const OrderDetailPage: React.FC = () => {
                       />
                     )}
                 </>
+              )}
+            </TabPane>
+            <TabPane
+              tab={
+                <span>
+                  <FileTextOutlined /> Hợp đồng
+                </span>
+              }
+              key="contract"
+            >
+              {activeTab === "contract" && (
+                <Card className="shadow-md rounded-xl mb-6">
+                  <div className="p-4">
+                    <div className="mb-4 p-3 bg-gray-100 rounded">
+                      <p>
+                        <strong>Debug Info:</strong>
+                      </p>
+                      <p>Order Status: {order?.status}</p>
+                      <p>
+                        Contract Data: {contractData ? "Loaded" : "Not loaded"}
+                      </p>
+                      <p>Loading: {loadingContractData ? "Yes" : "No"}</p>
+                    </div>
+
+                    {order?.status === "CONTRACT_DRAFT" ? (
+                      <div className="text-center py-8">
+                        <p className="text-blue-600 mb-4">
+                          Đơn hàng đang ở trạng thái CONTRACT_DRAFT
+                        </p>
+                        <Button
+                          type="primary"
+                          icon={<FileTextOutlined />}
+                          onClick={handlePreviewContract}
+                          loading={loadingContractData}
+                          size="large"
+                        >
+                          Tạo bản xem trước hợp đồng
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="text-center py-8">
+                        <p className="text-gray-500 mb-4">
+                          Hợp đồng chưa được tạo hoặc đơn hàng chưa ở trạng thái
+                          thích hợp
+                        </p>
+                        <p className="text-sm text-gray-400 mb-4">
+                          Trạng thái hiện tại: {order?.status}
+                        </p>
+                        <Button
+                          type="primary"
+                          icon={<FileTextOutlined />}
+                          onClick={handleCreateContract}
+                        >
+                          Tạo hợp đồng
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                </Card>
               )}
             </TabPane>
             <TabPane

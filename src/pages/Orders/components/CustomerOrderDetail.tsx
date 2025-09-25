@@ -1386,10 +1386,14 @@ const CustomerOrderDetail: React.FC = () => {
 
   // Tab 3: Hợp đồng và thanh toán
   const renderContractAndPaymentTab = () => {
+    console.log("renderContractAndPaymentTab called, contract:", contract);
+    console.log("hasContract:", hasContract);
+    console.log("orderData:", orderData);
+
     return (
       <div>
         {/* Contract Information */}
-        <ContractSection contract={contract} orderId={id} />
+        <ContractSection contract={contract} />
 
         {/* Transaction Information */}
         <TransactionSection transactions={transactions} />

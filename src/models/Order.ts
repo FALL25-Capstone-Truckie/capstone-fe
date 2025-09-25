@@ -154,7 +154,7 @@ export interface OrderRequest {
   notes?: string;
   receiverName: string;
   receiverPhone: string;
-  receiverIdentity: string; 
+  receiverIdentity: string;
   packageDescription: string;
   estimateStartTime?: string;
   deliveryAddressId: string;
@@ -572,6 +572,7 @@ export interface StaffOrderDetailItem {
       createdAt: string;
       modifiedAt: string;
     }[];
+    photoCompletions?: string[];
     issues?: {
       issue: {
         id: string;

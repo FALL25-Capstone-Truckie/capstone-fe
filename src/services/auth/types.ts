@@ -28,7 +28,7 @@ export interface UserApiResponse {
     fullName: string;
     email: string;
     phoneNumber: string | null;
-    gender: string | null;
+    gender: boolean | null;
     dateOfBirth: string;
     imageUrl: string | null;
     status: string;
@@ -41,13 +41,23 @@ export interface UserApiResponse {
 }
 
 export interface LoginResponseData {
-    userId: string;
-    username: string;
-    email: string;
-    roleName: string;
+    authToken: string;
+    refreshToken: string;
+    user: UserApiResponse;
 }
 
 export type LoginResponse = ApiResponse<LoginResponseData>;
+
+export interface RefreshTokenRequest {
+    refreshToken: string;
+}
+
+export interface RefreshTokenResponseData {
+    accessToken: string;
+    refreshToken: string;
+}
+
+export type RefreshTokenResponse = ApiResponse<RefreshTokenResponseData>;
 
 export interface RegisterResponseData {
     id: string;

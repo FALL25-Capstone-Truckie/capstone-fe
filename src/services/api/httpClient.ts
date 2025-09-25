@@ -9,8 +9,8 @@ const httpClient = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-  // Quan trọng: cho phép gửi cookie với các request
-  withCredentials: true,
+  // No longer using cookies for authentication
+  withCredentials: false,
 });
 
 // Biến để theo dõi nếu đang refresh token
@@ -31,13 +31,18 @@ const processQueue = (error: any) => {
   failedQueue = [];
 };
 
-// Request interceptor for logging
+// Request interceptor for adding auth token and logging
 httpClient.interceptors.request.use(
   (config) => {
     console.log("Making API request:", config.method?.toUpperCase(), config.url);
 
-    // Ensure withCredentials is set for all requests
-    config.withCredentials = true;
+    // Get auth token from localStorage
+    const authToken = localStorage.getItem('authToken');
+
+    // Add auth token to headers if available
+    if (authToken && config.headers) {
+      config.headers['Authorization'] = `Bearer ${authToken}`;
+    }
 
     // Add more detailed logging for password change requests
     if (config.url?.includes('change-password')) {
@@ -145,12 +150,7 @@ httpClient.interceptors.response.use(
         // Thử refresh token
         await authService.refreshToken();
 
-        console.log("Token refreshed successfully, cookies should be set by the server");
-
-        // Tăng thời gian chờ để đảm bảo cookie được set đúng
-        console.log("Waiting for cookies to be properly set...");
-        await new Promise(resolve => setTimeout(resolve, 500));
-        console.log("Wait complete, proceeding with original request");
+        console.log("Token refreshed successfully");
 
         // Xử lý hàng đợi các request
         processQueue(null);
@@ -161,8 +161,7 @@ httpClient.interceptors.response.use(
         console.log("Original request config:", {
           url: originalRequest.url,
           method: originalRequest.method,
-          headers: originalRequest.headers,
-          withCredentials: originalRequest.withCredentials
+          headers: originalRequest.headers
         });
 
         // Thực hiện lại request ban đầu với token mới

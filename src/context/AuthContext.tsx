@@ -28,16 +28,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         // Check if user is logged in
         const checkAuth = async () => {
             try {
-                // Kiểm tra đăng nhập dựa trên thông tin người dùng trong localStorage
+                // Kiểm tra đăng nhập dựa trên token và thông tin người dùng trong localStorage
+                const authToken = localStorage.getItem("authToken");
                 const userRole = localStorage.getItem("user_role");
                 const userId = localStorage.getItem("userId");
                 const username = localStorage.getItem("username");
                 const email = localStorage.getItem("email");
 
-                // Nếu không có thông tin người dùng, thử refresh token
-                if (!username || !userId || !email) {
+                // Nếu không có token hoặc thông tin người dùng, thử refresh token
+                if (!authToken || !username || !userId || !email) {
                     try {
-                        // Thử refresh token (sẽ tự động sử dụng cookie)
+                        // Thử refresh token
                         await authService.refreshToken();
                         // Sau khi refresh thành công, kiểm tra lại auth
                         checkAuth();
@@ -76,25 +77,20 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             const response = await authService.login(username, password);
 
             // If we get here, the login was successful
-            const apiUser = response.data;
+            const apiUser = response.data.user;
+            const roleName = apiUser.role?.roleName?.toLowerCase();
+
+            if (!roleName) {
+                throw new Error("Vai trò người dùng không hợp lệ");
+            }
 
             // Map API user to our User type
             const userData: User = {
-                id: apiUser.userId,
+                id: apiUser.id,
                 username: apiUser.username,
                 email: apiUser.email,
-                role: apiUser.roleName.toLowerCase() as
-                    | "admin"
-                    | "customer"
-                    | "staff"
-                    | "driver",
+                role: roleName as "admin" | "customer" | "staff" | "driver",
             };
-
-            // Store user data for future use
-            localStorage.setItem("user_role", userData.role);
-            localStorage.setItem("userId", userData.id);
-            localStorage.setItem("username", userData.username);
-            localStorage.setItem("email", userData.email);
 
             setUser(userData);
             return response; // Return the response for success handling

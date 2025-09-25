@@ -5,7 +5,9 @@ import type {
     RegisterRequest,
     RegisterResponse,
     ChangePasswordRequest,
-    ChangePasswordResponse
+    ChangePasswordResponse,
+    RefreshTokenRequest,
+    RefreshTokenResponse
 } from './types';
 import { handleApiError } from '../api/errorHandler';
 
@@ -30,14 +32,21 @@ const authService = {
                 throw new Error(response.data.message || 'Đăng nhập thất bại');
             }
 
-            // Lưu thông tin người dùng vào localStorage (không lưu token)
-            localStorage.setItem('user_role', response.data.data.roleName.toLowerCase());
-            localStorage.setItem('userId', response.data.data.userId);
-            localStorage.setItem('username', response.data.data.username);
-            localStorage.setItem('email', response.data.data.email);
+            // Lưu token vào localStorage
+            localStorage.setItem('authToken', response.data.data.authToken);
+            localStorage.setItem('refreshToken', response.data.data.refreshToken);
+
+            // Lưu thông tin người dùng vào localStorage
+            const user = response.data.data.user;
+            const roleName = user.role?.roleName;
+
+            localStorage.setItem('user_role', roleName.toLowerCase());
+            localStorage.setItem('userId', user.id);
+            localStorage.setItem('username', user.username);
+            localStorage.setItem('email', user.email);
 
             // Thêm dòng hello username
-            response.data.message = `Hello ${response.data.data.username}! ${response.data.message}`;
+            response.data.message = `Hello ${user.username}! ${response.data.message}`;
 
             return response.data;
         } catch (error) {
@@ -78,16 +87,26 @@ const authService = {
         try {
             console.log("Starting token refresh process...");
 
-            // Không cần gửi refresh token, server sẽ đọc từ cookie
-            const response = await httpClient.post('/auths/token/refresh', {});
+            // Get refresh token from localStorage
+            const refreshToken = localStorage.getItem('refreshToken');
 
-            console.log("Token refresh API call successful", {
-                status: response.status,
-                statusText: response.statusText,
-                headers: response.headers
-            });
+            if (!refreshToken) {
+                throw new Error('Không tìm thấy refresh token');
+            }
 
-            // API không trả về response, chỉ cần gọi thành công là được
+            // Send refresh token in request body
+            const refreshData: RefreshTokenRequest = { refreshToken };
+            const response = await httpClient.post<RefreshTokenResponse>('/auths/token/refresh', refreshData);
+
+            if (!response.data.success) {
+                throw new Error(response.data.message || 'Làm mới token thất bại');
+            }
+
+            // Update tokens in localStorage
+            localStorage.setItem('authToken', response.data.data.accessToken);
+            localStorage.setItem('refreshToken', response.data.data.refreshToken);
+
+            console.log("Token refresh successful, new tokens stored");
             return;
         } catch (error: any) {
             console.error('Token refresh error:', error);
@@ -105,12 +124,14 @@ const authService = {
      */
     logout: async (): Promise<void> => {
         try {
-            // Gọi API logout để xóa cookie phía server
+            // Gọi API logout để vô hiệu hóa token ở phía server
             await httpClient.post('/auths/logout');
         } catch (error) {
             console.error('Logout error:', error);
         } finally {
-            // Xóa thông tin người dùng khỏi localStorage
+            // Xóa token và thông tin người dùng khỏi localStorage
+            localStorage.removeItem('authToken');
+            localStorage.removeItem('refreshToken');
             localStorage.removeItem('user_role');
             localStorage.removeItem('userId');
             localStorage.removeItem('username');
@@ -123,8 +144,8 @@ const authService = {
      * @returns Boolean indicating if user is logged in
      */
     isLoggedIn: (): boolean => {
-        // Kiểm tra dựa trên thông tin người dùng trong localStorage
-        return !!localStorage.getItem('username');
+        // Kiểm tra dựa trên token trong localStorage
+        return !!localStorage.getItem('authToken');
     },
 
     /**

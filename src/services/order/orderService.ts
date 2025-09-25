@@ -572,9 +572,7 @@ const orderService = {
    * @param orderId Order ID
    * @returns Promise with bill of lading preview data
    */
-  previewBillOfLading: async (
-    orderId: string
-  ): Promise<BillOfLadingPreviewResponse["data"]> => {
+  previewBillOfLading: async (orderId: string): Promise<BillOfLadingPreviewResponse['data']> => {
     try {
       const response = await httpClient.get<BillOfLadingPreviewResponse>(
         `/bill-of-ladings/order/${orderId}/preview`

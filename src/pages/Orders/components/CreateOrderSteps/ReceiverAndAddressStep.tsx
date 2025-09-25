@@ -303,14 +303,14 @@ const ReceiverAndAddressStep: React.FC<ReceiverAndAddressStepProps> = ({
 
                         <Form.Item
                             name="estimateStartTime"
-                            label="Thời gian nhận hàng dự kiến"
+                            label="Thời gian lấy hàng dự kiến"
                             rules={[
                                 { required: true, message: "Vui lòng chọn thời gian nhận hàng" },
                             ]}
                         >
                             <DatePicker
                                 showTime
-                                placeholder="Chọn ngày và giờ nhận hàng"
+                                placeholder="Chọn ngày và giờ lấy hàng"
                                 style={{ width: "100%" }}
                                 disabledDate={(current) =>
                                     current && current < dayjs().startOf("day")

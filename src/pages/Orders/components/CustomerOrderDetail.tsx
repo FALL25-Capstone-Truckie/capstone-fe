@@ -1389,7 +1389,7 @@ const CustomerOrderDetail: React.FC = () => {
     return (
       <div>
         {/* Contract Information */}
-        <ContractSection contract={contract} orderId={id} />
+        <ContractSection contract={contract} />
 
         {/* Transaction Information */}
         <TransactionSection transactions={transactions} />

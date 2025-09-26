@@ -9,8 +9,8 @@ const httpClient = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-  // No longer using cookies for authentication
-  withCredentials: false,
+  // Set withCredentials to true to send cookies with cross-origin requests
+  withCredentials: true,
 });
 
 // Biến để theo dõi nếu đang refresh token
@@ -33,11 +33,14 @@ const processQueue = (error: any) => {
 
 // Request interceptor for adding auth token and logging
 httpClient.interceptors.request.use(
-  (config) => {
+  async (config) => {
     console.log("Making API request:", config.method?.toUpperCase(), config.url);
 
-    // Get auth token from localStorage
-    const authToken = localStorage.getItem('authToken');
+    // Import authService here to avoid circular dependency
+    const authService = await import('../auth/authService').then(module => module.default);
+
+    // Get auth token from in-memory storage
+    const authToken = authService.getAuthToken();
 
     // Add auth token to headers if available
     if (authToken && config.headers) {

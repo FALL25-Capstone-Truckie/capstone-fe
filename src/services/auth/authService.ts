@@ -6,10 +6,12 @@ import type {
     RegisterResponse,
     ChangePasswordRequest,
     ChangePasswordResponse,
-    RefreshTokenRequest,
     RefreshTokenResponse
 } from './types';
 import { handleApiError } from '../api/errorHandler';
+
+// In-memory token storage
+let authToken: string | null = null;
 
 /**
  * Service for handling authentication API calls
@@ -32,9 +34,8 @@ const authService = {
                 throw new Error(response.data.message || 'Đăng nhập thất bại');
             }
 
-            // Lưu token vào localStorage
-            localStorage.setItem('authToken', response.data.data.authToken);
-            localStorage.setItem('refreshToken', response.data.data.refreshToken);
+            // Store auth token in memory
+            authToken = response.data.data.authToken;
 
             // Lưu thông tin người dùng vào localStorage
             const user = response.data.data.user;
@@ -87,26 +88,17 @@ const authService = {
         try {
             console.log("Starting token refresh process...");
 
-            // Get refresh token from localStorage
-            const refreshToken = localStorage.getItem('refreshToken');
-
-            if (!refreshToken) {
-                throw new Error('Không tìm thấy refresh token');
-            }
-
-            // Send refresh token in request body
-            const refreshData: RefreshTokenRequest = { refreshToken };
-            const response = await httpClient.post<RefreshTokenResponse>('/auths/token/refresh', refreshData);
+            // Since refresh token is now handled via HttpOnly cookies,
+            const response = await httpClient.post<RefreshTokenResponse>('/auths/token/refresh');
 
             if (!response.data.success) {
                 throw new Error(response.data.message || 'Làm mới token thất bại');
             }
 
-            // Update tokens in localStorage
-            localStorage.setItem('authToken', response.data.data.accessToken);
-            localStorage.setItem('refreshToken', response.data.data.refreshToken);
+            // Update access token in memory
+            authToken = response.data.data.accessToken;
 
-            console.log("Token refresh successful, new tokens stored");
+            console.log("Token refresh successful, new access token stored in memory");
             return;
         } catch (error: any) {
             console.error('Token refresh error:', error);
@@ -120,6 +112,14 @@ const authService = {
     },
 
     /**
+     * Get the current authentication token
+     * @returns Current auth token or null if not logged in
+     */
+    getAuthToken: (): string | null => {
+        return authToken;
+    },
+
+    /**
      * Logout the current user
      */
     logout: async (): Promise<void> => {
@@ -129,9 +129,10 @@ const authService = {
         } catch (error) {
             console.error('Logout error:', error);
         } finally {
-            // Xóa token và thông tin người dùng khỏi localStorage
-            localStorage.removeItem('authToken');
-            localStorage.removeItem('refreshToken');
+            // Clear in-memory token
+            authToken = null;
+
+            // Xóa thông tin người dùng khỏi localStorage
             localStorage.removeItem('user_role');
             localStorage.removeItem('userId');
             localStorage.removeItem('username');
@@ -144,8 +145,8 @@ const authService = {
      * @returns Boolean indicating if user is logged in
      */
     isLoggedIn: (): boolean => {
-        // Kiểm tra dựa trên token trong localStorage
-        return !!localStorage.getItem('authToken');
+        // Kiểm tra dựa trên token trong memory
+        return !!authToken;
     },
 
     /**

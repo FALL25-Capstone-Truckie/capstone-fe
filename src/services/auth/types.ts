@@ -42,19 +42,13 @@ export interface UserApiResponse {
 
 export interface LoginResponseData {
     authToken: string;
-    refreshToken: string;
     user: UserApiResponse;
 }
 
 export type LoginResponse = ApiResponse<LoginResponseData>;
 
-export interface RefreshTokenRequest {
-    refreshToken: string;
-}
-
 export interface RefreshTokenResponseData {
     accessToken: string;
-    refreshToken: string;
 }
 
 export type RefreshTokenResponse = ApiResponse<RefreshTokenResponseData>;

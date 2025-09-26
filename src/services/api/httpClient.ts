@@ -17,6 +17,14 @@ const httpClient = axios.create({
 let isRefreshing = false;
 // Hàng đợi các request đang chờ token mới
 let failedQueue: any[] = [];
+// Đếm số lần thử refresh token liên tiếp
+let refreshAttempts = 0;
+// Số lần thử tối đa
+const MAX_REFRESH_ATTEMPTS = 2;
+// Thời gian reset đếm số lần thử (ms)
+const REFRESH_ATTEMPT_RESET_TIME = 60000; // 1 phút
+// Timer để reset đếm số lần thử
+let refreshAttemptsResetTimer: NodeJS.Timeout | null = null;
 
 // Xử lý hàng đợi các request
 const processQueue = (error: any) => {
@@ -34,8 +42,6 @@ const processQueue = (error: any) => {
 // Request interceptor for adding auth token and logging
 httpClient.interceptors.request.use(
   async (config) => {
-    console.log("Making API request:", config.method?.toUpperCase(), config.url);
-
     // Import authService here to avoid circular dependency
     const authService = await import('../auth/authService').then(module => module.default);
 
@@ -45,17 +51,6 @@ httpClient.interceptors.request.use(
     // Add auth token to headers if available
     if (authToken && config.headers) {
       config.headers['Authorization'] = `Bearer ${authToken}`;
-    }
-
-    // Add more detailed logging for password change requests
-    if (config.url?.includes('change-password')) {
-      console.log("Password change request details:", {
-        url: config.url,
-        method: config.method,
-        headers: config.headers
-      });
-    } else {
-      console.log("Request data:", config.data);
     }
 
     return config;
@@ -69,20 +64,8 @@ httpClient.interceptors.request.use(
 // Response interceptor for handling errors
 httpClient.interceptors.response.use(
   (response) => {
-    console.log("API response success:", response.status, response.config.url);
-
-    // Add more detailed logging for password change responses
-    if (response.config.url?.includes('change-password')) {
-      console.log("Password change response:", {
-        status: response.status,
-        data: response.data
-      });
-    }
-
     // Check if the API returned success: false
     if (response.data && response.data.success === false) {
-      console.warn("API returned success: false with message:", response.data.message);
-
       // For auth endpoints, let the service handle the error
       const isAuthEndpoint = response.config.url && (
         response.config.url.includes('/auths')
@@ -97,8 +80,6 @@ httpClient.interceptors.response.use(
     return response;
   },
   async (error: AxiosError) => {
-    console.error("API response error:", error.message, error.response?.status, error.config?.url);
-
     const originalRequest = error.config as AxiosRequestConfig & { _retry?: boolean };
 
     // Kiểm tra nếu request đang gọi là refresh token
@@ -129,6 +110,18 @@ httpClient.interceptors.response.use(
 
     // Nếu lỗi 401 (Unauthorized) và chưa thử refresh token và không phải là endpoint auth
     if (error.response?.status === 401 && !originalRequest._retry) {
+      // Kiểm tra số lần thử refresh token
+      if (refreshAttempts >= MAX_REFRESH_ATTEMPTS) {
+        const authService = await import('../auth/authService').then(module => module.default);
+        authService.logout();
+
+        if (!window.location.pathname.includes('/auth/login')) {
+          window.location.href = '/auth/login';
+        }
+
+        return Promise.reject(handleApiError(error, 'Phiên đăng nhập hết hạn sau nhiều lần thử'));
+      }
+
       if (isRefreshing) {
         // Nếu đang refresh, thêm request vào hàng đợi
         return new Promise((resolve, reject) => {
@@ -144,28 +137,74 @@ httpClient.interceptors.response.use(
       originalRequest._retry = true;
       isRefreshing = true;
 
+      // Tăng số lần thử refresh token
+      refreshAttempts++;
+
+      // Thiết lập timer để reset đếm số lần thử
+      if (refreshAttemptsResetTimer) {
+        clearTimeout(refreshAttemptsResetTimer);
+      }
+
+      refreshAttemptsResetTimer = setTimeout(() => {
+        refreshAttempts = 0;
+        refreshAttemptsResetTimer = null;
+      }, REFRESH_ATTEMPT_RESET_TIME);
+
       try {
         // Import authService ở đây để tránh circular dependency
         const authService = await import('../auth/authService').then(module => module.default);
 
-        console.log("Attempting to refresh token...");
+        // Lưu token cũ để so sánh sau khi refresh
+        const oldToken = authService.getAuthToken();
 
-        // Thử refresh token
-        await authService.refreshToken();
+        try {
+          // Thử refresh token
+          await authService.refreshToken();
+        } catch (refreshTokenError: any) {
+          // Kiểm tra nếu lỗi là do token không thay đổi
+          if (refreshTokenError.message && refreshTokenError.message.includes('Token không thay đổi')) {
+            authService.logout();
 
-        console.log("Token refreshed successfully");
+            if (!window.location.pathname.includes('/auth/login')) {
+              window.location.href = '/auth/login';
+            }
+
+            throw new Error('Phiên đăng nhập hết hạn do token không thay đổi');
+          }
+
+          // Nếu là lỗi khác, ném lại lỗi
+          throw refreshTokenError;
+        }
+
+        // Kiểm tra token mới
+        const newToken = authService.getAuthToken();
+
+        // Kiểm tra xem token có thực sự thay đổi không
+        if (!newToken) {
+          throw new Error("Không có token sau khi refresh");
+        }
+
+        // Kiểm tra thêm lần nữa xem token có thay đổi không
+        if (oldToken === newToken) {
+          authService.logout();
+
+          if (!window.location.pathname.includes('/auth/login')) {
+            window.location.href = '/auth/login';
+          }
+
+          throw new Error("Token không thay đổi sau khi refresh");
+        }
 
         // Xử lý hàng đợi các request
         processQueue(null);
 
-        console.log("Retrying original request with new token:", originalRequest.url);
-
-        // Thêm thông tin debug cho request gốc
-        console.log("Original request config:", {
-          url: originalRequest.url,
-          method: originalRequest.method,
-          headers: originalRequest.headers
-        });
+        // Đảm bảo header Authorization được cập nhật với token mới
+        if (originalRequest.headers) {
+          const newAuthToken = authService.getAuthToken();
+          if (newAuthToken) {
+            originalRequest.headers['Authorization'] = `Bearer ${newAuthToken}`;
+          }
+        }
 
         // Thực hiện lại request ban đầu với token mới
         return httpClient(originalRequest);
@@ -194,5 +233,14 @@ httpClient.interceptors.response.use(
     return Promise.reject(handleApiError(error));
   }
 );
+
+// Hàm để reset biến đếm refresh token
+export const resetRefreshAttempts = () => {
+  refreshAttempts = 0;
+  if (refreshAttemptsResetTimer) {
+    clearTimeout(refreshAttemptsResetTimer);
+    refreshAttemptsResetTimer = null;
+  }
+};
 
 export default httpClient; 

@@ -86,8 +86,6 @@ const authService = {
      */
     refreshToken: async (): Promise<void> => {
         try {
-            console.log("Starting token refresh process...");
-
             // Since refresh token is now handled via HttpOnly cookies,
             const response = await httpClient.post<RefreshTokenResponse>('/auths/token/refresh');
 
@@ -96,17 +94,31 @@ const authService = {
             }
 
             // Update access token in memory
+            const oldToken = authToken;
             authToken = response.data.data.accessToken;
 
-            console.log("Token refresh successful, new access token stored in memory");
+            // Kiểm tra xem token có thực sự thay đổi không
+            if (oldToken === authToken) {
+                throw new Error("Token không thay đổi sau khi refresh");
+            }
+
             return;
         } catch (error: any) {
-            console.error('Token refresh error:', error);
-            // Xử lý trường hợp refresh token hết hạn hoặc không hợp lệ
-            if (error.response && (error.response.status === 401 || error.response.status === 403)) {
-                // Đăng xuất người dùng
-                authService.logout();
+            // Kiểm tra lỗi cụ thể
+            if (error.response) {
+                const statusCode = error.response.status;
+                const errorMessage = error.response.data?.message || 'Làm mới token thất bại';
+
+                // Xử lý trường hợp refresh token hết hạn hoặc không hợp lệ
+                if (statusCode === 401 || statusCode === 403) {
+                    // Đăng xuất người dùng
+                    authService.logout();
+
+                    // Thêm thông tin chi tiết về lỗi
+                    throw new Error(`Phiên đăng nhập hết hạn (${statusCode}): ${errorMessage}`);
+                }
             }
+
             throw handleApiError(error, 'Làm mới token thất bại');
         }
     },
@@ -127,7 +139,7 @@ const authService = {
             // Gọi API logout để vô hiệu hóa token ở phía server
             await httpClient.post('/auths/logout');
         } catch (error) {
-            console.error('Logout error:', error);
+            // Tiếp tục xử lý logout ở client side ngay cả khi API thất bại
         } finally {
             // Clear in-memory token
             authToken = null;
@@ -137,6 +149,14 @@ const authService = {
             localStorage.removeItem('userId');
             localStorage.removeItem('username');
             localStorage.removeItem('email');
+
+            // Reset biến đếm refresh token
+            try {
+                const { resetRefreshAttempts } = await import('../api/httpClient');
+                resetRefreshAttempts();
+            } catch (e) {
+                console.error('Error resetting refresh token variables:', e);
+            }
         }
     },
 

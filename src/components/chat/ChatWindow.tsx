@@ -5,7 +5,7 @@ import MessageInput from './MessageInput';
 
 const ChatWindow: React.FC = () => {
     const { uiMessages, activeConversation, isOpen } = useChatContext();
-    const currentUserId = localStorage.getItem('userId') || '';
+    const currentUserId = sessionStorage.getItem('userId') || '';
 
     if (!isOpen || !activeConversation) {
         return null;

@@ -1,6 +1,8 @@
 import React from 'react';
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context';
+import { Spin } from 'antd';
+import { LoadingOutlined } from '@ant-design/icons';
 
 type RedirectPathFunction = (auth: { user: any; isAuthenticated: boolean }) => string;
 
@@ -28,9 +30,13 @@ const AuthRoute: React.FC<AuthRouteProps> = ({
     const { isAuthenticated, isLoading } = auth;
     const location = useLocation();
 
-    // Hiển thị loading nếu đang kiểm tra trạng thái xác thực
+    // Hiển thị loading spinner nếu đang kiểm tra trạng thái xác thực
     if (isLoading) {
-        return <div>Đang tải...</div>; // Có thể thay thế bằng loading spinner
+        return (
+            <div className="flex items-center justify-center h-screen">
+                <Spin indicator={<LoadingOutlined style={{ fontSize: 36 }} spin />} tip="Đang tải..." />
+            </div>
+        );
     }
 
     // Kiểm tra trạng thái xác thực

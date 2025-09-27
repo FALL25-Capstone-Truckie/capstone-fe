@@ -20,7 +20,7 @@ const ProfilePage = () => {
     const { userId } = useParams<{ userId: string }>();
     const { user: authUser } = useAuth();
     const isOwnProfile = !userId || userId === authUser?.id;
-    const currentUserId = userId || localStorage.getItem('userId') || authUser?.id || '';
+    const currentUserId = userId || sessionStorage.getItem('userId') || authUser?.id || '';
 
     // Use React Query for data fetching - use getMyProfile for current user, getCustomerProfile for others
     const {

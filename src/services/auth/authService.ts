@@ -41,10 +41,10 @@ const authService = {
                     return;
                 }
 
-                // Check if we have user data in localStorage, which indicates
+                // Check if we have user data in sessionStorage, which indicates
                 // the user was previously logged in
-                const userRole = localStorage.getItem('user_role');
-                const userId = localStorage.getItem('userId');
+                const userRole = sessionStorage.getItem('user_role');
+                const userId = sessionStorage.getItem('userId');
 
                 // If we have user data but no token, try to refresh the token
                 if (userRole && userId) {
@@ -85,14 +85,14 @@ const authService = {
             // Store auth token in memory
             authToken = response.data.data.authToken;
 
-            // Lưu thông tin người dùng vào localStorage
+            // Lưu thông tin người dùng vào sessionStorage
             const user = response.data.data.user;
             const roleName = user.role?.roleName;
 
-            localStorage.setItem('user_role', roleName.toLowerCase());
-            localStorage.setItem('userId', user.id);
-            localStorage.setItem('username', user.username);
-            localStorage.setItem('email', user.email);
+            sessionStorage.setItem('user_role', roleName.toLowerCase());
+            sessionStorage.setItem('userId', user.id);
+            sessionStorage.setItem('username', user.username);
+            sessionStorage.setItem('email', user.email);
 
             // Thêm dòng hello username
             response.data.message = `Đăng nhập thành công`;
@@ -192,11 +192,11 @@ const authService = {
             // Clear in-memory token
             authToken = null;
 
-            // Xóa thông tin người dùng khỏi localStorage
-            localStorage.removeItem('user_role');
-            localStorage.removeItem('userId');
-            localStorage.removeItem('username');
-            localStorage.removeItem('email');
+            // Xóa thông tin người dùng khỏi sessionStorage
+            sessionStorage.removeItem('user_role');
+            sessionStorage.removeItem('userId');
+            sessionStorage.removeItem('username');
+            sessionStorage.removeItem('email');
 
             // Reset biến đếm refresh token
             try {
@@ -222,7 +222,7 @@ const authService = {
      * @returns User role or null if not logged in
      */
     getUserRole: (): string | null => {
-        return localStorage.getItem('user_role');
+        return sessionStorage.getItem('user_role');
     },
 
     /**

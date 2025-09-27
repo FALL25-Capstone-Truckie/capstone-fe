@@ -11,8 +11,8 @@ const MessageInput: React.FC = () => {
   const [inputValue, setInputValue] = useState('');
   const [sending, setSending] = useState(false);
   const { activeConversation, sendMessage, connectionStatus } = useChatContext();
-  
-  const userId = localStorage.getItem('userId');
+
+  const userId = sessionStorage.getItem('userId');
 
   const handleSend = async () => {
     if (!inputValue.trim()) return;
@@ -30,7 +30,7 @@ const MessageInput: React.FC = () => {
     }
 
     setSending(true);
-    
+
     try {
       const messageRequest: MessageRequest = {
         roomId: activeConversation.roomId,
@@ -41,7 +41,7 @@ const MessageInput: React.FC = () => {
 
       sendMessage(messageRequest);
       setInputValue(''); // Clear input after sending
-      
+
     } catch (error) {
       console.error('Send message error:', error);
       message.error('Không thể gửi tin nhắn');
@@ -80,7 +80,7 @@ const MessageInput: React.FC = () => {
           Gửi
         </Button>
       </div>
-      
+
       {/* Connection status indicator */}
       <div className="mt-2 text-xs text-gray-500">
         {connectionStatus === 'connected' && '🟢 Đã kết nối'}

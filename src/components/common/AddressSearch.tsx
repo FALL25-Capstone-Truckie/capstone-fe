@@ -10,20 +10,32 @@ const HCMC_BOUNDS = '106.5444,10.3369,107.0111,11.1602'; // southwest_lng,southw
 interface AddressSearchProps {
     onPlaceSelect: (place: PlaceDetailResult) => void;
     initialValue?: string;
+    street?: string;
+    ward?: string;
+    province?: string;
 }
 
-const AddressSearch: React.FC<AddressSearchProps> = ({ onPlaceSelect, initialValue }) => {
-    const [searchValue, setSearchValue] = useState(initialValue || '');
+const AddressSearch: React.FC<AddressSearchProps> = ({ onPlaceSelect, initialValue, street, ward, province }) => {
+    // Tạo giá trị hiển thị từ street, ward, province nếu có
+    const getDisplayValue = () => {
+        if (street && ward && province) {
+            return `${street}, ${ward}, ${province}`;
+        }
+        return initialValue || '';
+    };
+
+    const [searchValue, setSearchValue] = useState(getDisplayValue());
     const [searchOptions, setSearchOptions] = useState<{ value: string; label: string }[]>([]);
     const [isSearching, setIsSearching] = useState(false);
     const [selectedPlaceId, setSelectedPlaceId] = useState<string | null>(null);
 
-    // Cập nhật searchValue khi initialValue thay đổi
+    // Cập nhật searchValue khi các props thay đổi
     useEffect(() => {
-        if (initialValue && initialValue !== searchValue) {
-            setSearchValue(initialValue);
+        const newDisplayValue = getDisplayValue();
+        if (newDisplayValue !== searchValue) {
+            setSearchValue(newDisplayValue);
         }
-    }, [initialValue]);
+    }, [initialValue, street, ward, province]);
 
     // Tìm kiếm địa điểm với TrackAsia
     const searchPlaces = async (query: string) => {

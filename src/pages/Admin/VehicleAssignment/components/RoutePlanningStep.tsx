@@ -727,6 +727,9 @@ const RoutePlanningStep: React.FC<RoutePlanningStepProps> = ({
         generateRouteFromPoints(routePoints, pointsToUse.length > 0 ? pointsToUse : currentGlobalPoints);
     };
 
+    // State for submit button loading
+    const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+
     // Handle completion
     const handleComplete = () => {
         if (segments.length === 0) {
@@ -734,15 +737,23 @@ const RoutePlanningStep: React.FC<RoutePlanningStepProps> = ({
             return;
         }
 
-        // Chuyển đổi segments sang routeInfo
-        const routeInfo = convertRouteSegmentsToRouteInfo(segments);
+        setIsSubmitting(true);
 
-        // Cập nhật thông tin tổng quát từ API
-        routeInfo.totalDistance = routeInfoFromAPI.totalDistance;
-        // Cập nhật totalTollFee từ totalTollAmount của API
-        routeInfo.totalTollFee = routeInfoFromAPI.totalTollAmount;
+        try {
+            // Chuyển đổi segments sang routeInfo
+            const routeInfo = convertRouteSegmentsToRouteInfo(segments);
 
-        onComplete(segments, routeInfo);
+            // Cập nhật thông tin tổng quát từ API
+            routeInfo.totalDistance = routeInfoFromAPI.totalDistance;
+            // Cập nhật totalTollFee từ totalTollAmount của API
+            routeInfo.totalTollFee = routeInfoFromAPI.totalTollAmount;
+
+            onComplete(segments, routeInfo);
+        } catch (error) {
+            console.error('Error completing route planning:', error);
+            message.error('Có lỗi khi hoàn thành kế hoạch tuyến đường');
+            setIsSubmitting(false);
+        }
     };
 
     useEffect(() => {
@@ -1327,8 +1338,9 @@ const RoutePlanningStep: React.FC<RoutePlanningStepProps> = ({
                     type="primary"
                     onClick={handleComplete}
                     disabled={segments.length === 0}
+                    loading={isSubmitting}
                 >
-                    Hoàn thành
+                    {isSubmitting ? 'Đang xử lý...' : 'Hoàn thành'}
                 </Button>
             </div>
         </div>

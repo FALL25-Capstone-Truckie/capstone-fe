@@ -13,7 +13,9 @@ import {
     ColumnWidthOutlined,
     DashboardOutlined,
     CalendarOutlined,
+    EnvironmentOutlined,
 } from "@ant-design/icons";
+import RouteMapSection from "./RouteMapSection";
 import { OrderStatusEnum } from "../../../../../constants/enums";
 import type { StaffOrderDetail, StaffOrderDetailItem } from "../../../../../models/Order";
 
@@ -38,7 +40,7 @@ const AdditionalNavTabs: React.FC<AdditionalNavTabsProps> = ({
 
     return (
         <Card className="mt-4 shadow-md rounded-xl">
-            <Tabs defaultActiveKey="packageList" type="card">
+            <Tabs defaultActiveKey="routemap" type="card">
                 <TabPane
                     tab={
                         <span>
@@ -113,6 +115,63 @@ const AdditionalNavTabs: React.FC<AdditionalNavTabsProps> = ({
                     </div>
                 </TabPane>
 
+                {/* Tab lộ trình vận chuyển */}
+                <TabPane
+                    tab={
+                        <span>
+                            <EnvironmentOutlined /> Lộ trình vận chuyển
+                        </span>
+                    }
+                    key="routemap"
+                >
+                    {orderData.order.orderDetails.some((detail: StaffOrderDetailItem) =>
+                        detail.vehicleAssignment &&
+                        detail.vehicleAssignment.journeyHistories &&
+                        detail.vehicleAssignment.journeyHistories.length > 0 &&
+                        detail.vehicleAssignment.journeyHistories.some(journey =>
+                            journey.journeySegments && journey.journeySegments.length > 0
+                        )
+                    ) ? (
+                        <div>
+                            {orderData.order.orderDetails
+                                .filter((detail: StaffOrderDetailItem) =>
+                                    detail.vehicleAssignment &&
+                                    detail.vehicleAssignment.journeyHistories &&
+                                    detail.vehicleAssignment.journeyHistories.length > 0 &&
+                                    detail.vehicleAssignment.journeyHistories.some(journey =>
+                                        journey.journeySegments && journey.journeySegments.length > 0
+                                    )
+                                )
+                                .map((detail: StaffOrderDetailItem, idx: number) => {
+                                    const va = detail.vehicleAssignment!;
+                                    return (
+                                        <div key={idx} className="mb-6">
+                                            {va.journeyHistories!.map((journey: any, journeyIdx: number) => {
+                                                if (!journey.journeySegments || journey.journeySegments.length === 0) {
+                                                    return null;
+                                                }
+                                                return (
+                                                    <div key={journey.id || `journey-${journeyIdx}`} className="mb-4">
+                                                        <RouteMapSection
+                                                            journeySegments={journey.journeySegments}
+                                                            vehicleInfo={{
+                                                                licensePlateNumber: va.vehicle?.licensePlateNumber,
+                                                                trackingCode: va.trackingCode
+                                                            }}
+                                                        />
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    );
+                                })
+                            }
+                        </div>
+                    ) : (
+                        <Empty description="Không có thông tin lộ trình" />
+                    )}
+                </TabPane>
+
                 {/* Tab lịch sử hành trình - Frequently used */}
                 <TabPane
                     tab={
@@ -152,10 +211,10 @@ const AdditionalNavTabs: React.FC<AdditionalNavTabsProps> = ({
                                                 <tbody>
                                                     {va.journeyHistories!.map((journey: any) => (
                                                         <tr key={journey.id}>
-                                                            <td className="border border-gray-300 p-2">{formatDate(journey.startTime)}</td>
-                                                            <td className="border border-gray-300 p-2">{formatDate(journey.endTime)}</td>
+                                                            <td className="border border-gray-300 p-2">{formatDate(journey.startTime || journey.createdAt)}</td>
+                                                            <td className="border border-gray-300 p-2">{formatDate(journey.endTime || journey.modifiedAt)}</td>
                                                             <td className="border border-gray-300 p-2">{journey.status}</td>
-                                                            <td className="border border-gray-300 p-2">{journey.totalDistance} km</td>
+                                                            <td className="border border-gray-300 p-2">{journey.totalDistance || 'N/A'} {journey.totalDistance ? 'km' : ''}</td>
                                                             <td className="border border-gray-300 p-2">
                                                                 {journey.isReportedIncident ? (
                                                                     <Tag color="red">Có</Tag>

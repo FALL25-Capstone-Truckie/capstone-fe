@@ -19,6 +19,7 @@ interface VietMapMapProps {
     showRouteLines?: boolean;
     routeSegments?: RouteSegment[];
     animateRoute?: boolean;
+    getMapInstance?: (map: any) => void; // Add this prop
 }
 
 // Khóa cho cache trong localStorage
@@ -32,7 +33,8 @@ const VietMapMap: React.FC<VietMapMapProps> = ({
     markers = [],
     showRouteLines = false,
     routeSegments = [],
-    animateRoute = true
+    animateRoute = true,
+    getMapInstance
 }) => {
     const mapContainerRef = useRef<HTMLDivElement>(null);
     const mapRef = useRef<any>(null);
@@ -216,6 +218,11 @@ const VietMapMap: React.FC<VietMapMapProps> = ({
             map.on('load', () => {
                 setMapLoaded(true);
                 setLoading(false);
+
+                // Call getMapInstance if provided
+                if (getMapInstance) {
+                    getMapInstance(map);
+                }
             });
         } catch (error) {
             console.error('Error initializing VietMap:', error);

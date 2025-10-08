@@ -123,87 +123,129 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
     });
     setUiMessages(sortedMessages);
   }, []);
-  const loadMessagesForRoom = useCallback(
-    async (roomId: string) => {
-      if (!user) return;
-      try {
-        const chatPage = await chatService.getMessages(roomId, 20);
-        const uiMessages = mapChatMessageDTOArrayToUI(
-          chatPage.messages,
-          user.id
-        );
-        setUIChatMessages(uiMessages);
-      } catch (error) {
-        console.error("Failed to load messages for room:", error);
+
+  
+
+  
+
+  // Load messages for a specific room
+  const loadMessagesForRoom = async (roomId: string) => {
+    
+    if (!user) return;
+
+    try {
+      connectWebSocket(user.id, roomId);
+      const chatPage = await chatService.getMessages(roomId, 20);
+      const uiMessages = mapChatMessageDTOArrayToUI(chatPage.messages, user.id);
+      setUIChatMessages(uiMessages);
+
+      const room = supportRooms.find((r) => r.roomId === roomId);
+      if (room) {
+        const roomInfo = {
+          id: room.roomId,
+          roomId: room.roomId,
+          participants: room.participants,
+          status: room.status.toLowerCase(),
+          messages: chatPage.messages,
+          lastMessage: chatPage.messages.at(-1)?.content || "",
+          lastMessageTime:
+            chatPage.messages.at(-1)?.createAt?.seconds?.toString() || "",
+          unreadCount: room.unreadCount || 0,
+        };
+
+        // Chỉ cập nhật nếu giá trị thực sự thay đổi
+        if (
+          !activeConversation ||
+          activeConversation.roomId !== roomInfo.roomId ||
+          activeConversation.lastMessageTime !== roomInfo.lastMessageTime
+        ) {
+          setActiveConversation(roomInfo);
+        }
       }
-    },
-    [user, setUIChatMessages]
-  );
+    } catch (error) {
+      console.error("❌ loadMessagesForRoom() error:", error);
+    }
+  };
+
   const fetchSupportRooms = useCallback(async () => {
-  if (!user) return;
+    if (!user) return;
 
-  setLoadingRooms(true);
-  try {
-    const rooms = await roomService.getListSupportRoomsForStaff();
+    setLoadingRooms(true);
+    try {
+      const rooms = await roomService.getListSupportRoomsForStaff();
 
-    const supportRoomsData: SupportRoom[] = rooms.map((room) => ({
-      ...room,
-      type:
-        room.type === "SUPPORT" || room.type === "SUPPORTED"
-          ? (room.type as "SUPPORT" | "SUPPORTED")
-          : "SUPPORT",
-    }));
+      const supportRoomsData: SupportRoom[] = rooms.map((room) => ({
+        ...room,
+        type:
+          room.type === "SUPPORT" || room.type === "SUPPORTED"
+            ? (room.type as "SUPPORT" | "SUPPORTED")
+            : "SUPPORT",
+      }));
 
-    const sortedRooms = supportRoomsData.sort((a, b) => {
-      if (a.type === "SUPPORT" && b.type !== "SUPPORT") return -1;
-      if (a.type !== "SUPPORT" && b.type === "SUPPORT") return 1;
-      return 0;
-    });
+      const sortedRooms = supportRoomsData.sort((a, b) => {
+        if (a.type === "SUPPORT" && b.type !== "SUPPORT") return -1;
+        if (a.type !== "SUPPORT" && b.type === "SUPPORT") return 1;
+        return 0;
+      });
 
-    setSupportRooms(sortedRooms);
-  } catch (error) {
-    console.error("Failed to fetch support rooms:", error);
-  } finally {
-    setLoadingRooms(false);
-  }
-}, [user]);
-
+      setSupportRooms(sortedRooms);
+    } catch (error) {
+      console.error("Failed to fetch support rooms:", error);
+    } finally {
+      setLoadingRooms(false);
+    }
+  }, [user]);
 
   // Trong ChatContext.tsx - hàm joinRoom
   const joinRoom = async (roomId: string) => {
     if (!user) return;
 
+    console.log("🔵 joinRoom() called with roomId:", roomId, "and user:", user);
+
     try {
       const success = await roomService.joinRoom(roomId, user.id);
+      console.log("🟢 joinRoom() => roomService.joinRoom result:", success);
+
       if (success) {
-        // Cập nhật trạng thái room sau khi join thành công
         setSupportRooms((prev) =>
           prev.map((room) =>
-            room.roomId === roomId
-              ? { ...room, type: "SUPPORTED" as const }
-              : room
+            room.roomId === roomId ? { ...room, type: "SUPPORTED" } : room
           )
         );
+        console.log("🟢 Updated supportRooms type -> SUPPORTED");
 
-        // Kết nối WebSocket và mở chat
         connectWebSocket(user.id, roomId);
+        console.log("🟢 WebSocket connected (or connecting...)");
+
         setIsOpen(true);
         setIsMinimized(false);
 
-        // Load messages cho room này
-        try {
-          const chatPage = await chatService.getMessages(roomId, 20);
-          const uiMessages = mapChatMessageDTOArrayToUI(
-            chatPage.messages,
-            user.id
-          );
-          setUIChatMessages(uiMessages);
-        } catch (error) {
-          console.error("Failed to load messages:", error);
-        }
+        const chatPage = await chatService.getMessages(roomId, 20);
+        console.log("🟢 chatService.getMessages result:", chatPage);
+
+        const uiMessages = mapChatMessageDTOArrayToUI(chatPage.messages, user.id);
+        console.log("🟢 Mapped UI messages:", uiMessages);
+
+        setUIChatMessages(uiMessages);
+        console.log("🟢 setUIChatMessages done");
+
+        // ⚠️ Thêm phần này — tạo activeConversation
+        const roomInfo = {
+          id: roomId,
+          roomId: roomId,
+          participants: [{ userId: user.id, roleName: user.role }],
+          status: "active",
+          messages: chatPage.messages,
+          lastMessage: chatPage.messages[chatPage.messages.length - 1]?.content || "",
+          lastMessageTime:
+            chatPage.messages[chatPage.messages.length - 1]?.createAt?.seconds?.toString() || "",
+          unreadCount: 0,
+        };
+        setActiveConversation(roomInfo);
+        console.log("🟢 setActiveConversation done:", roomInfo);
       }
     } catch (error) {
-      console.error("Failed to join room:", error);
+      console.error("❌ joinRoom() error:", error);
     }
   };
 

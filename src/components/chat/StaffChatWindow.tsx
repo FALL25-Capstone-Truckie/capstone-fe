@@ -5,10 +5,10 @@ import { useChatContext } from '@/context/ChatContext';
 import StaffChatMessage from './StaffChatMessage';
 import StaffChatConversationItem from './StaffChatConversationItem';
 import { useAuth } from '@/context/AuthContext';
+import MessageInput from './MessageInput';
 import type { SupportRoom } from '@/context/ChatContext';
 
 const StaffChatWindow: React.FC = () => {
-  const [message, setMessage] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { user } = useAuth();
 
@@ -54,24 +54,9 @@ const StaffChatWindow: React.FC = () => {
     }
   }, [uiMessages, isMinimized]);
 
-  const handleSendMessage = () => {
-    if (message.trim() && activeConversation) {
-      sendMessage({
-        roomId: activeConversation.roomId,
-        senderId: user?.id || '',
-        message: message.trim(),
-        type: 'TEXT',
-      });
-      setMessage('');
-    }
-  };
+  
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSendMessage();
-    }
-  };
+ 
 
   const mapRoomToConversation = (room: SupportRoom) => ({
     id: room.roomId,
@@ -84,14 +69,18 @@ const StaffChatWindow: React.FC = () => {
   });
 
   const handleRoomClick = (room: SupportRoom) => {
-  if (room.type === "SUPPORT") {
-    // Nếu là SUPPORT thì join room trước
-    joinRoom(room.roomId);
-  } else {
-    // Nếu không phải SUPPORT thì chỉ load message
-    loadMessagesForRoom(room.roomId);
-  }
-};
+    console.log("🟡 handleRoomClick:", room);
+
+    if (room.type === "SUPPORT") {
+      // Staff nhận phòng hỗ trợ
+      joinRoom(room.roomId);
+    } else {
+      // Đã được hỗ trợ rồi → chỉ load message
+      loadMessagesForRoom(room.roomId);
+    }
+  };
+
+
 
   if (isMinimized) return null;
 
@@ -168,29 +157,15 @@ const StaffChatWindow: React.FC = () => {
                 <div ref={messagesEndRef} />
               </div>
 
-              {/* Input */}
-              <div className="border-t p-4 flex">
-                <Input
-                  value={message}
-                  onChange={(e) => setMessage(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  placeholder="Nhập tin nhắn..."
-                  disabled={activeConversation.status !== 'active'}
-                  suffix={<PaperClipOutlined className="text-gray-400 cursor-pointer" />}
-                />
-                <Button
-                  type="primary"
-                  icon={<SendOutlined />}
-                  onClick={handleSendMessage}
-                  disabled={activeConversation.status !== 'active'}
-                  className="ml-3"
-                />
-              </div>
-              {activeConversation.status !== 'active' && (
-                <div className="text-center text-gray-500 mt-2 text-sm">
+              {/* Input (use shared MessageInput) */}
+              {activeConversation.status === 'active' ? (
+                <MessageInput />
+              ) : (
+                <div className="text-center text-gray-500 mt-2 text-sm p-3 border-t">
                   Cuộc hội thoại đã kết thúc.
                 </div>
               )}
+
             </>
           ) : (
             <div className="flex-1 flex items-center justify-center p-5 text-gray-500">

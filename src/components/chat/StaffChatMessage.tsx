@@ -27,8 +27,8 @@ const StaffChatMessage: React.FC<StaffChatMessageProps> = ({ message, isOwnMessa
         <div className={`flex mb-4 ${isOwnMessage ? 'justify-end' : 'justify-start'}`}>
             {!isOwnMessage && (
                 <Avatar
-                    icon={message.senderType === 'staff' ? <CustomerServiceOutlined /> : <UserOutlined />}
-                    className={`mr-2 ${message.senderType === 'staff' ? 'bg-blue-500' : 'bg-green-500'}`}
+                    icon={message.senderType === 'staff' ? <UserOutlined /> : <UserOutlined />}
+                    className={`mr-2 ${message.senderType === 'staff' ? 'ml-2 bg-green-500' : 'bg-green-500'}`}
                 />
             )}
             <div className="max-w-[70%]">

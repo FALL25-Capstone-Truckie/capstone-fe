@@ -2,15 +2,14 @@ import React from 'react';
 import { Avatar } from 'antd';
 import { UserOutlined, CustomerServiceOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
-import type { ChatMessage as ChatMessageType } from '@/models/Chat';
+import type { ChatMessage } from '@/models/Chat';
 
-interface ChatMessageProps {
-    message: ChatMessageType;
+interface StaffChatMessageProps {
+    message: ChatMessage;
     isOwnMessage: boolean;
 }
 
-const ChatMessage: React.FC<ChatMessageProps> = ({ message, isOwnMessage }) => {
-    // message.timestamp là ISO string
+const StaffChatMessage: React.FC<StaffChatMessageProps> = ({ message, isOwnMessage }) => {
     const messageTime = dayjs(message.timestamp).format('HH:mm');
     const isSystemMessage = message.senderType === 'anonymous' && message.content.startsWith('SYSTEM:');
 
@@ -32,6 +31,7 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, isOwnMessage }) => {
                     className="mr-2 bg-blue-500"
                 />
             )}
+
             <div className="max-w-[70%]">
                 <div
                     className={`px-4 py-2 rounded-lg ${isOwnMessage
@@ -47,6 +47,7 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, isOwnMessage }) => {
                     {messageTime}
                 </div>
             </div>
+
             {isOwnMessage && (
                 <Avatar
                     icon={<UserOutlined />}
@@ -57,4 +58,4 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, isOwnMessage }) => {
     );
 };
 
-export default ChatMessage;
+export default StaffChatMessage;

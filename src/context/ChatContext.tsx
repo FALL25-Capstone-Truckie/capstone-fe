@@ -467,10 +467,18 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
 
       setConnectionStatus("connecting");
 
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const host = 'localhost:8080'; // tạm thời
+      const wsUrl = `${protocol}//${host}/chat`;
+
+      console.log('Connecting to WebSocket:', wsUrl);
+
       const stompClient = new Client({
-        brokerURL: `ws://localhost:8080/chat`,
+        brokerURL: wsUrl,
         reconnectDelay: 5000,
+        debug: (str) => console.log('STOMP Debug:', str),
       });
+
 
       stompClient.onConnect = (frame) => {
         console.log(`Connected to WebSocket for room: ${roomId}`);

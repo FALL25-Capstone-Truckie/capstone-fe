@@ -34,6 +34,7 @@ const StaffChatWindow: React.FC = () => {
     }
   };
 
+
   // Fetch support rooms on open
   useEffect(() => {
     fetchSupportRooms();
@@ -82,6 +83,16 @@ const StaffChatWindow: React.FC = () => {
     type: room.type,
   });
 
+  const handleRoomClick = (room: SupportRoom) => {
+  if (room.type === "SUPPORT") {
+    // Nếu là SUPPORT thì join room trước
+    joinRoom(room.roomId);
+  } else {
+    // Nếu không phải SUPPORT thì chỉ load message
+    loadMessagesForRoom(room.roomId);
+  }
+};
+
   if (isMinimized) return null;
 
   return (
@@ -116,7 +127,7 @@ const StaffChatWindow: React.FC = () => {
                   key={room.roomId}
                   conversation={mapRoomToConversation(room)}
                   isActive={activeConversation?.roomId === room.roomId}
-                  onClick={() => joinRoom(room.roomId)}
+                  onClick={() => handleRoomClick(room)}
                 />
               ))}
             </div>

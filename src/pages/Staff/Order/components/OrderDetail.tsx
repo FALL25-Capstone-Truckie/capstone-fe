@@ -22,11 +22,6 @@ import {
   ToolOutlined,
   InfoCircleOutlined,
   FileTextOutlined,
-  DollarOutlined,
-  CameraOutlined,
-  TruckOutlined,
-  UserOutlined,
-  WarningOutlined,
 } from "@ant-design/icons";
 import orderService from "@/services/order/orderService";
 import { contractService } from "@/services/contract";
@@ -47,8 +42,6 @@ import {
   VehicleAssignmentCard,
   StaffContractPreview,
 } from "@/components/features/order";
-import type { Contract } from "@/models";
-import { CarryOutOutlined } from "@ant-design/icons";
 
 const { TabPane } = Tabs;
 
@@ -160,11 +153,6 @@ const OrderDetailPage: React.FC = () => {
     } finally {
       setLoadingContractData(false);
     }
-  };
-
-  const handleSaveContract = (editedData: any) => {
-    console.log("Saving contract with data:", editedData);
-    messageApi.success("Đã lưu thay đổi hợp đồng");
   };
 
   const handleCreateContract = () => {
@@ -421,7 +409,15 @@ const OrderDetailPage: React.FC = () => {
                   Phân công xe
                 </Button>
               )}
-
+              <Button
+                type="primary"
+                icon={<FileTextOutlined />}
+                onClick={handlePreviewContract}
+                loading={loadingContractData}
+                className="bg-blue-500 hover:bg-blue-600"
+              >
+                Xem trước hợp đồng
+              </Button>
               <Button
                 type="primary"
                 icon={<FileTextOutlined />}
@@ -715,7 +711,7 @@ const OrderDetailPage: React.FC = () => {
         {contractData && (
           <StaffContractPreview
             contractData={contractData}
-            onSave={handleContractSave}
+            //onSave={handleContractSave}
           />
         )}
       </Modal>

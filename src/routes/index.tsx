@@ -1,6 +1,7 @@
 import { createBrowserRouter, RouterProvider, Outlet } from "react-router-dom";
 import HomePage from "../pages/Home";
 import { LoginPage, RegisterPage } from "../pages/Auth";
+import { PaymentReturn } from "../pages/Payment";
 import VietMapPage from "../pages/VietMap";
 import OpenMapPage from "../pages/OpenMap";
 import TrackAsiaMapPage from "../pages/TrackAsiaMap";
@@ -10,9 +11,7 @@ import StaffDashboard from "../pages/Dashboard/components/StaffDashboard";
 import PenaltyHistory from "../pages/Staff/PenaltyHistory";
 import CustomerSupport from "../pages/Staff/CustomerSupport";
 import ProfilePage from "../pages/Profile";
-import {
-  OrderList as StaffOrderList,
-} from "../pages/Staff/Order";
+import { OrderList as StaffOrderList } from "../pages/Staff/Order";
 import { IssueList, IssueDetail } from "../pages/Staff/Issue";
 import {
   OrderPage as AdminOrderList,
@@ -193,6 +192,10 @@ const router = createBrowserRouter([
             <ProfilePage />
           </PermissionRoute>
         ),
+      },
+      {
+        path: "payment/return",
+        element: <PaymentReturn />,
       },
     ],
   },

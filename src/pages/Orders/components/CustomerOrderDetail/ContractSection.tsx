@@ -174,7 +174,8 @@ const ContractSection: React.FC<ContractProps> = ({ contract }) => {
                 )}
 
                 {/* Nút thanh toán đặt cọc chỉ hiện khi hợp đồng đã ký */}
-                {contract.status === "CONTRACT_SIGNED" && (
+                {(contract.status === "CONTRACT_SIGNED" ||
+                  contract.status === "UNPAID") && (
                   <Button
                     type="primary"
                     icon={<CreditCardOutlined />}

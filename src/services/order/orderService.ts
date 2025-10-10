@@ -22,6 +22,7 @@ import type {
   StaffOrderDetailResponse,
   VehicleSuggestionsResponse,
   BillOfLadingPreviewResponse,
+  BothOptimalAndRealisticVehicle,
 } from "./types";
 import type { PaginationParams } from "../api/types";
 import { handleApiError } from "../api/errorHandler";
@@ -31,6 +32,7 @@ import {
 } from "../../utils/dateUtils";
 import customerService from "../customer/customerService";
 import dayjs from "dayjs";
+import type { get } from "lodash";
 
 /**
  * Service for handling order-related API calls
@@ -540,6 +542,26 @@ const orderService = {
     try {
       const response = await httpClient.get<VehicleSuggestionsResponse>(
         `/contracts/${orderId}/suggest-assign-vehicles`
+      );
+      return response.data;
+    } catch (error) {
+      console.error(
+        `Error fetching vehicle suggestions for order ${orderId}:`,
+        error
+      );
+      throw handleApiError(error, "Không thể tải đề xuất phân xe");
+    }
+  },
+
+  /**
+   * Get suggest assign vehicles in realistic and optimal range for order
+   * @param orderId Order ID to get vehicle suggestions
+   * @returns Promise with vehicle assignment suggestions
+   */
+  getBothOptimalAndRealisticAssignVehicles: async (orderId: string) => {
+    try {
+      const response = await httpClient.get(
+        `/contracts/${orderId}/get-both-optimal-and-realistic-assign-vehicles`
       );
       return response.data;
     } catch (error) {

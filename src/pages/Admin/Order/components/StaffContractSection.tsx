@@ -11,6 +11,9 @@ import {
   Input,
   DatePicker,
   InputNumber,
+  Checkbox,
+  Row,
+  Col,
 } from "antd";
 import {
   FileTextOutlined,
@@ -24,6 +27,7 @@ import type { ContractData } from "../../../../services/contract/contractTypes";
 import httpClient from "../../../../services/api/httpClient";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
+import dayjs from "dayjs";
 
 interface StaffContractProps {
   contract?: {
@@ -49,12 +53,41 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
   const [contractData, setContractData] = useState<ContractData | null>(null);
   const [loadingContractData, setLoadingContractData] =
     useState<boolean>(false);
-  const [isPreviewOpen, setIsPreviewOpen] = useState<boolean>(false);
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [isCreationModalOpen, setIsCreationModalOpen] =
     useState<boolean>(false);
   const [creatingContract, setCreatingContract] = useState<boolean>(false);
+  const [isUploadModalOpen, setIsUploadModalOpen] = useState<boolean>(false);
+  const [uploadingContract, setUploadingContract] = useState<boolean>(false);
+  const [isEditContentModalOpen, setIsEditContentModalOpen] =
+    useState<boolean>(false);
   const [form] = Form.useForm();
+  const [uploadForm] = Form.useForm();
+  const [previewForm] = Form.useForm();
+  const [contentForm] = Form.useForm();
+
+  // Contract customization state
+  const [contractCustomization, setContractCustomization] = useState({
+    effectiveDate: "",
+    expirationDate: "",
+    hasSupportValue: false,
+    supportedValue: 0,
+  });
+
+  // Contract content customization
+  const [contractContent, setContractContent] = useState({
+    companyName: "TRUCKIE LOGISTICS",
+    companyAddress: "Số 123, Đường ABC, Quận XYZ, TP. Hồ Chí Minh",
+    companyPhone: "0123 456 789",
+    companyEmail: "contact@truckie.vn",
+    representativeName: "[Tên người đại diện]",
+    representativeTitle: "Giám đốc",
+    serviceDescription:
+      "Dịch vụ bao gồm: Vận chuyển hàng hóa từ điểm lấy hàng đến điểm giao hàng theo yêu cầu của Bên B.",
+    paymentMethod: "Chuyển khoản",
+    warrantyTerms: "Cung cấp bảo hiểm hàng hóa theo tỷ lệ quy định",
+    generalTerms: "Hợp đồng có hiệu lực kể từ ngày ký và thanh toán đặt cọc.",
+  });
 
   const getStatusColor = (status: string) => {
     const statusMap: Record<string, string> = {
@@ -92,11 +125,6 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
     }
   };
 
-  const handleSaveContract = (editedData: any) => {
-    console.log("Saving contract with data:", editedData);
-    messageApi.success("Đã lưu thay đổi hợp đồng");
-  };
-
   const handleCreateContract = async (values: any) => {
     if (!orderId) {
       messageApi.error("Không tìm thấy thông tin đơn hàng để tạo hợp đồng");
@@ -117,7 +145,10 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
       };
 
       console.log("Creating contract with data:", contractData);
-      const response = await httpClient.post("/contracts/both", contractData);
+      const response = await httpClient.post(
+        "/contracts/both/for-cus",
+        contractData
+      );
 
       if (response.data.success) {
         messageApi.success("Hợp đồng đã được tạo thành công!");
@@ -137,12 +168,43 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
     }
   };
 
-  const handleUploadContract = async () => {
+  const handleOpenUploadModal = () => {
     if (!contract?.id || !contractData) {
       messageApi.error("Không có dữ liệu hợp đồng để xuất");
       return;
     }
 
+    // Use values from preview form customization if available, otherwise use contract data
+    uploadForm.setFieldsValue({
+      contractName: contract.contractName || "Hợp đồng dịch vụ logistics",
+      effectiveDate:
+        contractCustomization.effectiveDate ||
+        (contract.effectiveDate
+          ? new Date(contract.effectiveDate).toISOString().split("T")[0]
+          : new Date().toISOString().split("T")[0]),
+      expirationDate:
+        contractCustomization.expirationDate ||
+        (contract.expirationDate
+          ? new Date(contract.expirationDate).toISOString().split("T")[0]
+          : new Date(Date.now() + 365 * 24 * 60 * 60 * 1000)
+              .toISOString()
+              .split("T")[0]),
+      supportedValue: contractCustomization.hasSupportValue
+        ? contractCustomization.supportedValue
+        : contract.supportedValue || "0",
+      description: contract.description || "Hợp đồng dịch vụ logistics",
+    });
+
+    setIsUploadModalOpen(true);
+  };
+
+  const handleUploadContract = async (values: any) => {
+    if (!contract?.id || !contractData) {
+      messageApi.error("Không có dữ liệu hợp đồng để xuất");
+      return;
+    }
+
+    setUploadingContract(true);
     try {
       messageApi.loading("Đang xuất hợp đồng...", 0);
 
@@ -272,25 +334,16 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
       }
 
       formData.append("contractId", contract.id);
-      formData.append(
-        "contractName",
-        contract.contractName || "Hợp đồng dịch vụ logistics"
-      );
+      formData.append("contractName", values.contractName);
 
-      const formatDateTime = (date: Date) => {
-        return date.toISOString().slice(0, 19);
+      const formatDateTime = (dateString: string) => {
+        return new Date(dateString).toISOString().slice(0, 19);
       };
 
-      formData.append("effectiveDate", formatDateTime(new Date()));
-      formData.append(
-        "expirationDate",
-        formatDateTime(new Date(Date.now() + 365 * 24 * 60 * 60 * 1000))
-      );
-      formData.append("supportedValue", "0");
-      formData.append(
-        "description",
-        contract.description || "Hợp đồng dịch vụ logistics"
-      );
+      formData.append("effectiveDate", formatDateTime(values.effectiveDate));
+      formData.append("expirationDate", formatDateTime(values.expirationDate));
+      formData.append("supportedValue", values.supportedValue.toString());
+      formData.append("description", values.description);
 
       const { default: httpClient } = await import(
         "../../../../services/api/httpClient"
@@ -307,6 +360,12 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
 
       if (response.data && response.data.success) {
         messageApi.success("Đã xuất hợp đồng thành công!");
+        setIsUploadModalOpen(false);
+        uploadForm.resetFields();
+        // Reload the page to reflect the updated contract
+        setTimeout(() => {
+          window.location.reload();
+        }, 1000);
       } else {
         throw new Error(response.data?.message || "Upload failed");
       }
@@ -326,17 +385,8 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
       } else {
         messageApi.error("Không thể xuất hợp đồng. Vui lòng thử lại!");
       }
-    }
-  };
-
-  const handleTogglePreview = async () => {
-    if (!isPreviewOpen) {
-      if (!contractData) {
-        await handlePreviewContract();
-      }
-      setIsPreviewOpen(true);
-    } else {
-      setIsPreviewOpen(false);
+    } finally {
+      setUploadingContract(false);
     }
   };
 
@@ -344,7 +394,52 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
     if (!contractData) {
       await handlePreviewContract();
     }
+
+    // Initialize form with default values
+    const today = new Date();
+    const oneYearLater = new Date(today);
+    oneYearLater.setFullYear(today.getFullYear() + 1);
+
+    previewForm.setFieldsValue({
+      effectiveDate: dayjs(today),
+      expirationDate: dayjs(oneYearLater),
+      hasSupportValue: false,
+      supportedValue: 0,
+    });
+
+    setContractCustomization({
+      effectiveDate: today.toISOString().split("T")[0],
+      expirationDate: oneYearLater.toISOString().split("T")[0],
+      hasSupportValue: false,
+      supportedValue: 0,
+    });
+
     setIsModalOpen(true);
+  };
+
+  const handlePreviewFormChange = (_changedValues: any, allValues: any) => {
+    setContractCustomization({
+      effectiveDate: allValues.effectiveDate
+        ? allValues.effectiveDate.format("YYYY-MM-DD")
+        : "",
+      expirationDate: allValues.expirationDate
+        ? allValues.expirationDate.format("YYYY-MM-DD")
+        : "",
+      hasSupportValue: allValues.hasSupportValue || false,
+      supportedValue: allValues.supportedValue || 0,
+    });
+  };
+
+  const handleOpenEditContentModal = () => {
+    // Initialize form with current content
+    contentForm.setFieldsValue(contractContent);
+    setIsEditContentModalOpen(true);
+  };
+
+  const handleSaveContractContent = (values: any) => {
+    setContractContent(values);
+    setIsEditContentModalOpen(false);
+    messageApi.success("Đã cập nhật nội dung hợp đồng");
   };
 
   const handleCloseModal = () => {
@@ -545,22 +640,6 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
                 >
                   Xem hợp đồng (preview)
                 </Button>
-                <Button
-                  type="primary"
-                  icon={<EditOutlined />}
-                  onClick={handleTogglePreview}
-                  loading={loadingContractData}
-                  size="large"
-                  className={
-                    isPreviewOpen
-                      ? "bg-red-500 hover:bg-red-600 border-red-500"
-                      : "bg-green-500 hover:bg-green-600 border-green-500"
-                  }
-                >
-                  {isPreviewOpen
-                    ? "Đóng chỉnh sửa"
-                    : "Chỉnh sửa nội dung hợp đồng"}
-                </Button>
                 {contractData && (
                   <Button
                     type="default"
@@ -573,35 +652,6 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
                   </Button>
                 )}
               </div>
-
-              {isPreviewOpen && contractData && (
-                <div>
-                  <h3 className="text-lg font-semibold mb-4">
-                    Xem trước hợp đồng
-                  </h3>
-                  <div
-                    className="inline-contract-preview"
-                    style={{
-                      width: "794px",
-                      minHeight: "1123px",
-                      margin: "0 auto",
-                      backgroundColor: "white",
-                      padding: "60px 85px",
-                      boxShadow: "0 4px 12px rgba(0, 0, 0, 0.1)",
-                      borderRadius: "8px",
-                      fontSize: "14px",
-                      lineHeight: "1.6",
-                      transform: "scale(0.8)",
-                      transformOrigin: "top center",
-                    }}
-                  >
-                    <StaffContractPreview
-                      contractData={contractData}
-                      onSave={handleSaveContract}
-                    />
-                  </div>
-                </div>
-              )}
             </div>
           ) : contract.attachFileUrl ? (
             <div className="mt-4">
@@ -634,28 +684,39 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
         open={isModalOpen}
         onCancel={handleCloseModal}
         footer={
-          <div className="flex justify-end gap-2">
+          <div className="flex justify-between items-center">
             <Button
-              icon={<FileTextOutlined />}
-              onClick={handleUploadContract}
-              size="large"
-              type="primary"
-              style={{ background: "#52c41a", borderColor: "#52c41a" }}
-            >
-              Xuất hợp đồng
-            </Button>
-            <Button
-              icon={<DownloadOutlined />}
-              onClick={handleExportPdf}
+              icon={<EditOutlined />}
+              onClick={handleOpenEditContentModal}
               size="large"
               type="default"
-              className="border-blue-500 text-blue-500 hover:border-blue-600 hover:text-blue-600"
+              className="border-purple-500 text-purple-500 hover:border-purple-600 hover:text-purple-600"
             >
-              Xuất PDF
+              Chỉnh sửa nội dung
             </Button>
-            <Button onClick={handleCloseModal} size="large">
-              Đóng
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                icon={<FileTextOutlined />}
+                onClick={handleOpenUploadModal}
+                size="large"
+                type="primary"
+                style={{ background: "#52c41a", borderColor: "#52c41a" }}
+              >
+                Xuất hợp đồng
+              </Button>
+              <Button
+                icon={<DownloadOutlined />}
+                onClick={handleExportPdf}
+                size="large"
+                type="default"
+                className="border-blue-500 text-blue-500 hover:border-blue-600 hover:text-blue-600"
+              >
+                Xuất PDF
+              </Button>
+              <Button onClick={handleCloseModal} size="large">
+                Đóng
+              </Button>
+            </div>
           </div>
         }
         width="95vw"
@@ -668,6 +729,95 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
           backgroundColor: "#f5f5f5",
         }}
       >
+        {/* Customization Form */}
+        <Card
+          title="⚙️ Điều chỉnh thông tin hợp đồng"
+          className="mb-4"
+          size="small"
+        >
+          <Form
+            form={previewForm}
+            layout="vertical"
+            onValuesChange={handlePreviewFormChange}
+          >
+            <Row gutter={16}>
+              <Col span={12}>
+                <Form.Item
+                  label="Ngày hiệu lực"
+                  name="effectiveDate"
+                  rules={[
+                    { required: true, message: "Vui lòng chọn ngày hiệu lực" },
+                  ]}
+                >
+                  <DatePicker
+                    style={{ width: "100%" }}
+                    format="DD/MM/YYYY"
+                    placeholder="Chọn ngày hiệu lực"
+                  />
+                </Form.Item>
+              </Col>
+              <Col span={12}>
+                <Form.Item
+                  label="Ngày hết hạn"
+                  name="expirationDate"
+                  rules={[
+                    { required: true, message: "Vui lòng chọn ngày hết hạn" },
+                  ]}
+                >
+                  <DatePicker
+                    style={{ width: "100%" }}
+                    format="DD/MM/YYYY"
+                    placeholder="Chọn ngày hết hạn"
+                  />
+                </Form.Item>
+              </Col>
+            </Row>
+            <Row>
+              <Col span={24}>
+                <Form.Item name="hasSupportValue" valuePropName="checked">
+                  <Checkbox>
+                    <strong>Có trợ giá</strong>
+                  </Checkbox>
+                </Form.Item>
+              </Col>
+            </Row>
+            <Form.Item
+              noStyle
+              shouldUpdate={(prev, curr) =>
+                prev.hasSupportValue !== curr.hasSupportValue
+              }
+            >
+              {({ getFieldValue }) =>
+                getFieldValue("hasSupportValue") ? (
+                  <Form.Item
+                    label="Giá trị trợ giá"
+                    name="supportedValue"
+                    rules={[
+                      {
+                        required: true,
+                        message: "Vui lòng nhập giá trị trợ giá",
+                      },
+                    ]}
+                  >
+                    <InputNumber
+                      style={{ width: "100%" }}
+                      placeholder="Nhập giá trị trợ giá"
+                      formatter={(value) =>
+                        `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ",")
+                      }
+                      parser={(value) =>
+                        Number(value!.replace(/\$\s?|(,*)/g, "")) as any
+                      }
+                      addonAfter="VND"
+                      min={0}
+                    />
+                  </Form.Item>
+                ) : null
+              }
+            </Form.Item>
+          </Form>
+        </Card>
+
         <div
           className="a4-container"
           style={{
@@ -687,7 +837,8 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
             <div style={{ fontSize: "14px", lineHeight: "1.6" }}>
               <StaffContractPreview
                 contractData={contractData}
-                onSave={handleSaveContract}
+                customization={contractCustomization}
+                content={contractContent}
               />
             </div>
           ) : (
@@ -818,6 +969,289 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
                 loading={creatingContract}
               >
                 Tạo hợp đồng
+              </Button>
+            </div>
+          </Form.Item>
+        </Form>
+      </Modal>
+
+      {/* Upload Contract Modal */}
+      <Modal
+        title={
+          <div className="flex items-center">
+            <FileTextOutlined className="mr-2 text-green-500" />
+            <span>Điều chỉnh thông tin xuất hợp đồng</span>
+          </div>
+        }
+        open={isUploadModalOpen}
+        onCancel={() => {
+          setIsUploadModalOpen(false);
+          uploadForm.resetFields();
+        }}
+        width={600}
+        footer={null}
+      >
+        <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded">
+          <p className="text-sm text-blue-800">
+            <strong>📝 Lưu ý:</strong> Vui lòng kiểm tra và điều chỉnh thông tin
+            hợp đồng trước khi xuất. Các thông tin này sẽ được lưu vào file PDF
+            và gửi lên hệ thống.
+          </p>
+        </div>
+
+        <Form
+          form={uploadForm}
+          layout="vertical"
+          onFinish={handleUploadContract}
+        >
+          <Form.Item
+            label="Tên hợp đồng"
+            name="contractName"
+            rules={[{ required: true, message: "Vui lòng nhập tên hợp đồng" }]}
+          >
+            <Input placeholder="Nhập tên hợp đồng" />
+          </Form.Item>
+
+          <Form.Item
+            label="Ngày hiệu lực"
+            name="effectiveDate"
+            rules={[{ required: true, message: "Vui lòng chọn ngày hiệu lực" }]}
+          >
+            <Input type="date" style={{ width: "100%" }} />
+          </Form.Item>
+
+          <Form.Item
+            label="Ngày hết hạn"
+            name="expirationDate"
+            rules={[{ required: true, message: "Vui lòng chọn ngày hết hạn" }]}
+          >
+            <Input type="date" style={{ width: "100%" }} />
+          </Form.Item>
+
+          <Form.Item
+            label="Giá trị hỗ trợ"
+            name="supportedValue"
+            rules={[
+              { required: true, message: "Vui lòng nhập giá trị hỗ trợ" },
+            ]}
+          >
+            <InputNumber
+              style={{ width: "100%" }}
+              placeholder="Nhập giá trị hỗ trợ"
+              formatter={(value) =>
+                `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ",")
+              }
+              parser={(value) =>
+                Number(value!.replace(/\$\s?|(,*)/g, "")) as any
+              }
+              addonAfter="VND"
+              min={0}
+            />
+          </Form.Item>
+
+          <Form.Item
+            label="Mô tả hợp đồng"
+            name="description"
+            rules={[{ required: true, message: "Vui lòng nhập mô tả" }]}
+          >
+            <Input.TextArea rows={3} placeholder="Nhập mô tả hợp đồng" />
+          </Form.Item>
+
+          <Form.Item className="mb-0">
+            <div className="flex justify-end gap-2">
+              <Button
+                onClick={() => {
+                  setIsUploadModalOpen(false);
+                  uploadForm.resetFields();
+                }}
+              >
+                Hủy
+              </Button>
+              <Button
+                type="primary"
+                htmlType="submit"
+                loading={uploadingContract}
+                icon={<FileTextOutlined />}
+                style={{ background: "#52c41a", borderColor: "#52c41a" }}
+              >
+                Xác nhận xuất hợp đồng
+              </Button>
+            </div>
+          </Form.Item>
+        </Form>
+      </Modal>
+
+      {/* Edit Contract Content Modal */}
+      <Modal
+        title={
+          <div className="flex items-center">
+            <EditOutlined className="mr-2 text-purple-500" />
+            <span>Chỉnh sửa nội dung hợp đồng</span>
+          </div>
+        }
+        open={isEditContentModalOpen}
+        onCancel={() => {
+          setIsEditContentModalOpen(false);
+          contentForm.resetFields();
+        }}
+        width={800}
+        footer={null}
+      >
+        <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded">
+          <p className="text-sm text-yellow-800">
+            <strong>⚠️ Lưu ý:</strong> Chỉ chỉnh sửa các nội dung văn bản tĩnh
+            của hợp đồng. Các thông tin từ database (tên khách hàng, địa chỉ,
+            giá trị đơn hàng...) không thể chỉnh sửa ở đây.
+          </p>
+        </div>
+
+        <Form
+          form={contentForm}
+          layout="vertical"
+          onFinish={handleSaveContractContent}
+        >
+          <h4 className="font-semibold mb-3 text-gray-700">
+            Thông tin Bên A (Công ty)
+          </h4>
+
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item
+                label="Tên công ty"
+                name="companyName"
+                rules={[
+                  { required: true, message: "Vui lòng nhập tên công ty" },
+                ]}
+              >
+                <Input placeholder="Nhập tên công ty" />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item
+                label="Số điện thoại"
+                name="companyPhone"
+                rules={[
+                  { required: true, message: "Vui lòng nhập số điện thoại" },
+                ]}
+              >
+                <Input placeholder="Nhập số điện thoại" />
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Form.Item
+            label="Địa chỉ công ty"
+            name="companyAddress"
+            rules={[{ required: true, message: "Vui lòng nhập địa chỉ" }]}
+          >
+            <Input placeholder="Nhập địa chỉ công ty" />
+          </Form.Item>
+
+          <Form.Item
+            label="Email công ty"
+            name="companyEmail"
+            rules={[
+              { required: true, message: "Vui lòng nhập email" },
+              { type: "email", message: "Email không hợp lệ" },
+            ]}
+          >
+            <Input placeholder="Nhập email công ty" />
+          </Form.Item>
+
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item
+                label="Người đại diện"
+                name="representativeName"
+                rules={[
+                  {
+                    required: true,
+                    message: "Vui lòng nhập tên người đại diện",
+                  },
+                ]}
+              >
+                <Input placeholder="Nhập tên người đại diện" />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item
+                label="Chức vụ"
+                name="representativeTitle"
+                rules={[{ required: true, message: "Vui lòng nhập chức vụ" }]}
+              >
+                <Input placeholder="Nhập chức vụ" />
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <h4 className="font-semibold mb-3 mt-4 text-gray-700">
+            Nội dung điều khoản
+          </h4>
+
+          <Form.Item
+            label="Mô tả dịch vụ (ĐIỀU 1.2)"
+            name="serviceDescription"
+            rules={[{ required: true, message: "Vui lòng nhập mô tả dịch vụ" }]}
+          >
+            <Input.TextArea rows={3} placeholder="Mô tả dịch vụ cung cấp" />
+          </Form.Item>
+
+          <Form.Item
+            label="Phương thức thanh toán"
+            name="paymentMethod"
+            rules={[
+              {
+                required: true,
+                message: "Vui lòng nhập phương thức thanh toán",
+              },
+            ]}
+          >
+            <Input placeholder="Ví dụ: Chuyển khoản, Tiền mặt..." />
+          </Form.Item>
+
+          <Form.Item
+            label="Điều khoản bảo hiểm (ĐIỀU 5.1)"
+            name="warrantyTerms"
+            rules={[
+              { required: true, message: "Vui lòng nhập điều khoản bảo hiểm" },
+            ]}
+          >
+            <Input.TextArea
+              rows={2}
+              placeholder="Điều khoản về bảo hiểm hàng hóa"
+            />
+          </Form.Item>
+
+          <Form.Item
+            label="Điều khoản chung (ĐIỀU 6.4)"
+            name="generalTerms"
+            rules={[
+              { required: true, message: "Vui lòng nhập điều khoản chung" },
+            ]}
+          >
+            <Input.TextArea
+              rows={2}
+              placeholder="Điều khoản về hiệu lực hợp đồng"
+            />
+          </Form.Item>
+
+          <Form.Item className="mb-0">
+            <div className="flex justify-end gap-2">
+              <Button
+                onClick={() => {
+                  setIsEditContentModalOpen(false);
+                  contentForm.resetFields();
+                }}
+              >
+                Hủy
+              </Button>
+              <Button
+                type="primary"
+                htmlType="submit"
+                icon={<EditOutlined />}
+                style={{ background: "#9333ea", borderColor: "#9333ea" }}
+              >
+                Lưu thay đổi
               </Button>
             </div>
           </Form.Item>

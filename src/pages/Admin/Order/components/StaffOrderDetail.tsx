@@ -58,6 +58,7 @@ const StaffOrderDetail: React.FC = () => {
     setLoading(true);
     try {
       const data = await orderService.getOrderForStaffByOrderId(orderId);
+      console.log("Fetched order data:", data);
       setOrderData(data);
     } catch (error) {
       messageApi.error("Không thể tải thông tin đơn hàng");

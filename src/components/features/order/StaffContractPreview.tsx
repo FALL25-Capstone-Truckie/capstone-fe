@@ -1,46 +1,71 @@
-import React, { useState } from "react";
-import { Input, Button, Space, Form, InputNumber } from "antd";
-import { EditOutlined, SaveOutlined, CloseOutlined } from "@ant-design/icons";
+import React from "react";
 import type { ContractData } from "../../../services/contract/contractTypes";
 import { formatCurrency, formatDate } from "../../../utils/formatters";
 
-interface StaffContractPreviewProps {
-  contractData: ContractData;
-  onSave?: (editedData: EditableData) => void;
+interface ContractCustomization {
+  effectiveDate: string;
+  expirationDate: string;
+  hasSupportValue: boolean;
+  supportedValue: number;
 }
 
-interface EditableData {
-  companyName?: string;
-  companyAddress?: string;
-  companyPhone?: string;
-  companyEmail?: string;
-  representativeName?: string;
-  representativeTitle?: string;
-  serviceDescription?: string;
-  paymentTerms?: string;
-  warrantyTerms?: string;
-  generalTerms?: string;
+interface ContractContent {
+  companyName: string;
+  companyAddress: string;
+  companyPhone: string;
+  companyEmail: string;
+  representativeName: string;
+  representativeTitle: string;
+  serviceDescription: string;
+  paymentMethod: string;
+  warrantyTerms: string;
+  generalTerms: string;
+}
+
+interface StaffContractPreviewProps {
+  contractData: ContractData;
+  customization?: ContractCustomization;
+  content?: ContractContent;
 }
 
 const StaffContractPreview: React.FC<StaffContractPreviewProps> = ({
   contractData,
-  onSave,
+  customization,
+  content,
 }) => {
   const currentDate = new Date().toLocaleDateString("vi-VN");
-  const [isEditing, setIsEditing] = useState(false);
-  const [editableData, setEditableData] = useState<EditableData>({
-    companyName: "TRUCKIE LOGISTICS",
-    companyAddress: "Số 123, Đường ABC, Quận XYZ, TP. Hồ Chí Minh",
-    companyPhone: "0123 456 789",
-    companyEmail: "contact@truckie.vn",
-    representativeName: "[Tên người đại diện]",
-    representativeTitle: "Giám đốc",
-    serviceDescription:
-      "Dịch vụ bao gồm: Vận chuyển hàng hóa từ điểm lấy hàng đến điểm giao hàng theo yêu cầu của Bên B.",
-    paymentTerms: "Chuyển khoản",
-    warrantyTerms: "Cung cấp bảo hiểm hàng hóa theo tỷ lệ quy định",
-    generalTerms: "Hợp đồng có hiệu lực kể từ ngày ký và thanh toán đặt cọc.",
-  });
+
+  // Use customization dates if provided, otherwise use default
+  const effectiveDate = customization?.effectiveDate
+    ? new Date(customization.effectiveDate).toLocaleDateString("vi-VN")
+    : currentDate;
+  const expirationDate = customization?.expirationDate
+    ? new Date(customization.expirationDate).toLocaleDateString("vi-VN")
+    : new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toLocaleDateString(
+        "vi-VN"
+      );
+  const supportedValue = customization?.hasSupportValue
+    ? customization.supportedValue
+    : 0;
+
+  // Use content customization if provided, otherwise use defaults
+  const companyName = content?.companyName || "TRUCKIE LOGISTICS";
+  const companyAddress =
+    content?.companyAddress || "Số 123, Đường ABC, Quận XYZ, TP. Hồ Chí Minh";
+  const companyPhone = content?.companyPhone || "0123 456 789";
+  const companyEmail = content?.companyEmail || "contact@truckie.vn";
+  const representativeName =
+    content?.representativeName || "[Tên người đại diện]";
+  const representativeTitle = content?.representativeTitle || "Giám đốc";
+  const serviceDescription =
+    content?.serviceDescription ||
+    "Dịch vụ bao gồm: Vận chuyển hàng hóa từ điểm lấy hàng đến điểm giao hàng theo yêu cầu của Bên B.";
+  const paymentMethod = content?.paymentMethod || "Chuyển khoản";
+  const warrantyTerms =
+    content?.warrantyTerms || "Cung cấp bảo hiểm hàng hóa theo tỷ lệ quy định";
+  const generalTerms =
+    content?.generalTerms ||
+    "Hợp đồng có hiệu lực kể từ ngày ký và thanh toán đặt cọc.";
 
   // Calculate deposit amount
   const depositAmount =
@@ -48,131 +73,8 @@ const StaffContractPreview: React.FC<StaffContractPreviewProps> = ({
       contractData.contractSettings.depositPercent) /
     100;
 
-  const handleEdit = () => {
-    setIsEditing(true);
-  };
-
-  const handleSave = () => {
-    // Basic validation
-    const requiredFields = [
-      "companyName",
-      "companyAddress",
-      "companyPhone",
-      "companyEmail",
-      "representativeName",
-      "representativeTitle",
-      "serviceDescription",
-      "paymentTerms",
-      "warrantyTerms",
-      "generalTerms",
-    ] as const;
-
-    const missingFields = requiredFields.filter(
-      (field) => !editableData[field]?.trim()
-    );
-
-    if (missingFields.length > 0) {
-      // You can add a message API here if available
-      console.warn(
-        "Vui lòng điền đầy đủ thông tin required fields:",
-        missingFields
-      );
-      return;
-    }
-
-    setIsEditing(false);
-    if (onSave) {
-      onSave(editableData);
-    }
-  };
-
-  const handleCancel = () => {
-    setIsEditing(false);
-    // Reset to original data
-    setEditableData({
-      companyName: "TRUCKIE LOGISTICS",
-      companyAddress: "Số 123, Đường ABC, Quận XYZ, TP. Hồ Chí Minh",
-      companyPhone: "0123 456 789",
-      companyEmail: "contact@truckie.vn",
-      representativeName: "[Tên người đại diện]",
-      representativeTitle: "Giám đốc",
-      serviceDescription:
-        "Dịch vụ bao gồm: Vận chuyển hàng hóa từ điểm lấy hàng đến điểm giao hàng theo yêu cầu của Bên B.",
-      paymentTerms: "Chuyển khoản",
-      warrantyTerms: "Cung cấp bảo hiểm hàng hóa theo tỷ lệ quy định",
-      generalTerms: "Hợp đồng có hiệu lực kể từ ngày ký và thanh toán đặt cọc.",
-    });
-  };
-
-  const updateEditableData = (key: keyof EditableData, value: string) => {
-    setEditableData((prev) => ({ ...prev, [key]: value }));
-  };
-
-  // Editable Field Component
-  const EditableField: React.FC<{
-    value: string;
-    onChange: (value: string) => void;
-    multiline?: boolean;
-    placeholder?: string;
-  }> = ({ value, onChange, multiline = false, placeholder }) => {
-    if (!isEditing) {
-      return <span>{value}</span>;
-    }
-
-    if (multiline) {
-      return (
-        <Input.TextArea
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder={placeholder}
-          autoSize={{ minRows: 2, maxRows: 4 }}
-          className="border-dashed border-blue-300"
-        />
-      );
-    }
-
-    return (
-      <Input
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        className="border-dashed border-blue-300"
-      />
-    );
-  };
-
   return (
     <div className="contract-preview bg-white p-8 max-w-4xl mx-auto">
-      {/* Edit Controls */}
-      <div className="mb-4 text-right">
-        <Space>
-          {!isEditing ? (
-            <Button
-              type="primary"
-              icon={<EditOutlined />}
-              onClick={handleEdit}
-              className="bg-blue-500"
-            >
-              Chỉnh sửa hợp đồng
-            </Button>
-          ) : (
-            <>
-              <Button
-                type="primary"
-                icon={<SaveOutlined />}
-                onClick={handleSave}
-                className="bg-green-500"
-              >
-                Lưu thay đổi
-              </Button>
-              <Button icon={<CloseOutlined />} onClick={handleCancel}>
-                Hủy
-              </Button>
-            </>
-          )}
-        </Space>
-      </div>
-
       <style>{`
         .contract-preview {
           font-family: 'Times New Roman', serif !important;
@@ -241,33 +143,7 @@ const StaffContractPreview: React.FC<StaffContractPreviewProps> = ({
           background-color: #fff2cc;
           font-weight: bold;
         }
-        .contract-preview .editing-notice {
-          background-color: #e6f7ff;
-          border: 1px dashed #1890ff;
-          padding: 8px 12px;
-          border-radius: 4px;
-          margin-bottom: 16px;
-          color: #1890ff;
-          font-size: 14px;
-        }
-        .contract-preview .ant-input {
-          border-style: dashed !important;
-          border-color: #40a9ff !important;
-        }
-        .contract-preview .ant-input:focus {
-          border-color: #1890ff !important;
-          box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2) !important;
-        }
       `}</style>
-
-      {/* Editing Notice */}
-      {isEditing && (
-        <div className="editing-notice">
-          <strong>📝 Chế độ chỉnh sửa:</strong> Bạn có thể chỉnh sửa các trường
-          có viền đứt nét. Phần đầu hợp đồng (quốc huy, tiêu ngữ) và dữ liệu từ
-          API không thể chỉnh sửa.
-        </div>
-      )}
 
       {/* Header */}
       <div className="header">
@@ -309,56 +185,22 @@ const StaffContractPreview: React.FC<StaffContractPreviewProps> = ({
           BÊN A: CÔNG TY DỊCH VỤ LOGISTICS (Bên cung cấp dịch vụ)
         </div>
         <p>
-          <strong>Tên công ty:</strong>{" "}
-          <EditableField
-            value={editableData.companyName!}
-            onChange={(value) => updateEditableData("companyName", value)}
-            placeholder="Tên công ty"
-          />
+          <strong>Tên công ty:</strong> {companyName}
         </p>
         <p>
-          <strong>Địa chỉ:</strong>{" "}
-          <EditableField
-            value={editableData.companyAddress!}
-            onChange={(value) => updateEditableData("companyAddress", value)}
-            placeholder="Địa chỉ công ty"
-          />
+          <strong>Địa chỉ:</strong> {companyAddress}
         </p>
         <p>
-          <strong>Điện thoại:</strong>{" "}
-          <EditableField
-            value={editableData.companyPhone!}
-            onChange={(value) => updateEditableData("companyPhone", value)}
-            placeholder="Số điện thoại"
-          />
+          <strong>Điện thoại:</strong> {companyPhone}
         </p>
         <p>
-          <strong>Email:</strong>{" "}
-          <EditableField
-            value={editableData.companyEmail!}
-            onChange={(value) => updateEditableData("companyEmail", value)}
-            placeholder="Email công ty"
-          />
+          <strong>Email:</strong> {companyEmail}
         </p>
         <p>
-          <strong>Người đại diện:</strong>{" "}
-          <EditableField
-            value={editableData.representativeName!}
-            onChange={(value) =>
-              updateEditableData("representativeName", value)
-            }
-            placeholder="Tên người đại diện"
-          />
+          <strong>Người đại diện:</strong> {representativeName}
         </p>
         <p>
-          <strong>Chức vụ:</strong>{" "}
-          <EditableField
-            value={editableData.representativeTitle!}
-            onChange={(value) =>
-              updateEditableData("representativeTitle", value)
-            }
-            placeholder="Chức vụ"
-          />
+          <strong>Chức vụ:</strong> {representativeTitle}
         </p>
       </div>
 
@@ -397,17 +239,7 @@ const StaffContractPreview: React.FC<StaffContractPreviewProps> = ({
           1.1. Bên A đồng ý cung cấp dịch vụ logistics cho Bên B theo các điều
           khoản được quy định trong hợp đồng này.
         </p>
-        <p>
-          1.2.{" "}
-          <EditableField
-            value={editableData.serviceDescription!}
-            onChange={(value) =>
-              updateEditableData("serviceDescription", value)
-            }
-            multiline
-            placeholder="Mô tả dịch vụ"
-          />
-        </p>
+        <p>1.2. {serviceDescription}</p>
       </div>
 
       <div className="terms-section">
@@ -419,7 +251,7 @@ const StaffContractPreview: React.FC<StaffContractPreviewProps> = ({
               <th>Ngày tạo</th>
               <th>Người nhận</th>
               <th>Số điện thoại</th>
-              <th>Tổng số lượng</th>
+              <th>Tổng số lượng kiện hàng</th>
             </tr>
           </thead>
           <tbody>
@@ -544,38 +376,122 @@ const StaffContractPreview: React.FC<StaffContractPreviewProps> = ({
           </tbody>
         </table>
 
-        <div style={{ marginTop: "20px" }}>
-          <p>
-            <strong>Tổng tiền trước điều chỉnh:</strong>{" "}
-            <strong>
-              {formatCurrency(contractData.priceDetails.totalBeforeAdjustment)}{" "}
-              =
+        <div
+          style={{
+            marginTop: "20px",
+            border: "1px solid #d9d9d9",
+            padding: "15px",
+            borderRadius: "4px",
+            backgroundColor: "#fafafa",
+          }}
+        >
+          <div
+            style={{
+              marginBottom: "12px",
+              paddingBottom: "12px",
+              borderBottom: "1px dashed #d9d9d9",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "flex-start",
+              }}
+            >
+              <div style={{ flex: 1 }}>
+                <strong>Tổng tiền trước điều chỉnh:</strong>
+                <div
+                  style={{
+                    fontSize: "11px",
+                    color: "#666",
+                    marginTop: "4px",
+                    fontStyle: "italic",
+                  }}
+                >
+                  {contractData.priceDetails.steps.map((step, index) => (
+                    <span key={index}>
+                      {index > 0 && " + "}({formatCurrency(step.unitPrice)} ×{" "}
+                      {step.appliedKm.toFixed(2)} km)
+                    </span>
+                  ))}
+                </div>
+              </div>
+              <div
+                style={{
+                  textAlign: "right",
+                  fontWeight: "bold",
+                  minWidth: "150px",
+                }}
+              >
+                {formatCurrency(
+                  contractData.priceDetails.totalBeforeAdjustment
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div
+            style={{
+              marginBottom: "8px",
+              display: "flex",
+              justifyContent: "space-between",
+            }}
+          >
+            <span>
+              <strong>Phí danh mục thêm:</strong>
+            </span>
+            <span>
+              {formatCurrency(contractData.priceDetails.categoryExtraFee)}
+            </span>
+          </div>
+
+          <div
+            style={{
+              marginBottom: "8px",
+              display: "flex",
+              justifyContent: "space-between",
+            }}
+          >
+            <span>
+              <strong>Hệ số danh mục:</strong>
+            </span>
+            <span>{contractData.priceDetails.categoryMultiplier}</span>
+          </div>
+
+          <div
+            style={{
+              marginBottom: "12px",
+              paddingBottom: "12px",
+              borderBottom: "1px dashed #d9d9d9",
+              display: "flex",
+              justifyContent: "space-between",
+            }}
+          >
+            <span>
+              <strong>Giảm giá khuyến mãi:</strong>
+            </span>
+            <span style={{ color: "#52c41a", fontWeight: "bold" }}>
+              -{formatCurrency(contractData.priceDetails.promotionDiscount)}
+            </span>
+          </div>
+
+          <div
+            className="highlight"
+            style={{
+              padding: "10px",
+              backgroundColor: "#fff2cc",
+              borderRadius: "4px",
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+            }}
+          >
+            <strong style={{ fontSize: "14px" }}>TỔNG GIÁ TRỊ HỢP ĐỒNG:</strong>
+            <strong style={{ fontSize: "16px", color: "#d4380d" }}>
+              {formatCurrency(contractData.priceDetails.finalTotal)}
             </strong>
-            {contractData.priceDetails.steps.map((step, index) => (
-              <span key={index}>
-                {" "}
-                + {"("}
-                {step.unitPrice} * {step.appliedKm.toFixed(2)}
-                {")"}{" "}
-              </span>
-            ))}
-          </p>
-          <p>
-            <strong>Phí danh mục thêm:</strong>{" "}
-            {formatCurrency(contractData.priceDetails.categoryExtraFee)}
-          </p>
-          <p>
-            <strong>Hệ số danh mục:</strong>{" "}
-            {contractData.priceDetails.categoryMultiplier}
-          </p>
-          <p>
-            <strong>Giảm giá khuyến mãi:</strong>{" "}
-            {formatCurrency(contractData.priceDetails.promotionDiscount)}
-          </p>
-          <p className="highlight">
-            <strong>TỔNG GIÁ TRỊ HỢP ĐỒNG:</strong>{" "}
-            {formatCurrency(contractData.priceDetails.finalTotal)}
-          </p>
+          </div>
         </div>
 
         <div style={{ marginTop: "20px" }}>
@@ -594,18 +510,17 @@ const StaffContractPreview: React.FC<StaffContractPreviewProps> = ({
             )}{" "}
             khi hoàn thành dịch vụ
           </p>
-          <p>
-            - Phương thức thanh toán:{" "}
-            <EditableField
-              value={editableData.paymentTerms!}
-              onChange={(value) => updateEditableData("paymentTerms", value)}
-              placeholder="Phương thức thanh toán"
-            />
-          </p>
+          <p>- Phương thức thanh toán: {paymentMethod}</p>
           <p>
             - Phí bảo hiểm: {contractData.contractSettings.insuranceRate}% giá
             trị hàng hóa
           </p>
+          {supportedValue > 0 && (
+            <p style={{ color: "#059669", fontWeight: "bold" }}>
+              - Giá trị trợ giá: {formatCurrency(supportedValue)} (đã bao gồm
+              trong tổng giá trị hợp đồng)
+            </p>
+          )}
         </div>
       </div>
 
@@ -645,15 +560,7 @@ const StaffContractPreview: React.FC<StaffContractPreviewProps> = ({
         </p>
         <p>- Bảo đảm an toàn hàng hóa trong quá trình vận chuyển</p>
         <p>- Thông báo kịp thời cho Bên B về tình trạng hàng hóa</p>
-        <p>
-          -{" "}
-          <EditableField
-            value={editableData.warrantyTerms!}
-            onChange={(value) => updateEditableData("warrantyTerms", value)}
-            multiline
-            placeholder="Điều khoản bảo hiểm và cam kết"
-          />
-        </p>
+        <p>- {warrantyTerms}</p>
 
         <p>
           <strong>5.2. Quyền và nghĩa vụ của Bên B:</strong>
@@ -679,15 +586,13 @@ const StaffContractPreview: React.FC<StaffContractPreviewProps> = ({
           giải quyết bằng thương lượng. Nếu không thỏa thuận được, tranh chấp sẽ
           được giải quyết tại Tòa án có thẩm quyền.
         </p>
-        <p>
-          6.4.{" "}
-          <EditableField
-            value={editableData.generalTerms!}
-            onChange={(value) => updateEditableData("generalTerms", value)}
-            multiline
-            placeholder="Điều khoản về hiệu lực hợp đồng"
-          />
-        </p>
+        <p>6.4. {generalTerms}</p>
+        <div>
+          <p style={{ marginBottom: "5px" }}>
+            <strong>Thời gian hiệu lực:</strong> Từ ngày {effectiveDate} đến
+            ngày {expirationDate}
+          </p>
+        </div>
       </div>
 
       {/* Signature Section */}
@@ -697,12 +602,12 @@ const StaffContractPreview: React.FC<StaffContractPreviewProps> = ({
             <strong>BÊN A</strong>
           </p>
           <p>
-            <strong>TRUCKIE LOGISTICS</strong>
+            <strong>{companyName}</strong>
           </p>
           <p style={{ marginTop: "60px" }}>________________</p>
-          <p>[Tên người đại diện]</p>
+          <p>{representativeName}</p>
           <p>
-            <em>Giám đốc</em>
+            <em>{representativeTitle}</em>
           </p>
         </div>
         <div className="signature-box">
@@ -723,13 +628,6 @@ const StaffContractPreview: React.FC<StaffContractPreviewProps> = ({
       <div style={{ textAlign: "center", marginTop: "30px" }}>
         <p>
           <em>Hợp đồng được lập tại TP. Hồ Chí Minh, ngày {currentDate}</em>
-        </p>
-      </div>
-
-      <div style={{ marginTop: "20px", fontSize: "12px", color: "#666" }}>
-        <p>
-          <strong>Thống kê tính toán:</strong>{" "}
-          {contractData.priceDetails.summary}
         </p>
       </div>
     </div>

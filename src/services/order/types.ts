@@ -87,6 +87,18 @@ export interface VehicleSuggestion {
   vehicleRuleName: string;
   currentLoad: number;
   assignedDetails: AssignedDetail[];
+  packedDetailDetails: PackedDetail[];
+}
+
+export interface PackedDetail {
+  orderDetailId: string;
+  x: number;
+  y: number;
+  z: number;
+  length: number;
+  width: number;
+  height: number;
+  orientation: string;
 }
 
 export interface AssignedDetail {
@@ -133,4 +145,19 @@ export interface BillOfLadingPreviewResponse {
     base64Content: string;
     mimeType: string;
   }[];
+}
+
+/**
+ * Response for relistice suggested vehicles
+ */
+export interface BothOptimalAndRealisticVehicleSuggestionsResponse {
+  success: boolean;
+  message: string;
+  statusCode: number;
+  data: BothOptimalAndRealisticVehicle[];
+}
+
+export interface BothOptimalAndRealisticVehicle {
+  optimal: VehicleSuggestion[];
+  realistic: VehicleSuggestion[];
 }

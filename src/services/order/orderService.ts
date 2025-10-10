@@ -22,6 +22,7 @@ import type {
   StaffOrderDetailResponse,
   VehicleSuggestionsResponse,
   BillOfLadingPreviewResponse,
+  BothOptimalAndRealisticVehicle,
 } from "./types";
 import type { PaginationParams } from "../api/types";
 import { handleApiError } from "../api/errorHandler";
@@ -31,6 +32,7 @@ import {
 } from "../../utils/dateUtils";
 
 import dayjs from "dayjs";
+import type { get } from "lodash";
 
 /**
  * Service for handling order-related API calls
@@ -225,7 +227,6 @@ const orderService = {
         }
       }
 
-      // Chuyển đổi dữ liệu sang định dạng API mong đợi
       const apiOrderData = {
         orderRequest: {
           ...orderData.orderRequest,
@@ -543,6 +544,26 @@ const orderService = {
   },
 
   /**
+   * Get suggest assign vehicles in realistic and optimal range for order
+   * @param orderId Order ID to get vehicle suggestions
+   * @returns Promise with vehicle assignment suggestions
+   */
+  getBothOptimalAndRealisticAssignVehicles: async (orderId: string) => {
+    try {
+      const response = await httpClient.get(
+        `/contracts/${orderId}/get-both-optimal-and-realistic-assign-vehicles`
+      );
+      return response.data;
+    } catch (error) {
+      console.error(
+        `Error fetching vehicle suggestions for order ${orderId}:`,
+        error
+      );
+      throw handleApiError(error, "Không thể tải đề xuất phân xe");
+    }
+  },
+
+  /**
    * Check if contract exists for order
    * @param orderId Order ID to check contract
    * @returns Promise with contract check result
@@ -571,7 +592,9 @@ const orderService = {
    * @param orderId Order ID
    * @returns Promise with bill of lading preview data
    */
-  previewBillOfLading: async (orderId: string): Promise<BillOfLadingPreviewResponse['data']> => {
+  previewBillOfLading: async (
+    orderId: string
+  ): Promise<BillOfLadingPreviewResponse["data"]> => {
     try {
       const response = await httpClient.get<BillOfLadingPreviewResponse>(
         `/bill-of-ladings/order/${orderId}/preview`

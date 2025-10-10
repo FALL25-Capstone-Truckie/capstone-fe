@@ -1,15 +1,12 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { App, Button, Typography, Skeleton, Empty, Tabs, Card } from "antd";
 import {
-  App,
-  Button,
-  Typography,
-  Skeleton,
-  Empty,
-  Tabs,
-  Card,
-} from "antd";
-import { ArrowLeftOutlined, InfoCircleOutlined, CarOutlined, ProfileOutlined } from "@ant-design/icons";
+  ArrowLeftOutlined,
+  InfoCircleOutlined,
+  CarOutlined,
+  ProfileOutlined,
+} from "@ant-design/icons";
 import orderService from "../../../services/order/orderService";
 import httpClient from "../../../services/api/httpClient";
 import type {
@@ -92,8 +89,10 @@ const CustomerOrderDetail: React.FC = () => {
 
     setLoadingVehicleSuggestions(true);
     try {
-      const response = await orderService.getSuggestAssignVehicles(id);
-      setVehicleSuggestions(response.data);
+      const response =
+        await orderService.getBothOptimalAndRealisticAssignVehicles(id);
+      setVehicleSuggestions(response.data.realistic);
+      console.log("Vehicle suggestions:", response.data.realistic);
       setVehicleSuggestionsModalVisible(true);
     } catch (error) {
       messageApi.error("Không thể tải đề xuất phân xe");

@@ -1,9 +1,10 @@
 import React, { useRef, useEffect } from 'react';
 import { useChatContext } from '@/context/ChatContext';
-import ChatMessage from './ChatMessage';
+
 import MessageInput from './MessageInput';
 import { Button } from 'antd';
 import { CloseOutlined } from '@ant-design/icons';
+import ChatMessage from './ChatMessage';
 
 const ChatWindow: React.FC = () => {
     const { uiMessages, activeConversation, isOpen, toggleChat } = useChatContext();

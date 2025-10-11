@@ -10,6 +10,8 @@ import type { SupportRoom } from "@/context/ChatContext";
 
 const StaffChatWindow: React.FC = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const prevMessagesLengthRef = useRef(0);
   const { user } = useAuth();
 
   const {
@@ -24,16 +26,7 @@ const StaffChatWindow: React.FC = () => {
     loadMessagesForRoom,
   } = useChatContext();
 
-  // Fetch messages for active room
-  const fetchMessagesForActiveRoom = async (roomId: string) => {
-    try {
-      await loadMessagesForRoom(roomId);
-    } catch (err) {
-      console.error("Failed to load messages for room", err);
-    }
-  };
-
-  // Fetch support rooms on open
+  // Fetch support rooms on mount
   useEffect(() => {
     fetchSupportRooms();
   }, [fetchSupportRooms]);
@@ -41,17 +34,40 @@ const StaffChatWindow: React.FC = () => {
   // Load messages when activeConversation changes
   useEffect(() => {
     if (activeConversation) {
-      fetchMessagesForActiveRoom(activeConversation.roomId);
+      loadMessagesForRoom(activeConversation.roomId);
     }
-  }, [activeConversation]);
+  }, [activeConversation?.roomId]);
 
-  // Scroll to bottom when messages change
+  // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
-    if (messagesEndRef.current && !isMinimized) {
-      messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+    if (!messagesEndRef.current || !messagesContainerRef.current || isMinimized) return;
+
+    const container = messagesContainerRef.current;
+    const isNearBottom = 
+      container.scrollHeight - container.scrollTop - container.clientHeight < 100;
+
+    if (uiMessages.length > prevMessagesLengthRef.current && isNearBottom) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
+
+    prevMessagesLengthRef.current = uiMessages.length;
   }, [uiMessages, isMinimized]);
 
+  // Scroll to bottom on initial load
+  useEffect(() => {
+    if (!isMinimized && activeConversation && messagesEndRef.current) {
+      setTimeout(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
+      }, 100);
+    }
+  }, [isMinimized, activeConversation?.roomId]);
+
+  // Cleanup WebSocket when unmounted
+  useEffect(() => {
+    return () => {
+      console.log("🧹 StaffChatWindow unmounted");
+    };
+  }, []);
 
   const mapRoomToConversation = (room: SupportRoom) => ({
     id: room.roomId,
@@ -75,24 +91,12 @@ const StaffChatWindow: React.FC = () => {
     }
   };
 
-
   if (isMinimized) return null;
-    // Cleanup WebSocket khi StaffChatWindow bị unmount
-  useEffect(() => {
-    return () => {
-      console.log("🧹 StaffChatWindow unmounted → disconnect WebSocket");
-      // Gọi cleanup từ context nếu có
-      if (typeof (window as any).disconnectWebSocket === "function") {
-        (window as any).disconnectWebSocket();
-      }
-    };
-  }, []);
-
 
   return (
     <div className="fixed bottom-20 right-4 z-50 w-[700px] h-[800px] bg-white shadow-lg rounded-lg flex flex-col border border-gray-200">
       {/* Header */}
-      <div className="bg-blue-600 text-white px-6 py-4 flex justify-between items-center rounded-t-lg">
+      <div className="bg-blue-600 text-white px-6 py-4 flex justify-between items-center rounded-t-lg flex-shrink-0">
         <h3 className="font-medium text-lg">Hỗ trợ trực tuyến</h3>
         <Button
           type="text"
@@ -107,7 +111,7 @@ const StaffChatWindow: React.FC = () => {
       <div className="flex-1 flex overflow-hidden">
         {/* Left: Conversation List */}
         <div className="w-1/3 border-r overflow-y-auto flex flex-col">
-          <div className="p-4 bg-gray-50 border-b">
+          <div className="p-4 bg-gray-50 border-b flex-shrink-0">
             <h4 className="text-lg font-medium text-gray-700">
               Các phòng chờ hỗ trợ
             </h4>
@@ -117,7 +121,7 @@ const StaffChatWindow: React.FC = () => {
               <Spin />
             </div>
           ) : supportRooms.length > 0 ? (
-            <div className="overflow-y-auto h-full">
+            <div className="flex-1 overflow-y-auto">
               {supportRooms.map((room) => (
                 <StaffChatConversationItem
                   key={room.roomId}
@@ -128,7 +132,7 @@ const StaffChatWindow: React.FC = () => {
               ))}
             </div>
           ) : (
-            <div className="p-4 text-center text-gray-500">
+            <div className="flex-1 flex items-center justify-center">
               <Empty description="Không có yêu cầu hỗ trợ nào" />
             </div>
           )}
@@ -139,17 +143,16 @@ const StaffChatWindow: React.FC = () => {
           {activeConversation ? (
             <>
               {/* Chat Header */}
-              <div className="p-4 bg-gray-50 border-b flex items-center">
+              <div className="p-4 bg-gray-50 border-b flex items-center flex-shrink-0">
                 <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-600 font-medium mr-3">
                   {activeConversation.participants[0]?.userId
                     .charAt(0)
                     .toUpperCase()}
                 </div>
                 <div className="flex-1">
-                  <h4 className="text-lg font-medium text-gray-700">{`Khách hàng #${activeConversation.roomId.slice(
-                    0,
-                    5
-                  )}`}</h4>
+                  <h4 className="text-lg font-medium text-gray-700">
+                    {`Khách hàng #${activeConversation.roomId.slice(0, 5)}`}
+                  </h4>
                   <div className="text-sm text-gray-500">
                     {activeConversation.status === "active"
                       ? "Đang hoạt động"
@@ -166,25 +169,38 @@ const StaffChatWindow: React.FC = () => {
               </div>
 
               {/* Messages */}
-              <div className="flex-1 overflow-y-auto p-5">
-                {uiMessages
-                  .slice()
-                  .reverse()
-                  .map((msg) => (
-                    <StaffChatMessage
-                      key={msg.id}
-                      message={msg}
-                      isOwnMessage={msg.senderId === user?.id}
-                    />
-                  ))}
-                <div ref={messagesEndRef} />
+              <div 
+                ref={messagesContainerRef}
+                className="flex-1 overflow-y-auto p-5"
+              >
+                {uiMessages.length === 0 ? (
+                  <div className="text-center text-gray-500 mt-8">
+                    Chưa có tin nhắn. Hãy bắt đầu cuộc hội thoại!
+                  </div>
+                ) : (
+                  <>
+                    {[...uiMessages]
+  .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
+  .map((msg) => (
+    <StaffChatMessage
+      key={msg.id}
+      message={msg}
+      isOwnMessage={msg.senderId === user?.id}
+    />
+))}
+                    
+                    <div ref={messagesEndRef} />
+                  </>
+                )}
               </div>
 
-              {/* Input (use shared MessageInput) */}
+              {/* Input */}
               {activeConversation.status === "active" ? (
-                <MessageInput />
+                <div className="flex-shrink-0">
+                  <MessageInput />
+                </div>
               ) : (
-                <div className="text-center text-gray-500 mt-2 text-sm p-3 border-t">
+                <div className="text-center text-gray-500 text-sm p-3 border-t flex-shrink-0">
                   Cuộc hội thoại đã kết thúc.
                 </div>
               )}

@@ -24,3 +24,4 @@ dist-ssr
 *.sw?
 .env
 .cursor/rules/my-rule.mdc
+.windsurf/rules/my-rule.md

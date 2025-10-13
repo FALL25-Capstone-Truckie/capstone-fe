@@ -211,14 +211,6 @@ const OrderDetailPackageTab: React.FC<OrderDetailPackageTabProps> = ({
                         <Card
                             className="mb-4"
                             size="small"
-                            title={
-                                <div className="flex items-center">
-                                    <CarOutlined className="mr-2 text-blue-500" />
-                                    <span className="font-medium">
-                                        Thông tin phương tiện vận chuyển
-                                    </span>
-                                </div>
-                            }
                         >
                             <VehicleInfoSection
                                 vehicleAssignment={detail.vehicleAssignment}
@@ -228,14 +220,6 @@ const OrderDetailPackageTab: React.FC<OrderDetailPackageTabProps> = ({
                         <Card
                             className="mb-4"
                             size="small"
-                            title={
-                                <div className="flex items-center">
-                                    <CarOutlined className="mr-2 text-blue-500" />
-                                    <span className="font-medium">
-                                        Thông tin phương tiện vận chuyển
-                                    </span>
-                                </div>
-                            }
                         >
                             <div className="text-center py-4">
                                 <p className="text-gray-500 mb-4">

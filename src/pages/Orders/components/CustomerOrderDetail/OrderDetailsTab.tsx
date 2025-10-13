@@ -5,7 +5,6 @@ import {
     CarOutlined,
     FileTextOutlined,
     ToolOutlined,
-    HistoryOutlined,
     CameraOutlined,
     UserOutlined,
     PhoneOutlined,
@@ -43,18 +42,11 @@ const OrderDetailsTab: React.FC<OrderDetailsTabProps> = ({
         return <Empty description="Chưa có thông tin chi tiết vận chuyển" />;
     }
 
-    // Kiểm tra xem đơn hàng đã được phân công cho tài xế chưa
-    const isAssignedToDriver =
-        order.status === "ASSIGNED_TO_DRIVER" ||
-        order.status === "DRIVER_CONFIRM" ||
-        order.status === "PICKED_UP" ||
-        order.status === "SEALED_COMPLETED" ||
-        order.status === "ON_DELIVERED" ||
-        order.status === "ONGOING_DELIVERED" ||
-        order.status === "IN_DELIVERED";
+    // Kiểm tra xem có vehicle assignment không
+    const hasVehicleAssignment = order.orderDetails.some((detail: any) => detail.vehicleAssignment);
 
-    // Nếu đã phân công cho tài xế, hiển thị theo vehicle assignment
-    if (isAssignedToDriver) {
+    // Nếu có vehicle assignment, hiển thị theo vehicle assignment
+    if (hasVehicleAssignment) {
         // Nhóm các order details theo vehicle assignment
         interface VehicleAssignmentGroup {
             vehicleAssignment: any;
@@ -93,24 +85,14 @@ const OrderDetailsTab: React.FC<OrderDetailsTabProps> = ({
                     <TabPane
                         tab={
                             <span>
-                                <CarOutlined /> Chuyến xe #{index + 1}{" "}
-                                {vaGroup.vehicleAssignment.trackingCode
-                                    ? `- ${vaGroup.vehicleAssignment.trackingCode}`
-                                    : vaGroup.vehicleAssignment.licensePlateNumber
-                                        ? `- ${vaGroup.vehicleAssignment.licensePlateNumber}`
-                                        : ""}
+                                <CarOutlined /> Chuyến xe #{index + 1} -{" "}
+                                {vaGroup.vehicleAssignment.trackingCode || "Chưa có mã"}
                             </span>
                         }
                         key={index.toString()}
                     >
                         {/* Thông tin phương tiện */}
                         <Card
-                            title={
-                                <div className="flex items-center">
-                                    <CarOutlined className="mr-2 text-blue-500" />
-                                    <span>Thông tin phương tiện</span>
-                                </div>
-                            }
                             className="shadow-md mb-6 rounded-xl"
                             size="small"
                         >
@@ -207,11 +189,158 @@ const OrderDetailsTab: React.FC<OrderDetailsTabProps> = ({
                             </div>
                         </Card>
 
+                        {/* Thông tin chi tiết của các order details */}
+                        {vaGroup.orderDetails.map((detail: any, detailIdx: number) => (
+                            <Card key={detail.id} className="mb-6 shadow-md rounded-xl">
+                                <div className="mb-4">
+                                    <h3 className="text-lg font-semibold text-blue-600">
+                                        Kiện {detailIdx + 1} - {detail.trackingCode || "Chưa có mã"}
+                                    </h3>
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                                    {/* Thông tin cơ bản */}
+                                    <Card
+                                        className="h-full"
+                                        size="small"
+                                        title={
+                                            <div className="flex items-center">
+                                                <FileTextOutlined className="mr-2 text-blue-500" />
+                                                <span className="font-medium">Thông tin cơ bản</span>
+                                            </div>
+                                        }
+                                    >
+                                        <div className="mb-3">
+                                            <div className="flex items-center mb-1">
+                                                <TagOutlined className="mr-2 text-blue-500" />
+                                                <span className="font-medium">Mã theo dõi:</span>
+                                            </div>
+                                            <div className="ml-6">
+                                                {detail.trackingCode || "Chưa có"}
+                                            </div>
+                                        </div>
+                                        <div className="mb-3">
+                                            <div className="flex items-center mb-1">
+                                                <TagOutlined className="mr-2 text-blue-500" />
+                                                <span className="font-medium">Trạng thái:</span>
+                                            </div>
+                                            <div className="ml-6">
+                                                <Tag color={getStatusColor(detail.status)}>
+                                                    {detail.status}
+                                                </Tag>
+                                            </div>
+                                        </div>
+                                        <div className="mb-3">
+                                            <div className="flex items-center mb-1">
+                                                <TagOutlined className="mr-2 text-blue-500" />
+                                                <span className="font-medium">Trọng lượng:</span>
+                                            </div>
+                                            <div className="ml-6">
+                                                {detail.weightBaseUnit} {detail.unit}
+                                            </div>
+                                        </div>
+                                        <div className="mb-3">
+                                            <div className="flex items-center mb-1">
+                                                <FileTextOutlined className="mr-2 text-blue-500" />
+                                                <span className="font-medium">Mô tả:</span>
+                                            </div>
+                                            <div className="ml-6">
+                                                {detail.description || "Không có mô tả"}
+                                            </div>
+                                        </div>
+                                    </Card>
+
+                                    {/* Thông tin thời gian */}
+                                    <Card
+                                        className="h-full"
+                                        size="small"
+                                        title={
+                                            <div className="flex items-center">
+                                                <TagOutlined className="mr-2 text-blue-500" />
+                                                <span className="font-medium">Thông tin thời gian</span>
+                                            </div>
+                                        }
+                                    >
+                                        <div className="mb-3">
+                                            <div className="flex items-center mb-1">
+                                                <TagOutlined className="mr-2 text-blue-500" />
+                                                <span className="font-medium">Thời gian bắt đầu:</span>
+                                            </div>
+                                            <div className="ml-6">{formatDate(detail.startTime)}</div>
+                                        </div>
+                                        <div className="mb-3">
+                                            <div className="flex items-center mb-1">
+                                                <TagOutlined className="mr-2 text-blue-500" />
+                                                <span className="font-medium">Thời gian kết thúc:</span>
+                                            </div>
+                                            <div className="ml-6">{formatDate(detail.endTime)}</div>
+                                        </div>
+                                        <div className="mb-3">
+                                            <div className="flex items-center mb-1">
+                                                <TagOutlined className="mr-2 text-blue-500" />
+                                                <span className="font-medium">Thời gian dự kiến bắt đầu:</span>
+                                            </div>
+                                            <div className="ml-6">
+                                                {formatDate(detail.estimatedStartTime)}
+                                            </div>
+                                        </div>
+                                        <div className="mb-3">
+                                            <div className="flex items-center mb-1">
+                                                <TagOutlined className="mr-2 text-blue-500" />
+                                                <span className="font-medium">Thời gian dự kiến kết thúc:</span>
+                                            </div>
+                                            <div className="ml-6">
+                                                {formatDate(detail.estimatedEndTime)}
+                                            </div>
+                                        </div>
+                                    </Card>
+                                </div>
+
+                                {/* Thông tin kích thước */}
+                                {detail.orderSize && (
+                                    <Card
+                                        className="mb-4"
+                                        size="small"
+                                        title={
+                                            <div className="flex items-center">
+                                                <BoxPlotOutlined className="mr-2 text-blue-500" />
+                                                <span className="font-medium">Thông tin kích thước</span>
+                                            </div>
+                                        }
+                                    >
+                                        <table className="w-full border-collapse">
+                                            <thead>
+                                                <tr>
+                                                    <th className="border border-gray-300 bg-gray-50 p-2 text-left">
+                                                        Mô tả
+                                                    </th>
+                                                    <th className="border border-gray-300 bg-gray-50 p-2 text-left">
+                                                        Kích thước (Dài x Rộng x Cao)
+                                                    </th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <tr>
+                                                    <td className="border border-gray-300 p-2">
+                                                        {detail.orderSize.description}
+                                                    </td>
+                                                    <td className="border border-gray-300 p-2">
+                                                        {`${detail.orderSize.minLength} x ${detail.orderSize.minWidth} x ${detail.orderSize.minHeight} m - 
+                                                        ${detail.orderSize.maxLength} x ${detail.orderSize.maxWidth} x ${detail.orderSize.maxHeight} m`}
+                                                    </td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </Card>
+                                )}
+                            </Card>
+                        ))}
+
                         {/* Tabs chi tiết */}
                         <Card className="mb-6 shadow-md rounded-xl">
                             <Tabs defaultActiveKey="orderDetails" type="card">
                                 {/* Tab danh sách lô hàng */}
-                                <TabPane
+                                <Tabs.TabPane
                                     tab={
                                         <span>
                                             <BoxPlotOutlined /> Danh sách lô hàng
@@ -261,10 +390,10 @@ const OrderDetailsTab: React.FC<OrderDetailsTabProps> = ({
                                             </tbody>
                                         </table>
                                     </div>
-                                </TabPane>
+                                </Tabs.TabPane>
 
-                                {/* Tab lịch sử hành trình */}
-                                <TabPane
+                                {/* Tab lộ trình vận chuyển */}
+                                <Tabs.TabPane
                                     tab={
                                         <span>
                                             <EnvironmentOutlined /> Lộ trình vận chuyển
@@ -321,10 +450,10 @@ const OrderDetailsTab: React.FC<OrderDetailsTabProps> = ({
                                     ) : (
                                         <Empty description="Không có lịch sử hành trình nào" />
                                     )}
-                                </TabPane>
+                                </Tabs.TabPane>
 
                                 {/* Tab sự cố */}
-                                <TabPane
+                                <Tabs.TabPane
                                     tab={
                                         <span>
                                             <ToolOutlined /> Sự cố
@@ -332,72 +461,74 @@ const OrderDetailsTab: React.FC<OrderDetailsTabProps> = ({
                                     }
                                     key="issues"
                                 >
-                                    {vaGroup.vehicleAssignment.issue ? (
+                                    {vaGroup.vehicleAssignment.issues && vaGroup.vehicleAssignment.issues.length > 0 ? (
                                         <div className="p-2">
-                                            <div className="bg-red-50 p-4 rounded-lg mb-3">
-                                                <div className="flex items-center mb-3">
-                                                    <span className="font-medium">Mô tả sự cố:</span>
-                                                    <span className="ml-2">{vaGroup.vehicleAssignment.issue.issue.description}</span>
-                                                    <Tag
-                                                        className="ml-2"
-                                                        color={getStatusColor(vaGroup.vehicleAssignment.issue.issue.status)}
-                                                    >
-                                                        {vaGroup.vehicleAssignment.issue.issue.status}
-                                                    </Tag>
-                                                </div>
-                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                                    {vaGroup.vehicleAssignment.issue.issue.issueTypeName && (
-                                                        <div className="flex items-center">
-                                                            <span className="font-medium mr-1">Loại sự cố:</span>
-                                                            <span>{vaGroup.vehicleAssignment.issue.issue.issueTypeName}</span>
+                                            {vaGroup.vehicleAssignment.issues.map((issueItem: any, issueIdx: number) => (
+                                                <div key={issueIdx} className="bg-red-50 p-4 rounded-lg mb-3">
+                                                    <div className="flex items-center mb-3">
+                                                        <span className="font-medium">Mô tả sự cố:</span>
+                                                        <span className="ml-2">{issueItem.issue.description}</span>
+                                                        <Tag
+                                                            className="ml-2"
+                                                            color={getStatusColor(issueItem.issue.status)}
+                                                        >
+                                                            {issueItem.issue.status}
+                                                        </Tag>
+                                                    </div>
+                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                                        {issueItem.issue.issueTypeName && (
+                                                            <div className="flex items-center">
+                                                                <span className="font-medium mr-1">Loại sự cố:</span>
+                                                                <span>{issueItem.issue.issueTypeName}</span>
+                                                            </div>
+                                                        )}
+                                                        {issueItem.issue.staff && (
+                                                            <>
+                                                                <div className="flex items-center">
+                                                                    <span className="font-medium mr-1">Nhân viên xử lý:</span>
+                                                                    <span>{issueItem.issue.staff.name}</span>
+                                                                </div>
+                                                                <div className="flex items-center">
+                                                                    <span className="font-medium mr-1">Liên hệ:</span>
+                                                                    <span>{issueItem.issue.staff.phone}</span>
+                                                                </div>
+                                                            </>
+                                                        )}
+                                                    </div>
+
+                                                    {issueItem.imageUrls && issueItem.imageUrls.length > 0 ? (
+                                                        <div className="mt-4">
+                                                            <div className="flex items-center mb-2">
+                                                                <span className="font-medium">Hình ảnh:</span>
+                                                            </div>
+                                                            <div className="flex flex-wrap gap-2">
+                                                                {issueItem.imageUrls.map((url: string, idx: number) => (
+                                                                    <img
+                                                                        key={idx}
+                                                                        src={url}
+                                                                        alt={`Issue image ${idx + 1}`}
+                                                                        width={100}
+                                                                        height={100}
+                                                                        className="object-cover rounded"
+                                                                    />
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                    ) : (
+                                                        <div className="mt-4 text-gray-500">
+                                                            <span>Chưa có hình ảnh</span>
                                                         </div>
                                                     )}
-                                                    {vaGroup.vehicleAssignment.issue.issue.staff && (
-                                                        <>
-                                                            <div className="flex items-center">
-                                                                <span className="font-medium mr-1">Nhân viên xử lý:</span>
-                                                                <span>{vaGroup.vehicleAssignment.issue.issue.staff.name}</span>
-                                                            </div>
-                                                            <div className="flex items-center">
-                                                                <span className="font-medium mr-1">Liên hệ:</span>
-                                                                <span>{vaGroup.vehicleAssignment.issue.issue.staff.phone}</span>
-                                                            </div>
-                                                        </>
-                                                    )}
                                                 </div>
-                                            </div>
-
-                                            {vaGroup.vehicleAssignment.issue.imageUrls && vaGroup.vehicleAssignment.issue.imageUrls.length > 0 ? (
-                                                <div className="mt-4">
-                                                    <div className="flex items-center mb-2">
-                                                        <span className="font-medium">Hình ảnh:</span>
-                                                    </div>
-                                                    <div className="flex flex-wrap gap-2">
-                                                        {vaGroup.vehicleAssignment.issue.imageUrls.map((url: string, idx: number) => (
-                                                            <img
-                                                                key={idx}
-                                                                src={url}
-                                                                alt={`Issue image ${idx + 1}`}
-                                                                width={100}
-                                                                height={100}
-                                                                className="object-cover rounded"
-                                                            />
-                                                        ))}
-                                                    </div>
-                                                </div>
-                                            ) : (
-                                                <div className="mt-4 text-gray-500">
-                                                    <span>Chưa có hình ảnh</span>
-                                                </div>
-                                            )}
+                                            ))}
                                         </div>
                                     ) : (
                                         <Empty description="Không có sự cố nào được ghi nhận" />
                                     )}
-                                </TabPane>
+                                </Tabs.TabPane>
 
                                 {/* Tab niêm phong */}
-                                <TabPane
+                                <Tabs.TabPane
                                     tab={
                                         <span>
                                             <FileTextOutlined /> Niêm phong
@@ -430,10 +561,10 @@ const OrderDetailsTab: React.FC<OrderDetailsTabProps> = ({
                                     ) : (
                                         <Empty description="Không có thông tin niêm phong" />
                                     )}
-                                </TabPane>
+                                </Tabs.TabPane>
 
                                 {/* Tab hình ảnh hoàn thành */}
-                                <TabPane
+                                <Tabs.TabPane
                                     tab={
                                         <span>
                                             <CameraOutlined /> Hình ảnh hoàn thành
@@ -462,7 +593,7 @@ const OrderDetailsTab: React.FC<OrderDetailsTabProps> = ({
                                     ) : (
                                         <Empty description="Không có hình ảnh hoàn thành" />
                                     )}
-                                </TabPane>
+                                </Tabs.TabPane>
                             </Tabs>
                         </Card>
                     </TabPane>
@@ -637,26 +768,117 @@ const OrderDetailsTab: React.FC<OrderDetailsTabProps> = ({
                     )}
 
                     {/* Thông tin chuyến xe */}
-                    <Card className="mb-6 shadow-md rounded-xl">
-                        <Title level={5} className="mb-4">
-                            Thông tin chuyến xe
-                        </Title>
-
-                        <div className="text-center py-8">
-                            <Empty
-                                description={
-                                    <div>
-                                        <p className="text-gray-500 mb-2">Chưa có Thông tin chuyến xe</p>
-                                        <p className="text-gray-400 text-sm">
-                                            Đơn hàng sẽ được gán phương tiện vận chuyển trong thời gian
-                                            tới
-                                        </p>
+                    {detail.vehicleAssignment ? (
+                        <Card className="mb-6 shadow-md rounded-xl">
+                            <Title level={5} className="mb-4">
+                                Thông tin chuyến xe
+                            </Title>
+                            <div className="p-2">
+                                <div className="mb-4 bg-blue-50 p-4 rounded-lg">
+                                    <div className="flex items-center mb-3">
+                                        <CarOutlined className="text-xl text-blue-500 mr-3" />
+                                        <span className="text-lg font-medium">
+                                            {detail.vehicleAssignment.vehicle?.licensePlateNumber || "Chưa có thông tin"}
+                                        </span>
+                                        <Tag
+                                            className="ml-3"
+                                            color={getStatusColor(detail.vehicleAssignment.status || "")}
+                                        >
+                                            {detail.vehicleAssignment.status}
+                                        </Tag>
                                     </div>
-                                }
-                                image={Empty.PRESENTED_IMAGE_SIMPLE}
-                            />
-                        </div>
-                    </Card>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                        <div className="flex items-center">
+                                            <TagOutlined className="mr-2 text-gray-500" />
+                                            <span className="font-medium mr-1">Nhà sản xuất:</span>
+                                            <span>
+                                                {detail.vehicleAssignment.vehicle?.manufacturer || "Chưa có thông tin"}
+                                            </span>
+                                        </div>
+                                        <div className="flex items-center">
+                                            <CarOutlined className="mr-2 text-gray-500" />
+                                            <span className="font-medium mr-1">Mẫu xe:</span>
+                                            <span>
+                                                {detail.vehicleAssignment.vehicle?.model || "Chưa có thông tin"}
+                                            </span>
+                                        </div>
+                                        <div className="flex items-center">
+                                            <TagOutlined className="mr-2 text-gray-500" />
+                                            <span className="font-medium mr-1">Loại xe:</span>
+                                            <span>
+                                                {detail.vehicleAssignment.vehicle?.vehicleType || "Chưa có thông tin"}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div className="bg-green-50 p-4 rounded-lg">
+                                        <div className="flex items-center mb-2">
+                                            <UserOutlined className="text-green-500 mr-2" />
+                                            <span className="font-medium">Tài xế chính</span>
+                                        </div>
+                                        {detail.vehicleAssignment.primaryDriver ? (
+                                            <div className="ml-6">
+                                                <div className="flex items-center mb-1">
+                                                    <UserOutlined className="mr-2 text-gray-500" />
+                                                    <span>{detail.vehicleAssignment.primaryDriver.fullName}</span>
+                                                </div>
+                                                <div className="flex items-center">
+                                                    <PhoneOutlined className="mr-2 text-gray-500" />
+                                                    <span>{detail.vehicleAssignment.primaryDriver.phoneNumber}</span>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <div className="ml-6 text-gray-500">Chưa có thông tin</div>
+                                        )}
+                                    </div>
+
+                                    <div className="bg-blue-50 p-4 rounded-lg">
+                                        <div className="flex items-center mb-2">
+                                            <UserOutlined className="text-blue-500 mr-2" />
+                                            <span className="font-medium">Tài xế phụ</span>
+                                        </div>
+                                        {detail.vehicleAssignment.secondaryDriver ? (
+                                            <div className="ml-6">
+                                                <div className="flex items-center mb-1">
+                                                    <UserOutlined className="mr-2 text-gray-500" />
+                                                    <span>{detail.vehicleAssignment.secondaryDriver.fullName}</span>
+                                                </div>
+                                                <div className="flex items-center">
+                                                    <PhoneOutlined className="mr-2 text-gray-500" />
+                                                    <span>{detail.vehicleAssignment.secondaryDriver.phoneNumber}</span>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <div className="ml-6 text-gray-500">Chưa có thông tin</div>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        </Card>
+                    ) : (
+                        <Card className="mb-6 shadow-md rounded-xl">
+                            <Title level={5} className="mb-4">
+                                Thông tin chuyến xe
+                            </Title>
+
+                            <div className="text-center py-8">
+                                <Empty
+                                    description={
+                                        <div>
+                                            <p className="text-gray-500 mb-2">Chưa có Thông tin chuyến xe</p>
+                                            <p className="text-gray-400 text-sm">
+                                                Đơn hàng sẽ được gán phương tiện vận chuyển trong thời gian
+                                                tới
+                                            </p>
+                                        </div>
+                                    }
+                                    image={Empty.PRESENTED_IMAGE_SIMPLE}
+                                />
+                            </div>
+                        </Card>
+                    )}
                 </TabPane>
             ))}
         </Tabs>

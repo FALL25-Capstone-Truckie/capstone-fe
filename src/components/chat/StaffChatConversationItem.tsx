@@ -10,7 +10,7 @@ interface Conversation {
   lastMessageTime: string;
   unreadCount: number;
   status: 'active' | 'pending' | 'closed';
-  type?: 'SUPPORT' | 'SUPPORTED'; // Added type to distinguish rooms
+  type?: "SUPPORT" | "SUPPORTED" | "ORDER_TYPE" | "DRIVER_STAFF_ORDER";
 }
 
 interface StaffChatConversationItemProps {

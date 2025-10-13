@@ -1,18 +1,28 @@
 import React, { useRef, useEffect } from "react";
 import { Button, Empty, Spin, Badge } from "antd";
-import { CloseOutlined } from "@ant-design/icons";
+import {
+  CloseOutlined,
+  CustomerServiceOutlined,
+  ShoppingOutlined,
+  CarOutlined,
+} from "@ant-design/icons";
 import { useChatContext } from "@/context/ChatContext";
 import StaffChatMessage from "./StaffChatMessage";
 import StaffChatConversationItem from "./StaffChatConversationItem";
 import { useAuth } from "@/context/AuthContext";
 import MessageInput from "./MessageInput";
 import type { SupportRoom } from "@/context/ChatContext";
+import { RoomType } from "@/models/Room";
+
+
+type RoomTypeTab = RoomType.SUPPORT | RoomType.ORDER_TYPE | RoomType.DRIVER_STAFF_ORDER;
 
 const StaffChatWindow: React.FC = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const prevMessagesLengthRef = useRef(0);
   const { user } = useAuth();
+  const [activeTab, setActiveTab] = React.useState<RoomTypeTab>(RoomType.SUPPORT);
 
   const {
     activeConversation,
@@ -21,15 +31,27 @@ const StaffChatWindow: React.FC = () => {
     supportRooms,
     loadingRooms,
     fetchSupportRooms,
+    fetchOrderTypeRooms,
+    fetchDriverTypeRooms,
     joinRoom,
     uiMessages,
     loadMessagesForRoom,
   } = useChatContext();
 
-  // Fetch support rooms on mount
+  // Fetch rooms based on active tab
   useEffect(() => {
-    fetchSupportRooms();
-  }, [fetchSupportRooms]);
+    switch (activeTab) {
+      case "SUPPORT":
+        fetchSupportRooms();
+        break;
+      case "ORDER_TYPE":
+        fetchOrderTypeRooms();
+        break;
+      case "DRIVER_STAFF_ORDER":
+        fetchDriverTypeRooms();
+        break;
+    }
+  }, [activeTab, fetchSupportRooms, fetchOrderTypeRooms, fetchDriverTypeRooms]);
 
   // Load messages when activeConversation changes
   useEffect(() => {
@@ -40,14 +62,16 @@ const StaffChatWindow: React.FC = () => {
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
-    if (!messagesEndRef.current || !messagesContainerRef.current || isMinimized) return;
+    if (!messagesEndRef.current || !messagesContainerRef.current || isMinimized)
+      return;
 
     const container = messagesContainerRef.current;
-    const isNearBottom = 
-      container.scrollHeight - container.scrollTop - container.clientHeight < 100;
+    const isNearBottom =
+      container.scrollHeight - container.scrollTop - container.clientHeight <
+      100;
 
     if (uiMessages.length > prevMessagesLengthRef.current && isNearBottom) {
-      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+      messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
     }
 
     prevMessagesLengthRef.current = uiMessages.length;
@@ -57,17 +81,10 @@ const StaffChatWindow: React.FC = () => {
   useEffect(() => {
     if (!isMinimized && activeConversation && messagesEndRef.current) {
       setTimeout(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
+        messagesEndRef.current?.scrollIntoView({ behavior: "auto" });
       }, 100);
     }
   }, [isMinimized, activeConversation?.roomId]);
-
-  // Cleanup WebSocket when unmounted
-  useEffect(() => {
-    return () => {
-      console.log("🧹 StaffChatWindow unmounted");
-    };
-  }, []);
 
   const mapRoomToConversation = (room: SupportRoom) => ({
     id: room.roomId,
@@ -84,17 +101,57 @@ const StaffChatWindow: React.FC = () => {
       console.log("⚠️ Already viewing this room");
       return;
     }
+
+    // Only SUPPORT type needs joinRoom
     if (room.type === "SUPPORT") {
       joinRoom(room.roomId);
     } else {
+      // ORDER_TYPE and DRIVER_TYPE just load messages
       loadMessagesForRoom(room.roomId);
+    }
+  };
+
+  const handleTabChange = (tab: RoomTypeTab) => {
+    setActiveTab(tab);
+  };
+
+  const getTabIcon = (tab: RoomTypeTab) => {
+    switch (tab) {
+      case "SUPPORT":
+        return <CustomerServiceOutlined />;
+      case "ORDER_TYPE":
+        return <ShoppingOutlined />;
+      case "DRIVER_STAFF_ORDER":
+        return <CarOutlined />;
+    }
+  };
+
+  const getTabLabel = (tab: RoomTypeTab) => {
+    switch (tab) {
+      case "SUPPORT":
+        return "Hỗ trợ";
+      case "ORDER_TYPE":
+        return "Đơn hàng";
+      case "DRIVER_STAFF_ORDER":
+        return "Tài xế";
+    }
+  };
+
+  const getEmptyDescription = () => {
+    switch (activeTab) {
+      case "SUPPORT":
+        return "Không có yêu cầu hỗ trợ nào";
+      case "ORDER_TYPE":
+        return "Không có cuộc hội thoại đơn hàng nào";
+      case "DRIVER_STAFF_ORDER":
+        return "Không có cuộc hội thoại tài xế nào";
     }
   };
 
   if (isMinimized) return null;
 
   return (
-    <div className="fixed bottom-20 right-4 z-50 w-[700px] h-[800px] bg-white shadow-lg rounded-lg flex flex-col border border-gray-200">
+    <div className="fixed bottom-20 right-4 z-50 w-[900px] h-[800px] bg-white shadow-lg rounded-lg flex flex-col border border-gray-200">
       {/* Header */}
       <div className="bg-blue-600 text-white px-6 py-4 flex justify-between items-center rounded-t-lg flex-shrink-0">
         <h3 className="font-medium text-lg">Hỗ trợ trực tuyến</h3>
@@ -109,37 +166,62 @@ const StaffChatWindow: React.FC = () => {
 
       {/* Body */}
       <div className="flex-1 flex overflow-hidden">
-        {/* Left: Conversation List */}
-        <div className="w-1/3 border-r overflow-y-auto flex flex-col">
+        {/* Left Sidebar: Navbar */}
+        <div className="w-16 bg-gray-50 border-r flex flex-col items-center py-4 gap-3">
+          {(["SUPPORT", "ORDER_TYPE", "DRIVER_STAFF_ORDER"] as RoomTypeTab[]).map(
+            (tab) => (
+              <button
+                key={tab}
+                onClick={() => handleTabChange(tab)}
+                className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all duration-200
+        ${
+          activeTab === tab
+            ? "bg-blue-100 text-blue-600 border border-blue-400 shadow-sm"
+            : "bg-white text-gray-500 hover:bg-blue-50 hover:text-blue-600 border border-gray-200"
+        }`}
+                title={getTabLabel(tab)}
+                style={{
+                  backgroundColor: activeTab === tab ? "#E0F2FE" : "#FFFFFF",
+                }}
+              >
+                <span className="text-2xl">{getTabIcon(tab)}</span>
+              </button>
+            )
+          )}
+        </div>
+
+        {/* Middle: Conversation List */}
+        <div className="w-80 h-full border-r flex flex-col overflow-hidden">
           <div className="p-4 bg-gray-50 border-b flex-shrink-0">
             <h4 className="text-lg font-medium text-gray-700">
-              Các phòng chờ hỗ trợ
+              {getTabLabel(activeTab)}
             </h4>
           </div>
-          {loadingRooms ? (
-            <div className="flex-1 flex items-center justify-center">
-              <Spin />
-            </div>
-          ) : supportRooms.length > 0 ? (
-            <div className="flex-1 overflow-y-auto">
-              {supportRooms.map((room) => (
+
+          <div className="flex-1 overflow-y-auto">
+            {loadingRooms ? (
+              <div className="flex h-full items-center justify-center">
+                <Spin />
+              </div>
+            ) : supportRooms.length > 0 ? (
+              supportRooms.map((room) => (
                 <StaffChatConversationItem
                   key={room.roomId}
                   conversation={mapRoomToConversation(room)}
                   isActive={activeConversation?.roomId === room.roomId}
                   onClick={() => handleRoomClick(room)}
                 />
-              ))}
-            </div>
-          ) : (
-            <div className="flex-1 flex items-center justify-center">
-              <Empty description="Không có yêu cầu hỗ trợ nào" />
-            </div>
-          )}
+              ))
+            ) : (
+              <div className="flex h-full items-center justify-center">
+                <Empty description={getEmptyDescription()} />
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Right: Chat Content */}
-        <div className="w-2/3 flex flex-col">
+        <div className="flex-1 flex flex-col">
           {activeConversation ? (
             <>
               {/* Chat Header */}
@@ -153,10 +235,17 @@ const StaffChatWindow: React.FC = () => {
                   <h4 className="text-lg font-medium text-gray-700">
                     {`Khách hàng #${activeConversation.roomId.slice(0, 5)}`}
                   </h4>
-                  <div className="text-sm text-gray-500">
-                    {activeConversation.status === "active"
-                      ? "Đang hoạt động"
-                      : "Đã đóng"}
+                  <div className="text-sm text-gray-500 flex items-center gap-2">
+                    <span>
+                      {activeConversation.status === "active"
+                        ? "Đang hoạt động"
+                        : "Đã đóng"}
+                    </span>
+                    {activeConversation.type && (
+                      <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs rounded">
+                        {activeConversation.type}
+                      </span>
+                    )}
                   </div>
                 </div>
                 <Badge
@@ -169,7 +258,7 @@ const StaffChatWindow: React.FC = () => {
               </div>
 
               {/* Messages */}
-              <div 
+              <div
                 ref={messagesContainerRef}
                 className="flex-1 overflow-y-auto p-5"
               >
@@ -179,16 +268,13 @@ const StaffChatWindow: React.FC = () => {
                   </div>
                 ) : (
                   <>
-                    {[...uiMessages]
-  .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
-  .map((msg) => (
-    <StaffChatMessage
-      key={msg.id}
-      message={msg}
-      isOwnMessage={msg.senderId === user?.id}
-    />
-))}
-                    
+                    {uiMessages.map((msg) => (
+                      <StaffChatMessage
+                        key={msg.id}
+                        message={msg}
+                        isOwnMessage={msg.senderId === user?.id}
+                      />
+                    ))}
                     <div ref={messagesEndRef} />
                   </>
                 )}
@@ -208,7 +294,7 @@ const StaffChatWindow: React.FC = () => {
           ) : (
             <div className="flex-1 flex items-center justify-center p-5 text-gray-500">
               <div className="text-center">
-                <p>Chọn một yêu cầu hỗ trợ để bắt đầu chat</p>
+                <p>Chọn một cuộc hội thoại để bắt đầu chat</p>
               </div>
             </div>
           )}

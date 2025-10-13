@@ -24,6 +24,7 @@ import {
   EyeOutlined,
   CarOutlined,
   ReloadOutlined,
+  MessageOutlined,
 } from "@ant-design/icons";
 import { PackageIcon } from "lucide-react";
 import dayjs from "dayjs";
@@ -32,8 +33,14 @@ import utc from "dayjs/plugin/utc";
 import type { Order, OrderStatus, CustomerOrder } from "../../../models/Order";
 import type { Address } from "../../../models/Address";
 import addressService from "../../../services/address/addressService";
+import { useChatContext } from "@/context/ChatContext";
 
-import { formatDate, formatDateTimeWithSeconds } from "../../../utils/formatters";
+import {
+  formatDate,
+  formatDateTimeWithSeconds,
+} from "../../../utils/formatters";
+import { OrderStatusEnum } from "@/models";
+import { RoomType } from "@/models/Room";
 
 // Initialize dayjs plugins
 dayjs.extend(utc);
@@ -41,7 +48,6 @@ dayjs.extend(timezone);
 
 const { Text, Title } = Typography;
 const { Option } = Select;
-
 
 interface OrdersContentProps {
   orders: CustomerOrder[];
@@ -128,7 +134,12 @@ const statusGroups = [
   {
     name: "Đang vận chuyển",
     color: "blue",
-    statuses: ["PICKED_UP", "ON_DELIVERED", "ONGOING_DELIVERED", "IN_DELIVERED"],
+    statuses: [
+      "PICKED_UP",
+      "ON_DELIVERED",
+      "ONGOING_DELIVERED",
+      "IN_DELIVERED",
+    ],
   },
   {
     name: "Hoàn thành",
@@ -156,14 +167,18 @@ const OrdersContent: React.FC<OrdersContentProps> = ({
   orders,
   onFilterChange,
   onResetFilters,
-  allOrders = []
+  allOrders = [],
 }) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
   const [statusGroupFilter, setStatusGroupFilter] = useState<string>("ALL");
   const [yearFilter, setYearFilter] = useState<number | undefined>(undefined);
-  const [quarterFilter, setQuarterFilter] = useState<number | undefined>(undefined);
-  const [addressFilter, setAddressFilter] = useState<string | undefined>(undefined);
+  const [quarterFilter, setQuarterFilter] = useState<number | undefined>(
+    undefined
+  );
+  const [addressFilter, setAddressFilter] = useState<string | undefined>(
+    undefined
+  );
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [filters, setFilters] = useState<{
@@ -175,6 +190,10 @@ const OrdersContent: React.FC<OrdersContentProps> = ({
   const [deliveryAddresses, setDeliveryAddresses] = useState<Address[]>([]);
   const [loadingAddresses, setLoadingAddresses] = useState<boolean>(false);
   const { message } = App.useApp();
+
+  //Chat context
+  const { getRoomForOrder, initChatForOrderType, toggleChat, maximizeChat } =
+    useChatContext();
 
   // Fetch delivery addresses when component mounts
   useEffect(() => {
@@ -215,12 +234,14 @@ const OrdersContent: React.FC<OrdersContentProps> = ({
       return [];
     }
 
-    const addresses = sourceOrders.map((order) => ({
-      id: order.deliveryAddressId,
-      address: order.deliveryAddress
-    })).filter((item) => item.id && item.address) // Filter out any undefined values
-      .filter((item, index, self) =>
-        index === self.findIndex((t) => t.id === item.id)
+    const addresses = sourceOrders
+      .map((order) => ({
+        id: order.deliveryAddressId,
+        address: order.deliveryAddress,
+      }))
+      .filter((item) => item.id && item.address) // Filter out any undefined values
+      .filter(
+        (item, index, self) => index === self.findIndex((t) => t.id === item.id)
       );
     return addresses;
   }, [orders, allOrders]);
@@ -238,8 +259,6 @@ const OrdersContent: React.FC<OrdersContentProps> = ({
     { value: "IN_TROUBLES", label: "Gặp sự cố" },
     { value: "RETURNED", label: "Đã hoàn trả" },
   ];
-
-
 
   // Reset filters
   const resetFilters = () => {
@@ -265,11 +284,14 @@ const OrdersContent: React.FC<OrdersContentProps> = ({
         !searchTerm ||
         order.orderCode?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         order.pickupAddress?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        order.deliveryAddress?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        order.deliveryAddress
+          ?.toLowerCase()
+          .includes(searchTerm.toLowerCase()) ||
         order.receiverName?.toLowerCase().includes(searchTerm.toLowerCase());
 
       // Status group filter (chỉ áp dụng khi không có onFilterChange, vì nếu có thì đã được xử lý ở component cha)
-      const matchesStatusGroup = !onFilterChange ||
+      const matchesStatusGroup =
+        !onFilterChange ||
         statusGroupFilter === "ALL" ||
         statusGroups
           .find((group) => group.name === statusGroupFilter)
@@ -279,17 +301,19 @@ const OrdersContent: React.FC<OrdersContentProps> = ({
     });
 
     return filtered;
-  }, [
-    orders,
-    searchTerm,
-    statusGroupFilter,
-    onFilterChange
-  ]);
+  }, [orders, searchTerm, statusGroupFilter, onFilterChange]);
 
   // Update current page when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, statusFilter, statusGroupFilter, yearFilter, quarterFilter, addressFilter]);
+  }, [
+    searchTerm,
+    statusFilter,
+    statusGroupFilter,
+    yearFilter,
+    quarterFilter,
+    addressFilter,
+  ]);
 
   // Pagination logic
   const paginatedOrders = useMemo(() => {
@@ -309,7 +333,7 @@ const OrdersContent: React.FC<OrdersContentProps> = ({
   // Format date to Vietnam timezone with hours and minutes
   const formatDateToVNTime = (date: string | undefined) => {
     if (!date) return "N/A";
-    return dayjs(date).tz('Asia/Ho_Chi_Minh').format('DD/MM/YYYY HH:mm:ss');
+    return dayjs(date).tz("Asia/Ho_Chi_Minh").format("DD/MM/YYYY HH:mm:ss");
   };
 
   return (
@@ -318,9 +342,7 @@ const OrdersContent: React.FC<OrdersContentProps> = ({
         {/* Search and Filter Section */}
         <div className="bg-white p-4 rounded-lg shadow-sm mb-6">
           <div className="mb-4">
-            <Text className="text-sm text-gray-600 mb-1 block">
-              Tìm Kiếm
-            </Text>
+            <Text className="text-sm text-gray-600 mb-1 block">Tìm Kiếm</Text>
             <Input
               placeholder="Mã đơn hàng, địa điểm, người nhận..."
               prefix={<SearchOutlined />}
@@ -337,9 +359,7 @@ const OrdersContent: React.FC<OrdersContentProps> = ({
           <Row gutter={[16, 16]} align="middle">
             <Col xs={24} sm={12} md={6}>
               <div>
-                <Text className="text-sm text-gray-600 mb-1 block">
-                  Năm
-                </Text>
+                <Text className="text-sm text-gray-600 mb-1 block">Năm</Text>
                 <Select
                   placeholder="Chọn năm"
                   value={yearFilter}
@@ -366,9 +386,7 @@ const OrdersContent: React.FC<OrdersContentProps> = ({
 
             <Col xs={24} sm={12} md={6}>
               <div>
-                <Text className="text-sm text-gray-600 mb-1 block">
-                  Quý
-                </Text>
+                <Text className="text-sm text-gray-600 mb-1 block">Quý</Text>
                 <Select
                   placeholder="Chọn quý"
                   value={quarterFilter}
@@ -404,7 +422,10 @@ const OrdersContent: React.FC<OrdersContentProps> = ({
                   onChange={(value) => {
                     setAddressFilter(value);
                     if (onFilterChange) {
-                      const newFilters = { ...filters, deliveryAddressId: value };
+                      const newFilters = {
+                        ...filters,
+                        deliveryAddressId: value,
+                      };
                       setFilters(newFilters);
                       onFilterChange(newFilters);
                     }
@@ -415,14 +436,21 @@ const OrdersContent: React.FC<OrdersContentProps> = ({
                   loading={loadingAddresses}
                   optionFilterProp="label"
                   filterOption={(input, option) =>
-                    (option?.label ?? '').toString().toLowerCase().includes(input.toLowerCase())
+                    (option?.label ?? "")
+                      .toString()
+                      .toLowerCase()
+                      .includes(input.toLowerCase())
                   }
                   size="middle"
                 >
                   {deliveryAddresses.map((address) => {
                     const addressText = `${address.street}, ${address.ward}, ${address.province}`;
                     return (
-                      <Option key={address.id} value={address.id} label={addressText}>
+                      <Option
+                        key={address.id}
+                        value={address.id}
+                        label={addressText}
+                      >
                         {addressText}
                       </Option>
                     );
@@ -468,7 +496,9 @@ const OrdersContent: React.FC<OrdersContentProps> = ({
               <Tag
                 key={group.name}
                 className="px-3 py-1 cursor-pointer text-base"
-                color={statusGroupFilter === group.name ? group.color : undefined}
+                color={
+                  statusGroupFilter === group.name ? group.color : undefined
+                }
                 onClick={() => {
                   setStatusGroupFilter(group.name);
                   // Khi chọn nhóm, chọn trạng thái đầu tiên trong nhóm
@@ -514,7 +544,9 @@ const OrdersContent: React.FC<OrdersContentProps> = ({
                   <Text className="text-gray-500 text-sm mb-3 block">
                     Ngày tạo đơn:{" "}
                     <strong>
-                      {order.createdAt ? formatDateTimeWithSeconds(order.createdAt) : "N/A"}
+                      {order.createdAt
+                        ? formatDateTimeWithSeconds(order.createdAt)
+                        : "N/A"}
                     </strong>
                   </Text>
 
@@ -573,6 +605,28 @@ const OrdersContent: React.FC<OrdersContentProps> = ({
                         title="View Details"
                       />
                     </Link>
+                    {order.status === OrderStatusEnum.ON_PLANNING && (
+                      <Button
+                        type="default"
+                        shape="circle"
+                        size="large"
+                        icon={<MessageOutlined />}
+                        title="Chat with Support"
+                        onClick={async () => {
+                          const newRoom = await getRoomForOrder({
+                            orderId: order.id, // hoặc truyền orderId thực tế
+                            roomType: RoomType.ORDER_TYPE,
+                          });
+
+                          if (newRoom) {
+                            console.log("Room created or found:", newRoom);
+                            await initChatForOrderType(newRoom);
+                            toggleChat(); 
+                            maximizeChat();
+                          }
+                        }}
+                      />
+                    )}
                     <Button
                       type="primary"
                       shape="circle"
@@ -615,7 +669,11 @@ const OrdersContent: React.FC<OrdersContentProps> = ({
                   Không tìm thấy đơn hàng
                 </Title>
                 <Text type="secondary">
-                  {searchTerm || statusFilter !== "ALL" || yearFilter || quarterFilter || addressFilter
+                  {searchTerm ||
+                  statusFilter !== "ALL" ||
+                  yearFilter ||
+                  quarterFilter ||
+                  addressFilter
                     ? "Thử thay đổi điều kiện tìm kiếm hoặc bộ lọc"
                     : "Chưa có đơn hàng nào được tạo"}
                 </Text>

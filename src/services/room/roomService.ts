@@ -1,5 +1,9 @@
 import httpClient from "../api/httpClient";
-import type { CreateRoomRequest, CreateRoomResponse } from "@/models/Room";
+import type {
+  CreateRoomRequest,
+  CreateRoomResponse,
+  GetRoomRequest,
+} from "@/models/Room";
 import type {
   CreateRoomApiResponse,
   GetAllRoomsByUserIdResponse,
@@ -8,7 +12,9 @@ import type {
   JoinRoomResponse,
   GetSupportRoomsForStaffResponse,
   IsCustomerHasRoomSupportedResponse,
-  GetCustomerHasRoomSupported, // Thêm 'type' ở đây
+  GetCustomerHasRoomSupported,
+  GetRoomForOrder,
+  GetRoomForUserAndType, // Thêm 'type' ở đây
 } from "./types";
 import { handleApiError } from "../api/errorHandler";
 
@@ -21,7 +27,9 @@ const roomService = {
    * @param roomData CreateRoomRequest
    * @returns Promise with created room response
    */
-  createRoom: async (roomData: CreateRoomRequest): Promise<CreateRoomResponse> => {
+  createRoom: async (
+    roomData: CreateRoomRequest
+  ): Promise<CreateRoomResponse> => {
     try {
       const response = await httpClient.post<CreateRoomApiResponse>(
         "/rooms",
@@ -39,7 +47,9 @@ const roomService = {
    * @param userId User ID (UUID)
    * @returns Promise with list of rooms
    */
-  getAllRoomsByUserId: async (userId: string): Promise<CreateRoomResponse[]> => {
+  getAllRoomsByUserId: async (
+    userId: string
+  ): Promise<CreateRoomResponse[]> => {
     try {
       const response = await httpClient.get<GetAllRoomsByUserIdResponse>(
         `/rooms/${userId}`
@@ -115,7 +125,10 @@ const roomService = {
       return response.data.data;
     } catch (error) {
       console.error("Error fetching support rooms for staff:", error);
-      throw handleApiError(error, "Không thể tải danh sách phòng hỗ trợ cho nhân viên");
+      throw handleApiError(
+        error,
+        "Không thể tải danh sách phòng hỗ trợ cho nhân viên"
+      );
     }
   },
 
@@ -126,20 +139,61 @@ const roomService = {
       );
       return response.data.data;
     } catch (error) {
-      console.error(`Error checking if customer ${userId} has supported room:`, error);
+      console.error(
+        `Error checking if customer ${userId} has supported room:`,
+        error
+      );
       throw handleApiError(error, "Không thể kiểm tra trạng thái phòng hỗ trợ");
     }
   },
 
-  getCustomerHasRoomSupported: async (userId: string): Promise<CreateRoomResponse> => {
+  getCustomerHasRoomSupported: async (
+    userId: string
+  ): Promise<CreateRoomResponse> => {
     try {
       const response = await httpClient.get<GetCustomerHasRoomSupported>(
         `/rooms/customer/${userId}/get-supported-room`
       );
       return response.data.data;
     } catch (error) {
-      console.error(`Error checking if customer ${userId} has supported room:`, error);
+      console.error(
+        `Error checking if customer ${userId} has supported room:`,
+        error
+      );
       throw handleApiError(error, "Không thể kiểm tra trạng thái phòng hỗ trợ");
+    }
+  },
+
+  getRoomForOrder: async (
+    roomData: GetRoomRequest
+  ): Promise<CreateRoomResponse> => {
+    try {
+      const response = await httpClient.get<GetRoomForOrder>(
+        "/rooms/get-room-by-order",
+        { params: roomData }
+      );
+      return response.data.data;
+    } catch (error) {
+      console.error("Error get room:", error);
+      throw handleApiError(error, "Không thể lấy phòng");
+    }
+  },
+
+  getRoomForUserAndType: async (
+    userId: string,
+    type: string
+  ): Promise<CreateRoomResponse[]> => {
+    try {
+      const response = await httpClient.get<GetRoomForUserAndType>(
+        "/rooms/get-room-by-user-and-type",
+        {
+          params: { userId, roomType: type },
+        }
+      );
+      return response.data.data;
+    } catch (error) {
+      console.error("Error get room:", error);
+      throw handleApiError(error, "Không thể lấy phòng");
     }
   },
 };

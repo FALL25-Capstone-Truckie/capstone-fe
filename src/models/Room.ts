@@ -4,6 +4,11 @@ export interface CreateRoomRequest {
   userId: string;
 }
 
+export interface GetRoomRequest {
+  orderId: string;
+  roomType: RoomType;
+}
+
 // ParticipantResponse có thể cần định nghĩa thêm, ví dụ:
 export interface ParticipantResponse {
   userId: string;
@@ -18,4 +23,12 @@ export interface CreateRoomResponse {
   participants: ParticipantResponse[];
   status: string;
   type?: string;
+  createdAt: Date;
+}
+
+export enum RoomType {
+  ORDER_TYPE = "ORDER_TYPE",
+  SUPPORT = "SUPPORT",
+  SUPPORTED = "SUPPORTED",
+  DRIVER_STAFF_ORDER = "DRIVER_STAFF_ORDER",
 }

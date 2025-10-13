@@ -3,14 +3,12 @@ import { Badge, message } from 'antd';
 import { MessageOutlined } from '@ant-design/icons';
 import { useChatContext } from '@/context/ChatContext';
 import roomService from '@/services/room/roomService';
-import chatService from '@/services/chat/chatService';
-import { mapChatMessageDTOArrayToUI } from '@/utils/chatMapper';
+
 
 const ChatButton: React.FC = () => {
     const {
         toggleChat,
         unreadCount,
-        setUIChatMessages, // New method for UI messages
         initChat,
         connectionStatus
     } = useChatContext();
@@ -43,19 +41,6 @@ const ChatButton: React.FC = () => {
                 await initChat(userId);
 
             } else {
-                // Load existing support room messages
-                const chatPage = await chatService.getMessagesSupportedForCustomer(userId, 20);
-
-                // Map API data to UI format
-                const uiMessages = mapChatMessageDTOArrayToUI(chatPage.messages, userId);
-
-                console.log("✅ Loaded support messages:", uiMessages);
-                message.success({ content: 'Đã tải tin nhắn hỗ trợ!', key: 'chat-loading' });
-
-                // Set UI messages
-                setUIChatMessages(uiMessages);
-
-                // Also initialize the chat context for WebSocket
                 await initChat(userId);
             }
 

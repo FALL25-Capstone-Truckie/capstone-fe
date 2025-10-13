@@ -4,16 +4,14 @@ import React, {
   useState,
   useRef,
   useCallback,
+  useMemo,
 } from "react";
 import type { ReactNode } from "react";
 import { Client } from "@stomp/stompjs";
 import type { IMessage } from "@stomp/stompjs";
 
-import type {
-  ChatMessageDTO,
-  MessageRequest,
-} from "@/models/Chat";
-import type { CreateRoomResponse } from "@/models/Room";
+import type { ChatMessageDTO, MessageRequest } from "@/models/Chat";
+import { RoomType, type CreateRoomResponse } from "@/models/Room";
 import {
   mapChatMessageDTOArrayToUI,
   mapChatMessageDTOToUI,
@@ -43,11 +41,20 @@ export interface SupportRoom {
     roleName: string;
   }>;
   status: string;
-  type: "SUPPORT" | "SUPPORTED";
+  type: RoomType;
   customerName?: string;
   lastMessage?: string;
   lastMessageTime?: string;
   unreadCount?: number;
+  createAt?: {
+    seconds: number;
+    nanos: number;
+  };
+}
+
+export interface GetRoomRequest {
+  orderId: string;
+  roomType: RoomType;
 }
 
 interface ChatContextType {
@@ -75,10 +82,14 @@ interface ChatContextType {
   supportRooms: SupportRoom[];
   loadingRooms: boolean;
   fetchSupportRooms: () => Promise<void>;
+  fetchOrderTypeRooms: () => Promise<void>;
+  fetchDriverTypeRooms: () => Promise<void>;
   joinRoom: (roomId: string) => Promise<void>;
   setActiveRoom: (room: SupportRoom | null) => void;
   activeRoom: SupportRoom | null;
   loadMessagesForRoom: (roomId: string) => Promise<void>;
+  getRoomForOrder: (roomData: GetRoomRequest) => Promise<CreateRoomResponse | null>;
+  initChatForOrderType: (room: CreateRoomResponse) => Promise<void>;
 }
 
 const ChatContext = createContext<ChatContextType | undefined>(undefined);
@@ -95,9 +106,7 @@ interface ChatProviderProps {
   isStaff?: boolean;
 }
 
-export const ChatProvider: React.FC<ChatProviderProps> = ({
-  children,
-}) => {
+export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
   const [conversations, setConversations] = useState<ChatConversation[]>([]);
   const [activeConversation, setActiveConversation] =
     useState<ChatConversation | null>(null);
@@ -108,141 +117,23 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
   >("disconnected");
   const [uiMessages, setUiMessages] = useState<ChatMessage[]>([]);
   const stompClientRef = useRef<Client | null>(null);
-  const subscriptionRef = useRef<any>(null); // Track subscription
-  const currentRoomIdRef = useRef<string | null>(null); // Track current room
+  const subscriptionRef = useRef<any>(null);
+  const currentRoomIdRef = useRef<string | null>(null);
   const [supportRooms, setSupportRooms] = useState<SupportRoom[]>([]);
   const [loadingRooms, setLoadingRooms] = useState(false);
   const [activeRoom, setActiveRoom] = useState<SupportRoom | null>(null);
   const { user } = useAuth();
 
-  // UI Messages Management
-  const setUIChatMessages = useCallback((messages: ChatMessage[]) => {
-    const sortedMessages = messages.sort((a, b) => {
-      const aTime = parseInt(a.timestamp);
-      const bTime = parseInt(b.timestamp);
-      return aTime - bTime;
+  // ✅ Helper: Sort rooms by createAt (newest first)
+  const sortRoomsByCreateAt = useCallback((rooms: SupportRoom[]) => {
+    return rooms.sort((a, b) => {
+      const aTime = a.createAt?.seconds || 0;
+      const bTime = b.createAt?.seconds || 0;
+      return bTime - aTime; // Descending (newest first)
     });
-    setUiMessages(sortedMessages);
   }, []);
 
-  // Load messages for a specific room
-  const loadMessagesForRoom = async (roomId: string) => {
-    if (!user) return;
-
-    try {
-      connectWebSocket(user.id, roomId);
-      const chatPage = await chatService.getMessages(roomId, 20);
-      const uiMessages = mapChatMessageDTOArrayToUI(chatPage.messages, user.id);
-      setUIChatMessages(uiMessages);
-
-      const room = supportRooms.find((r) => r.roomId === roomId);
-      if (room) {
-        const roomInfo = {
-          id: room.roomId,
-          roomId: room.roomId,
-          participants: room.participants,
-          status: room.status.toLowerCase(),
-          messages: chatPage.messages,
-          lastMessage: chatPage.messages.at(-1)?.content || "",
-          lastMessageTime:
-            chatPage.messages.at(-1)?.createAt?.seconds?.toString() || "",
-          unreadCount: room.unreadCount || 0,
-        };
-
-        if (
-          !activeConversation ||
-          activeConversation.roomId !== roomInfo.roomId ||
-          activeConversation.lastMessageTime !== roomInfo.lastMessageTime
-        ) {
-          setActiveConversation(roomInfo);
-        }
-      }
-    } catch (error) {
-      console.error("❌ loadMessagesForRoom() error:", error);
-    }
-  };
-
-  const fetchSupportRooms = useCallback(async () => {
-    if (!user) return;
-
-    setLoadingRooms(true);
-    try {
-      const rooms = await roomService.getListSupportRoomsForStaff();
-
-      const supportRoomsData: SupportRoom[] = rooms.map((room) => ({
-        ...room,
-        type:
-          room.type === "SUPPORT" || room.type === "SUPPORTED"
-            ? (room.type as "SUPPORT" | "SUPPORTED")
-            : "SUPPORT",
-      }));
-
-      const sortedRooms = supportRoomsData.sort((a, b) => {
-        if (a.type === "SUPPORT" && b.type !== "SUPPORT") return -1;
-        if (a.type !== "SUPPORT" && b.type === "SUPPORT") return 1;
-        return 0;
-      });
-
-      setSupportRooms(sortedRooms);
-    } catch (error) {
-      console.error("Failed to fetch support rooms:", error);
-    } finally {
-      setLoadingRooms(false);
-    }
-  }, [user]);
-
-  const joinRoom = async (roomId: string) => {
-    if (!user) return;
-
-    console.log("🔵 joinRoom() called with roomId:", roomId, "and user:", user);
-
-    try {
-      const success = await roomService.joinRoom(roomId, user.id);
-      console.log("🟢 joinRoom() => roomService.joinRoom result:", success);
-
-      if (success) {
-        setSupportRooms((prev) =>
-          prev.map((room) =>
-            room.roomId === roomId ? { ...room, type: "SUPPORTED" } : room
-          )
-        );
-        console.log("🟢 Updated supportRooms type -> SUPPORTED");
-
-        connectWebSocket(user.id, roomId);
-        console.log("🟢 WebSocket connected (or connecting...)");
-
-        setIsOpen(true);
-        setIsMinimized(false);
-
-        const chatPage = await chatService.getMessages(roomId, 20);
-        console.log("🟢 chatService.getMessages result:", chatPage);
-
-        const uiMessages = mapChatMessageDTOArrayToUI(chatPage.messages, user.id);
-        console.log("🟢 Mapped UI messages:", uiMessages);
-
-        setUIChatMessages(uiMessages);
-        console.log("🟢 setUIChatMessages done");
-
-        const roomInfo = {
-          id: roomId,
-          roomId: roomId,
-          participants: [{ userId: user.id, roleName: user.role }],
-          status: "active",
-          messages: chatPage.messages,
-          lastMessage: chatPage.messages[chatPage.messages.length - 1]?.content || "",
-          lastMessageTime:
-            chatPage.messages[chatPage.messages.length - 1]?.createAt?.seconds?.toString() || "",
-          unreadCount: 0,
-        };
-        setActiveConversation(roomInfo);
-        console.log("🟢 setActiveConversation done:", roomInfo);
-      }
-    } catch (error) {
-      console.error("❌ joinRoom() error:", error);
-    }
-  };
-
-  const timestampToMillis = (timestamp: any): number => {
+  const timestampToMillis = useCallback((timestamp: any): number => {
     if (!timestamp) return 0;
     if (typeof timestamp === "number") return timestamp;
     if (typeof timestamp === "string") return Number(timestamp) || 0;
@@ -255,7 +146,11 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
       );
     }
     return 0;
-  };
+  }, []);
+
+  const setUIChatMessages = useCallback((messages: ChatMessage[]) => {
+    setUiMessages(messages.sort((a, b) => parseInt(a.timestamp) - parseInt(b.timestamp)));
+  }, []);
 
   const buildConversation = useCallback(
     (
@@ -292,90 +187,248 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
 
   const addUIChatMessage = useCallback((message: ChatMessage) => {
     setUiMessages((prev) => {
-      // Check duplicate by ID
-      const exists = prev.some((msg) => msg.id === message.id);
-      if (exists) return prev;
+      if (prev.some((msg) => msg.id === message.id)) {
+        return prev;
+      }
 
-      // ✅ FIX: Replace temp message with real message from server
-      // If this is a real message (not temp-*), check if there's a temp message with similar content and timestamp
-      if (!message.id.startsWith('temp-')) {
-        const tempIndex = prev.findIndex(msg => 
-          msg.id.startsWith('temp-') && 
-          msg.content === message.content &&
-          Math.abs(parseInt(msg.timestamp) - parseInt(message.timestamp)) < 5000 // Within 5 seconds
+      if (!message.id.startsWith("temp-")) {
+        const tempIndex = prev.findIndex(
+          (msg) =>
+            msg.id.startsWith("temp-") &&
+            msg.content === message.content &&
+            Math.abs(parseInt(msg.timestamp) - parseInt(message.timestamp)) < 5000
         );
-        
+
         if (tempIndex !== -1) {
-          // Replace temp message with real message
           const updated = [...prev];
           updated[tempIndex] = message;
-          return updated.sort((a, b) => parseInt(a.timestamp) - parseInt(b.timestamp));
+          return updated;
         }
       }
 
       const updated = [...prev, message];
-      return updated.sort((a, b) => {
-        const aTime = parseInt(a.timestamp);
-        const bTime = parseInt(b.timestamp);
-        return aTime - bTime;
-      });
+      return updated.sort((a, b) => parseInt(a.timestamp) - parseInt(b.timestamp));
     });
   }, []);
 
   const handleNewMessage = useCallback(
     (msg: ChatMessageDTO, roomId: string) => {
-      console.log("💬 New incoming message:", msg.id, msg.content, "in room:", roomId);
-      const currentUserId = sessionStorage.getItem("userId") || "";
+      console.log("💬 New message:", msg.id, "in room:", roomId);
+      
+      const msgTime = timestampToMillis(msg.createAt);
+      const msgTimeStr = msgTime.toString();
 
-      setConversations((prev) =>
-        prev.map((conv) =>
-          conv.roomId === roomId
+      setConversations((prev) => {
+        const conv = prev.find(c => c.roomId === roomId);
+        if (!conv) return prev;
+
+        if (conv.messages.some(m => m.id === msg.id)) {
+          return prev;
+        }
+
+        return prev.map((c) =>
+          c.roomId === roomId
             ? {
-              ...conv,
-              messages: [...conv.messages, msg].sort((a, b) => {
-                const aTime = timestampToMillis(a.createAt);
-                const bTime = timestampToMillis(b.createAt);
-                return aTime - bTime;
-              }),
-              lastMessage: msg.content,
-              lastMessageTime: timestampToMillis(msg.createAt).toString(),
-              unreadCount:
-                activeConversation?.roomId === roomId && isOpen
-                  ? conv.unreadCount
-                  : conv.unreadCount + 1,
-            }
-            : conv
-        )
-      );
+                ...c,
+                messages: [...c.messages, msg],
+                lastMessage: msg.content,
+                lastMessageTime: msgTimeStr,
+                unreadCount:
+                  activeConversation?.roomId === roomId && isOpen
+                    ? c.unreadCount
+                    : c.unreadCount + 1,
+              }
+            : c
+        );
+      });
 
       if (activeConversation?.roomId === roomId) {
         setActiveConversation((prev) => {
-          console.log("🧩 Prev active messages:", prev?.messages.map(m => m.id));
+          if (!prev || prev.messages.some(m => m.id === msg.id)) {
+            return prev;
+          }
 
-          const updated = prev
-            ? {
-              ...prev,
-              messages: [...prev.messages, msg].sort((a, b) => {
-                const aTime = timestampToMillis(a.createAt);
-                const bTime = timestampToMillis(b.createAt);
-                return aTime - bTime;
-              }),
-              lastMessage: msg.content,
-              lastMessageTime: timestampToMillis(msg.createAt).toString(),
-            }
-            : null;
-
-          console.log("✅ Added new message:", msg.id, msg.content);
-          console.log("🆕 New active messages:", updated?.messages.map(m => m.id));
-
-          return updated;
+          return {
+            ...prev,
+            messages: [...prev.messages, msg],
+            lastMessage: msg.content,
+            lastMessageTime: msgTimeStr,
+          };
         });
       }
 
+      const currentUserId = user?.id || sessionStorage.getItem("userId") || "";
       const uiMessage = mapChatMessageDTOToUI(msg, currentUserId);
       addUIChatMessage(uiMessage);
     },
-    [activeConversation, isOpen, timestampToMillis, addUIChatMessage]
+    [activeConversation?.roomId, isOpen, timestampToMillis, addUIChatMessage, user?.id]
+  );
+
+  const getRoomForOrder = useCallback(
+    async (roomData: GetRoomRequest): Promise<CreateRoomResponse | null> => {
+      try {
+        console.log("🔍 Getting room for order:", roomData);
+        const room = await roomService.getRoomForOrder(roomData);
+        console.log("✅ Room found:", room);
+        return room;
+      } catch (error) {
+        console.error("❌ Error getting room for order:", error);
+        return null;
+      }
+    },
+    []
+  );
+
+  const loadMessagesForRoom = useCallback(
+    async (roomId: string) => {
+      if (!user) return;
+
+      try {
+        connectWebSocket(user.id, roomId);
+        const chatPage = await chatService.getMessages(roomId, 20);
+        const uiMessages = mapChatMessageDTOArrayToUI(chatPage.messages, user.id);
+        setUIChatMessages(uiMessages);
+
+        const room = supportRooms.find((r) => r.roomId === roomId);
+        if (room) {
+          const roomInfo = {
+            id: room.roomId,
+            roomId: room.roomId,
+            participants: room.participants,
+            status: room.status.toLowerCase(),
+            messages: chatPage.messages,
+            lastMessage: chatPage.messages.at(-1)?.content || "",
+            lastMessageTime:
+              chatPage.messages.at(-1)?.createAt?.seconds?.toString() || "",
+            unreadCount: room.unreadCount || 0,
+          };
+
+          setActiveConversation(roomInfo);
+        }
+      } catch (error) {
+        console.error("❌ loadMessagesForRoom() error:", error);
+      }
+    },
+    [user, supportRooms, setUIChatMessages]
+  );
+
+  // ✅ Fetch SUPPORT rooms
+  const fetchSupportRooms = useCallback(async () => {
+    if (!user) return;
+
+    setLoadingRooms(true);
+    try {
+      const rooms = await roomService.getListSupportRoomsForStaff();
+
+      const supportRoomsData: SupportRoom[] = rooms.map((room) => ({
+        ...room,
+        type:
+          room.type === RoomType.SUPPORT || room.type === RoomType.SUPPORTED
+            ? (room.type as RoomType.SUPPORT | RoomType.SUPPORTED)
+            : RoomType.SUPPORT,
+      }));
+
+      const sortedRooms = sortRoomsByCreateAt(supportRoomsData);
+      setSupportRooms(sortedRooms);
+    } catch (error) {
+      console.error("Failed to fetch support rooms:", error);
+    } finally {
+      setLoadingRooms(false);
+    }
+  }, [user, sortRoomsByCreateAt]);
+
+  // ✅ NEW: Fetch ORDER_TYPE rooms
+  const fetchOrderTypeRooms = useCallback(async () => {
+    if (!user) return;
+
+    setLoadingRooms(true);
+    try {
+      const rooms = await roomService.getRoomForUserAndType(user.id, RoomType.ORDER_TYPE);
+
+      const orderRoomsData: SupportRoom[] = rooms.map((room) => ({
+        ...room,
+        type:
+          room.type === RoomType.ORDER_TYPE
+            ? (room.type as RoomType.ORDER_TYPE)
+            : RoomType.ORDER_TYPE,
+      }));
+
+      const sortedRooms = sortRoomsByCreateAt(orderRoomsData);
+
+      setSupportRooms(sortedRooms);
+    } catch (error) {
+      console.error("Failed to fetch ORDER_TYPE rooms:", error);
+    } finally {
+      setLoadingRooms(false);
+    }
+  }, [user, sortRoomsByCreateAt]);
+
+  // ✅ NEW: Fetch DRIVER_TYPE rooms
+  const fetchDriverTypeRooms = useCallback(async () => {
+    if (!user) return;
+
+    setLoadingRooms(true);
+    try {
+      const rooms = await roomService.getRoomForUserAndType(user.id, RoomType.DRIVER_STAFF_ORDER);
+
+      const driverRoomsData: SupportRoom[] = rooms.map((room) => ({
+        ...room,
+        type:
+          room.type === RoomType.DRIVER_STAFF_ORDER
+            ? (room.type as RoomType.DRIVER_STAFF_ORDER)
+            : RoomType.DRIVER_STAFF_ORDER,
+      }));
+
+      const sortedRooms = sortRoomsByCreateAt(driverRoomsData);
+      setSupportRooms(sortedRooms);
+    } catch (error) {
+      console.error("Failed to fetch DRIVER_TYPE rooms:", error);
+    } finally {
+      setLoadingRooms(false);
+    }
+  }, [user, sortRoomsByCreateAt]);
+
+  const joinRoom = useCallback(
+    async (roomId: string) => {
+      if (!user) return;
+
+      try {
+        const success = await roomService.joinRoom(roomId, user.id);
+
+        if (success) {
+          setSupportRooms((prev) =>
+            prev.map((room) =>
+              room.roomId === roomId ? { ...room, type: RoomType.SUPPORTED } : room
+            )
+          );
+
+          connectWebSocket(user.id, roomId);
+
+          setIsOpen(true);
+          setIsMinimized(false);
+
+          const chatPage = await chatService.getMessages(roomId, 20);
+          const uiMessages = mapChatMessageDTOArrayToUI(chatPage.messages, user.id);
+          setUIChatMessages(uiMessages);
+
+          const roomInfo = {
+            id: roomId,
+            roomId: roomId,
+            participants: [{ userId: user.id, roleName: user.role }],
+            status: "active",
+            messages: chatPage.messages,
+            lastMessage: chatPage.messages[chatPage.messages.length - 1]?.content || "",
+            lastMessageTime:
+              chatPage.messages[chatPage.messages.length - 1]?.createAt?.seconds?.toString() || "",
+            unreadCount: 0,
+          };
+          setActiveConversation(roomInfo);
+        }
+      } catch (error) {
+        console.error("❌ joinRoom() error:", error);
+      }
+    },
+    [user, setUIChatMessages]
   );
 
   const initChat = useCallback(
@@ -396,10 +449,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
         setConversations([conversation]);
         setActiveConversation(conversation);
 
-        const uiMessages = mapChatMessageDTOArrayToUI(
-          chatPage.messages,
-          userId
-        );
+        const uiMessages = mapChatMessageDTOArrayToUI(chatPage.messages, userId);
         setUIChatMessages(uiMessages);
 
         connectWebSocket(userId, room.roomId);
@@ -411,6 +461,41 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
       }
     },
     [buildConversation, setUIChatMessages]
+  );
+
+  const initChatForOrderType = useCallback(
+    async (room: CreateRoomResponse) => {
+      try {
+        if (!user) return;
+
+        if (!room) {
+          setConversations([]);
+          setActiveConversation(null);
+          setUiMessages([]);
+          return;
+        }
+
+        const chatPage = await chatService.getMessages(room.roomId, 20);
+        const conversation = buildConversation(room, chatPage.messages);
+
+        setConversations([conversation]);
+        setActiveConversation(conversation);
+
+        const uiMessages = mapChatMessageDTOArrayToUI(chatPage.messages, user.id);
+        setUIChatMessages(uiMessages);
+
+        connectWebSocket(user.id, room.roomId);
+        
+        setIsOpen(true);
+        setIsMinimized(false);
+      } catch (error) {
+        console.error("Failed to initialize chat:", error);
+        setConversations([]);
+        setActiveConversation(null);
+        setUiMessages([]);
+      }
+    },
+    [buildConversation, setUIChatMessages, user]
   );
 
   const openChat = useCallback(
@@ -432,10 +517,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
         setConversations([conversation]);
         setActiveConversation(conversation);
 
-        const uiMessages = mapChatMessageDTOArrayToUI(
-          chatPage.messages,
-          userId
-        );
+        const uiMessages = mapChatMessageDTOArrayToUI(chatPage.messages, userId);
         setUIChatMessages(uiMessages);
 
         connectWebSocket(userId, roomId);
@@ -458,11 +540,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
             ? activeConversation.messages[0].id
             : undefined;
 
-        const chatPage = await chatService.getMessages(
-          roomId,
-          20,
-          lastMessageId
-        );
+        const chatPage = await chatService.getMessages(roomId, 20, lastMessageId);
 
         if (chatPage.messages.length > 0) {
           const sortedNewMessages = chatPage.messages.sort((a, b) => {
@@ -471,24 +549,16 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
             return aTime - bTime;
           });
 
-          const updatedMessages = [
-            ...sortedNewMessages,
-            ...activeConversation.messages,
-          ];
+          const updatedMessages = [...sortedNewMessages, ...activeConversation.messages];
           setChatMessages(updatedMessages);
 
-          const currentUserId = sessionStorage.getItem("userId") || "";
-          const newUIMessages = mapChatMessageDTOArrayToUI(
-            sortedNewMessages,
-            currentUserId
-          );
+          const currentUserId = user?.id || sessionStorage.getItem("userId") || "";
+          const newUIMessages = mapChatMessageDTOArrayToUI(sortedNewMessages, currentUserId);
+          
           setUiMessages((prev) => {
             const combined = [...newUIMessages, ...prev];
-            const unique = combined.filter(
-              (msg, index, arr) =>
-                arr.findIndex((m) => m.id === msg.id) === index
-            );
-            return unique.sort(
+            const uniqueMap = new Map(combined.map(msg => [msg.id, msg]));
+            return Array.from(uniqueMap.values()).sort(
               (a, b) => parseInt(a.timestamp) - parseInt(b.timestamp)
             );
           });
@@ -497,126 +567,109 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
         console.error("Failed to load more messages:", error);
       }
     },
-    [activeConversation, timestampToMillis]
+    [activeConversation, timestampToMillis, user?.id]
   );
 
-  // ✅ FIX: Improved WebSocket connection logic
   const connectWebSocket = useCallback(
     (userId: string, roomId: string) => {
-      console.log("🔌 connectWebSocket called:", { userId, roomId, currentRoom: currentRoomIdRef.current });
+      console.log("🔌 connectWebSocket:", { userId, roomId });
 
-      // If switching rooms, unsubscribe from old room
       if (currentRoomIdRef.current && currentRoomIdRef.current !== roomId) {
-        console.log("🔄 Switching room, unsubscribe from:", currentRoomIdRef.current);
         if (subscriptionRef.current) {
           subscriptionRef.current.unsubscribe();
           subscriptionRef.current = null;
         }
       }
 
-      // If already connected to the same room with active subscription, skip
       if (
         stompClientRef.current?.connected &&
         currentRoomIdRef.current === roomId &&
         subscriptionRef.current
       ) {
-        console.log("✅ Already connected and subscribed to this room, skip reconnect.");
+        console.log("✅ Already connected");
         return;
       }
 
-      // If client exists and connected, just subscribe to new room
       if (stompClientRef.current?.connected) {
-        console.log("🔗 WebSocket connected, subscribing to room:", roomId);
-        
         subscriptionRef.current = stompClientRef.current.subscribe(
           `/topic/room/${roomId}`,
           (message: IMessage) => {
             try {
               const msg: ChatMessageDTO = JSON.parse(message.body);
-              
-              // ✅ FIX: Generate ID if missing
+
               if (!msg.id) {
                 msg.id = `ws-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-                console.warn("⚠️ Message missing ID, generated:", msg.id);
               }
-              
+
               if (!msg.createAt) {
                 msg.createAt = {
                   seconds: Math.floor(Date.now() / 1000),
                   nanos: (Date.now() % 1000) * 1000000,
                 };
               }
-              
-              console.log("📨 Parsed WebSocket message:", msg.id, msg.content);
+
               handleNewMessage(msg, roomId);
             } catch (error) {
               console.error("Error parsing WebSocket message:", error);
             }
           }
         );
-        
+
         currentRoomIdRef.current = roomId;
         setConnectionStatus("connected");
         return;
       }
 
-      // Create new WebSocket connection
       setConnectionStatus("connecting");
 
-      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const host = 'localhost:8080';
+      const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+      const host = "localhost:8080";
       const wsUrl = `${protocol}//${host}/chat`;
-
-      console.log('🆕 Creating new WebSocket connection:', wsUrl);
 
       const stompClient = new Client({
         brokerURL: wsUrl,
         reconnectDelay: 5000,
-        debug: (str) => console.log('STOMP Debug:', str),
+        debug: (str) => console.log("STOMP:", str),
       });
 
-      stompClient.onConnect = (frame) => {
-        console.log(`✅ WebSocket connected, subscribing to room: ${roomId}`);
+      stompClient.onConnect = () => {
+        console.log(`✅ WebSocket connected to room: ${roomId}`);
         setConnectionStatus("connected");
-        
+
         subscriptionRef.current = stompClient.subscribe(
           `/topic/room/${roomId}`,
           (message: IMessage) => {
             try {
               const msg: ChatMessageDTO = JSON.parse(message.body);
-              
-              // ✅ FIX: Generate ID if missing
+
               if (!msg.id) {
                 msg.id = `ws-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-                console.warn("⚠️ Message missing ID, generated:", msg.id);
               }
-              
+
               if (!msg.createAt) {
                 msg.createAt = {
                   seconds: Math.floor(Date.now() / 1000),
                   nanos: (Date.now() % 1000) * 1000000,
                 };
               }
-              
-              console.log("📨 Parsed WebSocket message:", msg.id, msg.content);
+
               handleNewMessage(msg, roomId);
             } catch (error) {
               console.error("Error parsing WebSocket message:", error);
             }
           }
         );
-        
+
         currentRoomIdRef.current = roomId;
       };
 
       stompClient.onWebSocketError = (error) => {
-        console.error("WebSocket connection error:", error);
+        console.error("WebSocket error:", error);
         setConnectionStatus("error");
       };
 
       stompClient.onStompError = (frame) => {
-        console.error("Broker reported error: " + frame.headers["message"]);
-        console.error("Additional details: " + frame.body);
+        console.error("STOMP error:", frame.headers["message"]);
         setConnectionStatus("error");
       };
 
@@ -626,21 +679,17 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
     [handleNewMessage]
   );
 
-  // ✅ FIX: Improved disconnect logic
   const disconnectWebSocket = useCallback(() => {
-    console.log("🔌 Disconnecting WebSocket...");
-    
     if (subscriptionRef.current) {
       subscriptionRef.current.unsubscribe();
       subscriptionRef.current = null;
     }
-    
+
     if (stompClientRef.current) {
       try {
         stompClientRef.current.deactivate();
-        console.log("✅ WebSocket disconnected");
       } catch (error) {
-        console.error("Error disconnecting WebSocket:", error);
+        console.error("Error disconnecting:", error);
       } finally {
         stompClientRef.current = null;
         currentRoomIdRef.current = null;
@@ -659,10 +708,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
         return aTime - bTime;
       });
 
-      const lastMessage =
-        sortedMessages.length > 0
-          ? sortedMessages[sortedMessages.length - 1]
-          : null;
+      const lastMessage = sortedMessages[sortedMessages.length - 1] || null;
 
       const updatedConversation = {
         ...activeConversation,
@@ -688,19 +734,17 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
     (request: MessageRequest) => {
       const roomId = request.roomId;
 
-      if (stompClientRef.current && stompClientRef.current.connected) {
+      if (stompClientRef.current?.connected) {
         try {
           stompClientRef.current.publish({
             destination: `/app/chat.sendMessage/${roomId}`,
             body: JSON.stringify(request),
-            headers: {},
           });
-          console.log("✅ Message sent via WebSocket");
         } catch (error) {
-          console.error("Failed to send message via WebSocket:", error);
+          console.error("Failed to send message:", error);
         }
       } else {
-        console.warn("WebSocket not connected, cannot send message");
+        console.warn("WebSocket not connected");
         return;
       }
 
@@ -733,9 +777,9 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
   const minimizeChat = useCallback(() => setIsMinimized(true), []);
   const maximizeChat = useCallback(() => setIsMinimized(false), []);
 
-  const unreadCount = conversations.reduce(
-    (sum, conv) => sum + conv.unreadCount,
-    0
+  const unreadCount = useMemo(
+    () => conversations.reduce((sum, conv) => sum + conv.unreadCount, 0),
+    [conversations]
   );
 
   React.useEffect(() => {
@@ -744,36 +788,74 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
     };
   }, [disconnectWebSocket]);
 
-  const value: ChatContextType = {
-    conversations,
-    activeConversation,
-    unreadCount,
-    isOpen,
-    isMinimized,
-    connectionStatus,
-    uiMessages,
-    setActiveConversation,
-    setChatMessages,
-    setUIChatMessages,
-    addUIChatMessage,
-    sendMessage,
-    markAsRead,
-    toggleChat,
-    minimizeChat,
-    maximizeChat,
-    connectWebSocket,
-    disconnectWebSocket,
-    initChat,
-    openChat,
-    loadMoreMessages,
-    supportRooms,
-    loadingRooms,
-    fetchSupportRooms,
-    joinRoom,
-    setActiveRoom: setActiveRoom,
-    activeRoom,
-    loadMessagesForRoom,
-  };
+  const value: ChatContextType = useMemo(
+    () => ({
+      conversations,
+      activeConversation,
+      unreadCount,
+      isOpen,
+      isMinimized,
+      connectionStatus,
+      uiMessages,
+      setActiveConversation,
+      setChatMessages,
+      setUIChatMessages,
+      addUIChatMessage,
+      sendMessage,
+      markAsRead,
+      toggleChat,
+      minimizeChat,
+      maximizeChat,
+      connectWebSocket,
+      disconnectWebSocket,
+      initChat,
+      openChat,
+      loadMoreMessages,
+      supportRooms,
+      loadingRooms,
+      fetchSupportRooms,
+      fetchOrderTypeRooms,
+      fetchDriverTypeRooms,
+      joinRoom,
+      setActiveRoom,
+      activeRoom,
+      loadMessagesForRoom,
+      getRoomForOrder,
+      initChatForOrderType,
+    }),
+    [
+      conversations,
+      activeConversation,
+      unreadCount,
+      isOpen,
+      isMinimized,
+      connectionStatus,
+      uiMessages,
+      sendMessage,
+      markAsRead,
+      toggleChat,
+      minimizeChat,
+      maximizeChat,
+      connectWebSocket,
+      disconnectWebSocket,
+      initChat,
+      openChat,
+      loadMoreMessages,
+      supportRooms,
+      loadingRooms,
+      fetchSupportRooms,
+      fetchOrderTypeRooms,
+      fetchDriverTypeRooms,
+      joinRoom,
+      activeRoom,
+      loadMessagesForRoom,
+      getRoomForOrder,
+      initChatForOrderType,
+      setChatMessages,
+      setUIChatMessages,
+      addUIChatMessage,
+    ]
+  );
 
   return <ChatContext.Provider value={value}>{children}</ChatContext.Provider>;
 };

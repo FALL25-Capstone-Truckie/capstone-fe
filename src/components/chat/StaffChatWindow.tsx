@@ -1,28 +1,28 @@
 import React, { useRef, useEffect } from "react";
 import { Button, Empty, Spin, Badge } from "antd";
-import {
-  CloseOutlined,
-  CustomerServiceOutlined,
-  ShoppingOutlined,
-  CarOutlined,
-} from "@ant-design/icons";
+import { CloseOutlined } from "@ant-design/icons";
 import { useChatContext } from "@/context/ChatContext";
 import StaffChatMessage from "./StaffChatMessage";
 import StaffChatConversationItem from "./StaffChatConversationItem";
+import StaffChatSidebar from "./StaffChatSidebar";
 import { useAuth } from "@/context/AuthContext";
 import MessageInput from "./MessageInput";
 import type { SupportRoom } from "@/context/ChatContext";
 import { RoomType } from "@/models/Room";
 
-
-type RoomTypeTab = RoomType.SUPPORT | RoomType.ORDER_TYPE | RoomType.DRIVER_STAFF_ORDER;
+type RoomTypeTab =
+  | RoomType.SUPPORT
+  | RoomType.ORDER_TYPE
+  | RoomType.DRIVER_STAFF_ORDER;
 
 const StaffChatWindow: React.FC = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const prevMessagesLengthRef = useRef(0);
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = React.useState<RoomTypeTab>(RoomType.SUPPORT);
+  const [activeTab, setActiveTab] = React.useState<RoomTypeTab>(
+    RoomType.SUPPORT
+  );
 
   const {
     activeConversation,
@@ -33,6 +33,8 @@ const StaffChatWindow: React.FC = () => {
     fetchSupportRooms,
     fetchOrderTypeRooms,
     fetchDriverTypeRooms,
+    fetchDriverTypeRoomsForAdmin,
+    fetchOrderTypeRoomsForAdmin,
     joinRoom,
     uiMessages,
     loadMessagesForRoom,
@@ -44,14 +46,35 @@ const StaffChatWindow: React.FC = () => {
       case "SUPPORT":
         fetchSupportRooms();
         break;
+
       case "ORDER_TYPE":
-        fetchOrderTypeRooms();
+        if (user?.role === "admin") {
+          fetchDriverTypeRoomsForAdmin();
+        } else {
+          fetchOrderTypeRooms();
+        }
         break;
+
       case "DRIVER_STAFF_ORDER":
-        fetchDriverTypeRooms();
+        if (user?.role === "admin") {
+          fetchOrderTypeRoomsForAdmin();
+        } else {
+          fetchDriverTypeRooms();
+        }
+        break;
+
+      default:
         break;
     }
-  }, [activeTab, fetchSupportRooms, fetchOrderTypeRooms, fetchDriverTypeRooms]);
+  }, [
+    activeTab,
+    user?.role,
+    fetchSupportRooms,
+    fetchOrderTypeRooms,
+    fetchDriverTypeRooms,
+    fetchDriverTypeRoomsForAdmin,
+    fetchOrderTypeRoomsForAdmin,
+  ]);
 
   // Load messages when activeConversation changes
   useEffect(() => {
@@ -115,17 +138,6 @@ const StaffChatWindow: React.FC = () => {
     setActiveTab(tab);
   };
 
-  const getTabIcon = (tab: RoomTypeTab) => {
-    switch (tab) {
-      case "SUPPORT":
-        return <CustomerServiceOutlined />;
-      case "ORDER_TYPE":
-        return <ShoppingOutlined />;
-      case "DRIVER_STAFF_ORDER":
-        return <CarOutlined />;
-    }
-  };
-
   const getTabLabel = (tab: RoomTypeTab) => {
     switch (tab) {
       case "SUPPORT":
@@ -151,7 +163,7 @@ const StaffChatWindow: React.FC = () => {
   if (isMinimized) return null;
 
   return (
-    <div className="fixed bottom-20 right-4 z-50 w-[900px] h-[800px] bg-white shadow-lg rounded-lg flex flex-col border border-gray-200">
+    <div className="fixed bottom-20 right-4 z-50 w-[800px] h-[600px] bg-white shadow-lg rounded-lg flex flex-col border border-gray-200">
       {/* Header */}
       <div className="bg-blue-600 text-white px-6 py-4 flex justify-between items-center rounded-t-lg flex-shrink-0">
         <h3 className="font-medium text-lg">Hỗ trợ trực tuyến</h3>
@@ -166,29 +178,8 @@ const StaffChatWindow: React.FC = () => {
 
       {/* Body */}
       <div className="flex-1 flex overflow-hidden">
-        {/* Left Sidebar: Navbar */}
-        <div className="w-16 bg-gray-50 border-r flex flex-col items-center py-4 gap-3">
-          {(["SUPPORT", "ORDER_TYPE", "DRIVER_STAFF_ORDER"] as RoomTypeTab[]).map(
-            (tab) => (
-              <button
-                key={tab}
-                onClick={() => handleTabChange(tab)}
-                className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all duration-200
-        ${
-          activeTab === tab
-            ? "bg-blue-100 text-blue-600 border border-blue-400 shadow-sm"
-            : "bg-white text-gray-500 hover:bg-blue-50 hover:text-blue-600 border border-gray-200"
-        }`}
-                title={getTabLabel(tab)}
-                style={{
-                  backgroundColor: activeTab === tab ? "#E0F2FE" : "#FFFFFF",
-                }}
-              >
-                <span className="text-2xl">{getTabIcon(tab)}</span>
-              </button>
-            )
-          )}
-        </div>
+        {/* Left Sidebar: Use StaffChatSidebar component */}
+        <StaffChatSidebar activeTab={activeTab} onTabChange={handleTabChange} />
 
         {/* Middle: Conversation List */}
         <div className="w-80 h-full border-r flex flex-col overflow-hidden">

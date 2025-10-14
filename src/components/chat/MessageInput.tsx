@@ -128,9 +128,9 @@ const MessageInput: React.FC = () => {
         <Input.TextArea
           value={inputValue}
           onChange={(e) => setInputValue(e.target.value)}
-          onPaste={handlePaste} // 👈 Dán ảnh Ctrl+V
+          onPaste={handlePaste}
           onKeyPress={handleKeyPress}
-          placeholder="Nhập tin nhắn hoặc dán ảnh (Ctrl + V)..."
+          placeholder="Nhập tin nhắn ..."
           autoSize={{ minRows: 1, maxRows: 3 }}
           disabled={sending || connectionStatus !== 'connected'}
           className="flex-1"

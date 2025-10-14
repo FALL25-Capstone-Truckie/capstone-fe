@@ -15,4 +15,5 @@ export type JoinRoomResponse = ApiResponse<boolean>;
 export type GetSupportRoomsForStaffResponse = ApiResponse<CreateRoomResponse[]>;
 export type GetRoomForOrder = ApiResponse<CreateRoomResponse>;
 export type GetRoomForUserAndType = ApiResponse<CreateRoomResponse[]>;
+export type GetFullActiveRoomByTypeForAdmin = ApiResponse<CreateRoomResponse[]>;
 

@@ -196,6 +196,23 @@ const roomService = {
       throw handleApiError(error, "Không thể lấy phòng");
     }
   },
+
+  getFullActiveRoomByTypeForAdmin: async (
+    type: string
+  ): Promise<CreateRoomResponse[]> => {
+    try {
+      const response = await httpClient.get<GetRoomForUserAndType>(
+        "/rooms/get-all-rooms-for-admin",
+        {
+          params: {roomType: type },
+        }
+      );
+      return response.data.data;
+    } catch (error) {
+      console.error("Error get room:", error);
+      throw handleApiError(error, "Không thể lấy phòng cho admin");
+    }
+  },
 };
 
 export default roomService;

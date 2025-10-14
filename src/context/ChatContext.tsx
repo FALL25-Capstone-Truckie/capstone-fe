@@ -84,11 +84,15 @@ interface ChatContextType {
   fetchSupportRooms: () => Promise<void>;
   fetchOrderTypeRooms: () => Promise<void>;
   fetchDriverTypeRooms: () => Promise<void>;
+  fetchOrderTypeRoomsForAdmin: () => Promise<void>;
+  fetchDriverTypeRoomsForAdmin: () => Promise<void>;
   joinRoom: (roomId: string) => Promise<void>;
   setActiveRoom: (room: SupportRoom | null) => void;
   activeRoom: SupportRoom | null;
   loadMessagesForRoom: (roomId: string) => Promise<void>;
-  getRoomForOrder: (roomData: GetRoomRequest) => Promise<CreateRoomResponse | null>;
+  getRoomForOrder: (
+    roomData: GetRoomRequest
+  ) => Promise<CreateRoomResponse | null>;
   initChatForOrderType: (room: CreateRoomResponse) => Promise<void>;
 }
 
@@ -214,7 +218,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
   const handleNewMessage = useCallback(
     (msg: ChatMessageDTO, roomId: string) => {
       console.log("💬 New message:", msg.id, "in room:", roomId);
-      
+
       const msgTime = timestampToMillis(msg.createAt);
       const msgTimeStr = msgTime.toString();
 
@@ -261,7 +265,13 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
       const uiMessage = mapChatMessageDTOToUI(msg, currentUserId);
       addUIChatMessage(uiMessage);
     },
-    [activeConversation?.roomId, isOpen, timestampToMillis, addUIChatMessage, user?.id]
+    [
+      activeConversation?.roomId,
+      isOpen,
+      timestampToMillis,
+      addUIChatMessage,
+      user?.id,
+    ]
   );
 
   const getRoomForOrder = useCallback(
@@ -286,7 +296,10 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
       try {
         connectWebSocket(user.id, roomId);
         const chatPage = await chatService.getMessages(roomId, 20);
-        const uiMessages = mapChatMessageDTOArrayToUI(chatPage.messages, user.id);
+        const uiMessages = mapChatMessageDTOArrayToUI(
+          chatPage.messages,
+          user.id
+        );
         setUIChatMessages(uiMessages);
 
         const room = supportRooms.find((r) => r.roomId === roomId);
@@ -343,7 +356,10 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
 
     setLoadingRooms(true);
     try {
-      const rooms = await roomService.getRoomForUserAndType(user.id, RoomType.ORDER_TYPE);
+      const rooms = await roomService.getRoomForUserAndType(
+        user.id,
+        RoomType.ORDER_TYPE
+      );
 
       const orderRoomsData: SupportRoom[] = rooms.map((room) => ({
         ...room,
@@ -369,7 +385,10 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
 
     setLoadingRooms(true);
     try {
-      const rooms = await roomService.getRoomForUserAndType(user.id, RoomType.DRIVER_STAFF_ORDER);
+      const rooms = await roomService.getRoomForUserAndType(
+        user.id,
+        RoomType.DRIVER_STAFF_ORDER
+      );
 
       const driverRoomsData: SupportRoom[] = rooms.map((room) => ({
         ...room,
@@ -388,6 +407,59 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
     }
   }, [user, sortRoomsByCreateAt]);
 
+  const fetchOrderTypeRoomsForAdmin = useCallback(async () => {
+    if (!user) return;
+
+    setLoadingRooms(true);
+    try {
+      const rooms = await roomService.getFullActiveRoomByTypeForAdmin(
+        RoomType.ORDER_TYPE
+      );
+
+      const orderRoomsData: SupportRoom[] = rooms.map((room) => ({
+        ...room,
+        type:
+          room.type === RoomType.ORDER_TYPE
+            ? (room.type as RoomType.ORDER_TYPE)
+            : RoomType.ORDER_TYPE,
+      }));
+
+      const sortedRooms = sortRoomsByCreateAt(orderRoomsData);
+
+      setSupportRooms(sortedRooms);
+    } catch (error) {
+      console.error("Failed to fetch ORDER_TYPE rooms for admin:", error);
+    } finally {
+      setLoadingRooms(false);
+    }
+  }, [user, sortRoomsByCreateAt]);
+
+  const fetchDriverTypeRoomsForAdmin = useCallback(async () => {
+    if (!user) return;
+
+    setLoadingRooms(true);
+    try {
+      const rooms = await roomService.getFullActiveRoomByTypeForAdmin(
+        RoomType.DRIVER_STAFF_ORDER
+      );
+
+      const driverRoomsData: SupportRoom[] = rooms.map((room) => ({
+        ...room,
+        type:
+          room.type === RoomType.DRIVER_STAFF_ORDER
+            ? (room.type as RoomType.DRIVER_STAFF_ORDER)
+            : RoomType.DRIVER_STAFF_ORDER,
+      }));
+
+      const sortedRooms = sortRoomsByCreateAt(driverRoomsData);
+      setSupportRooms(sortedRooms);
+    } catch (error) {
+      console.error("Failed to fetch DRIVER_TYPE rooms for admin:", error);
+    } finally {
+      setLoadingRooms(false);
+    }
+  }, [user, sortRoomsByCreateAt]);
+
   const joinRoom = useCallback(
     async (roomId: string) => {
       if (!user) return;
@@ -398,7 +470,9 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
         if (success) {
           setSupportRooms((prev) =>
             prev.map((room) =>
-              room.roomId === roomId ? { ...room, type: RoomType.SUPPORTED } : room
+              room.roomId === roomId
+                ? { ...room, type: RoomType.SUPPORTED }
+                : room
             )
           );
 
@@ -408,7 +482,10 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
           setIsMinimized(false);
 
           const chatPage = await chatService.getMessages(roomId, 20);
-          const uiMessages = mapChatMessageDTOArrayToUI(chatPage.messages, user.id);
+          const uiMessages = mapChatMessageDTOArrayToUI(
+            chatPage.messages,
+            user.id
+          );
           setUIChatMessages(uiMessages);
 
           const roomInfo = {
@@ -485,7 +562,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
         setUIChatMessages(uiMessages);
 
         connectWebSocket(user.id, room.roomId);
-        
+
         setIsOpen(true);
         setIsMinimized(false);
       } catch (error) {
@@ -540,7 +617,11 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
             ? activeConversation.messages[0].id
             : undefined;
 
-        const chatPage = await chatService.getMessages(roomId, 20, lastMessageId);
+        const chatPage = await chatService.getMessages(
+          roomId,
+          20,
+          lastMessageId
+        );
 
         if (chatPage.messages.length > 0) {
           const sortedNewMessages = chatPage.messages.sort((a, b) => {
@@ -554,7 +635,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
 
           const currentUserId = user?.id || sessionStorage.getItem("userId") || "";
           const newUIMessages = mapChatMessageDTOArrayToUI(sortedNewMessages, currentUserId);
-          
+
           setUiMessages((prev) => {
             const combined = [...newUIMessages, ...prev];
             const uniqueMap = new Map(combined.map(msg => [msg.id, msg]));
@@ -816,6 +897,8 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
       fetchSupportRooms,
       fetchOrderTypeRooms,
       fetchDriverTypeRooms,
+      fetchOrderTypeRoomsForAdmin,
+      fetchDriverTypeRoomsForAdmin,
       joinRoom,
       setActiveRoom,
       activeRoom,
@@ -846,6 +929,8 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
       fetchSupportRooms,
       fetchOrderTypeRooms,
       fetchDriverTypeRooms,
+      fetchOrderTypeRoomsForAdmin,
+      fetchDriverTypeRoomsForAdmin,
       joinRoom,
       activeRoom,
       loadMessagesForRoom,

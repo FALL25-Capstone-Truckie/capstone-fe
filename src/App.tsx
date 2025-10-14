@@ -39,7 +39,7 @@ const AppContent: React.FC = () => {
   const { user } = useAuth();
 
   // Determine if this is a staff user for the ChatProvider
-  const isStaff = user?.role === 'staff';
+  const isStaff = user?.role === 'staff' || user?.role === 'admin';
 
   return (
     <ChatProvider isStaff={isStaff}>

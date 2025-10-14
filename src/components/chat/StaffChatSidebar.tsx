@@ -1,8 +1,8 @@
 import React from "react";
 import {
   CustomerServiceOutlined,
-  ShoppingOutlined,
   CarOutlined,
+  ShoppingCartOutlined,
 } from "@ant-design/icons";
 import { RoomType } from "@/models/Room";
 
@@ -25,7 +25,7 @@ const StaffChatSidebar: React.FC<SidebarProps> = ({
       case "SUPPORT":
         return <CustomerServiceOutlined />;
       case "ORDER_TYPE":
-        return <ShoppingOutlined />;
+        return <ShoppingCartOutlined />;
       case "DRIVER_STAFF_ORDER":
         return <CarOutlined />;
     }
@@ -55,7 +55,10 @@ const StaffChatSidebar: React.FC<SidebarProps> = ({
                   ? "bg-blue-100 text-blue-600 border border-blue-400 shadow-sm"
                   : "bg-white text-gray-500 hover:bg-blue-50 hover:text-blue-600 border border-gray-200"
               }`}
-            title={getTabLabel(tab)}
+           title={getTabLabel(tab)}
+              style={{
+                backgroundColor: activeTab === tab ? "#E0F2FE" : "#FFFFFF",
+              }}
           >
             <span className="text-2xl">{getTabIcon(tab)}</span>
           </button>

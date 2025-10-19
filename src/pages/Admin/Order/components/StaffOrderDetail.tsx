@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { App, Button, Typography, Skeleton, Empty, Tabs, Space } from "antd";
 import {
@@ -21,6 +21,8 @@ import {
   ContractAndPaymentTab,
 } from "./StaffOrderDetail/index";
 import BillOfLadingPreviewModal from "./StaffOrderDetail/BillOfLadingPreviewModal";
+import { useOrderStatusTracking } from "../../../../hooks/useOrderStatusTracking";
+import { playImportantNotificationSound } from "../../../../utils/notificationSound";
 
 dayjs.extend(timezone);
 
@@ -47,6 +49,69 @@ const StaffOrderDetail: React.FC = () => {
     base64Content: string;
     mimeType: string;
   }> | null>(null);
+  const [previousOrderStatus, setPreviousOrderStatus] = useState<string | null>(null);
+
+  // Handle order status changes via WebSocket
+  const handleOrderStatusChange = useCallback((statusChange: any) => {
+    console.log('[StaffOrderDetail] 📢 Order status changed:', statusChange);
+    
+    // Check if this status change is for the current order
+    if (id && statusChange.orderId === id) {
+      console.log('[StaffOrderDetail] ✅ Order ID matched! Scheduling refetch...');
+      
+      // Debounce refetch to avoid spike load and prevent mobile WebSocket disruption
+      // Wait 500ms to let WebSocket broadcasts settle
+      setTimeout(() => {
+        console.log('[StaffOrderDetail] 🔄 Refetching order details...');
+        fetchOrderDetails(id);
+      }, 500);
+      
+      // Show notification for important status changes
+      if (statusChange.newStatus === 'PICKING_UP' && statusChange.previousStatus === 'FULLY_PAID') {
+        messageApi.success({
+          content: `🚛 ${statusChange.message || 'Tài xế đã bắt đầu lấy hàng!'}`,
+          duration: 5,
+        });
+        playImportantNotificationSound();
+      } else if (statusChange.newStatus === 'DELIVERED') {
+        messageApi.success({
+          content: `✅ ${statusChange.message || 'Đơn hàng đã được giao thành công!'}`,
+          duration: 5,
+        });
+        playImportantNotificationSound();
+      } else if (statusChange.newStatus === 'IN_TROUBLES') {
+        messageApi.error({
+          content: `⚠️ ${statusChange.message || 'Đơn hàng gặp sự cố!'}`,
+          duration: 8,
+        });
+        playImportantNotificationSound();
+      } else if (statusChange.newStatus === 'ASSIGNED_TO_DRIVER') {
+        messageApi.info({
+          content: `🚗 ${statusChange.message || 'Đơn hàng đã được phân công cho tài xế!'}`,
+          duration: 5,
+        });
+        playImportantNotificationSound();
+      } else {
+        // Generic notification for other status changes
+        messageApi.info({
+          content: `📦 ${statusChange.message || 'Trạng thái đơn hàng đã thay đổi'}`,
+          duration: 4,
+        });
+      }
+    } else {
+      console.log('[StaffOrderDetail] ❌ Order ID did not match:', {
+        statusChangeOrderId: statusChange.orderId,
+        currentOrderId: id
+      });
+    }
+  }, [id, messageApi]);
+
+  // Subscribe to order status changes
+  useOrderStatusTracking({
+    orderId: id,
+    autoConnect: true,
+    onStatusChange: handleOrderStatusChange,
+  });
 
   useEffect(() => {
     // Scroll to top when entering order detail page
@@ -56,6 +121,19 @@ const StaffOrderDetail: React.FC = () => {
       fetchOrderDetails(id);
     }
   }, [id]);
+
+  // Track order status changes for logging
+  useEffect(() => {
+    if (orderData?.order?.status) {
+      if (previousOrderStatus && previousOrderStatus !== orderData.order.status) {
+        console.log('[StaffOrderDetail] Order status changed:', {
+          from: previousOrderStatus,
+          to: orderData.order.status
+        });
+      }
+      setPreviousOrderStatus(orderData.order.status);
+    }
+  }, [orderData?.order?.status, previousOrderStatus]);
 
   const fetchOrderDetails = async (orderId: string) => {
     setLoading(true);

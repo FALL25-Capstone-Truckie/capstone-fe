@@ -1,10 +1,12 @@
-import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
-import { Alert } from 'antd';
-import { WifiOutlined, DisconnectOutlined, LoadingOutlined } from '@ant-design/icons';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
+import { Alert, message } from 'antd';
+import { WifiOutlined, DisconnectOutlined, LoadingOutlined, TruckOutlined } from '@ant-design/icons';
+import { playImportantNotificationSound, initAudioContext } from '../../../../utils/notificationSound';
 import RouteMapSection from './RouteMapSection';
 import RealTimeVehicleMarker from '../../../../components/map/RealTimeVehicleMarker';
 import { useVehicleTracking, type VehicleLocationMessage } from '../../../../hooks/useVehicleTracking';
 import type { JourneySegment, JourneyHistory } from '../../../../models/JourneyHistory';
+import './RouteMapWithRealTimeTracking.css';
 
 interface RouteMapWithRealTimeTrackingProps {
   journeySegments: JourneySegment[];
@@ -30,7 +32,10 @@ const RouteMapWithRealTimeTracking: React.FC<RouteMapWithRealTimeTrackingProps> 
   const [mapInstance, setMapInstance] = useState<any>(null);
   const [selectedVehicleId, setSelectedVehicleId] = useState<string | null>(null);
   const [showVehicleList, setShowVehicleList] = useState(true);
+  const [isInitializingTracking, setIsInitializingTracking] = useState(false);
+  const [hasShownTrackingNotification, setHasShownTrackingNotification] = useState(false);
   const mapSectionRef = useRef<HTMLDivElement>(null);
+  const previousTrackingStateRef = useRef(shouldShowRealTimeTracking);
 
   // WebSocket tracking
   const {
@@ -46,13 +51,88 @@ const RouteMapWithRealTimeTracking: React.FC<RouteMapWithRealTimeTrackingProps> 
     maxReconnectAttempts: 5,
   });
 
-  // Memoize valid vehicles to prevent marker recreation on re-renders
-  const validVehicles = useMemo(() => {
-    return vehicleLocations.filter(vehicle =>
-      !isNaN(vehicle.latitude) && !isNaN(vehicle.longitude) &&
-      isFinite(vehicle.latitude) && isFinite(vehicle.longitude)
-    );
-  }, [vehicleLocations]);
+  // Filter valid vehicles
+  const validVehicles = vehicleLocations.filter(vehicle =>
+    !isNaN(vehicle.latitude) && !isNaN(vehicle.longitude) &&
+    isFinite(vehicle.latitude) && isFinite(vehicle.longitude)
+  );
+
+  // Initialize audio context on user interaction (to avoid autoplay restrictions)
+  useEffect(() => {
+    const handleUserInteraction = () => {
+      initAudioContext();
+      window.removeEventListener('click', handleUserInteraction);
+      window.removeEventListener('touchstart', handleUserInteraction);
+    };
+    window.addEventListener('click', handleUserInteraction);
+    window.addEventListener('touchstart', handleUserInteraction);
+    return () => {
+      window.removeEventListener('click', handleUserInteraction);
+      window.removeEventListener('touchstart', handleUserInteraction);
+    };
+  }, []);
+
+  // Detect when tracking becomes active (transition from FULLY_PAID to PICKING_UP)
+  useEffect(() => {
+    const wasNotTracking = !previousTrackingStateRef.current;
+    const isNowTracking = shouldShowRealTimeTracking;
+
+    if (wasNotTracking && isNowTracking && !hasShownTrackingNotification) {
+      console.log('[RouteMapWithRealTimeTracking] 🚀 Tracking activated! Showing notification...');
+      
+      // Show toast notification
+      message.success({
+        content: (
+          <span>
+            <TruckOutlined className="mr-2" />
+            Tài xế đã bắt đầu lấy hàng! Đang kết nối GPS...
+          </span>
+        ),
+        duration: 5,
+        icon: null,
+      });
+
+      // Play notification sound
+      playImportantNotificationSound();
+      
+      setHasShownTrackingNotification(true);
+      
+      // Scroll to map section with proper offset for header
+      setTimeout(() => {
+        if (mapSectionRef.current) {
+          const headerHeight = 80; // Approximate header height
+          const elementPosition = mapSectionRef.current.getBoundingClientRect().top;
+          const offsetPosition = elementPosition + window.pageYOffset - headerHeight;
+          
+          window.scrollTo({
+            top: offsetPosition,
+            behavior: 'smooth'
+          });
+          
+          console.log('[RouteMapWithRealTimeTracking] 📍 Scrolled to map section');
+        }
+      }, 1200); // Delay to allow tab switch animation
+    }
+
+    previousTrackingStateRef.current = shouldShowRealTimeTracking;
+  }, [shouldShowRealTimeTracking, hasShownTrackingNotification]);
+
+  // Handle initializing state: waiting for first vehicle location
+  useEffect(() => {
+    if (shouldShowRealTimeTracking && isConnected && vehicleLocations.length === 0) {
+      setIsInitializingTracking(true);
+      
+      // Timeout after 15 seconds if no location received
+      const timeout = setTimeout(() => {
+        setIsInitializingTracking(false);
+        message.warning('Đang kết nối với xe... Vui lòng đợi trong giây lát.');
+      }, 15000);
+      
+      return () => clearTimeout(timeout);
+    } else if (vehicleLocations.length > 0) {
+      setIsInitializingTracking(false);
+    }
+  }, [shouldShowRealTimeTracking, isConnected, vehicleLocations.length]);
 
   // Log state changes in effect to avoid triggering re-renders
   useEffect(() => {
@@ -62,14 +142,15 @@ const RouteMapWithRealTimeTracking: React.FC<RouteMapWithRealTimeTrackingProps> 
       vehicleCount: vehicleLocations.length,
       validVehicleCount: validVehicles.length,
       hasMap: !!mapInstance,
-      shouldShowRealTimeTracking
+      shouldShowRealTimeTracking,
+      isInitializingTracking
     });
-  }, [isConnected, isConnecting, vehicleLocations.length, validVehicles.length, mapInstance, shouldShowRealTimeTracking]);
+  }, [isConnected, isConnecting, vehicleLocations.length, validVehicles.length, mapInstance, shouldShowRealTimeTracking, isInitializingTracking]);
 
-  // Callback khi map được khởi tạo
-  const handleMapReady = (map: any) => {
+  // Callback khi map được khởi tạo - MEMOIZED to prevent marker recreation
+  const handleMapReady = useCallback((map: any) => {
     setMapInstance(map);
-  };
+  }, []); // Empty deps - only create once
 
   // Auto-fit bounds to show all vehicles
   const fitBoundsToVehicles = useCallback(() => {
@@ -127,25 +208,37 @@ const RouteMapWithRealTimeTracking: React.FC<RouteMapWithRealTimeTrackingProps> 
   //     hasFocusedSingleVehicle.current = true;
   //   }
     
-  //   // Reset flag when vehicle count changes or selection is made
-  //   if (vehicleLocations.length !== 1 || selectedVehicleId) {
-  //     hasFocusedSingleVehicle.current = false;
-  //   }
-  // }, [vehicleLocations.length, mapInstance, selectedVehicleId]); // Only depend on LENGTH, not full array
 
-  // Focus on selected vehicle - ONLY when selection changes, not on position updates
+  // Focus on selected vehicle ONCE only - no continuous following
+  const hasInitialFocusRef = useRef(false);
+  
   useEffect(() => {
-    if (selectedVehicleId && mapInstance) {
-      const vehicle = vehicleLocations.find((v: VehicleLocationMessage) => v.vehicleId === selectedVehicleId);
-      if (vehicle) {
-        console.log('[RouteMapWithRealTimeTracking] 🎯 Focus selected:', vehicle.licensePlateNumber);
-        mapInstance.flyTo({
-          center: [vehicle.longitude, vehicle.latitude],
-          zoom: 15,
-          duration: 1000
-        });
-      }
+    if (!selectedVehicleId || !mapInstance) {
+      hasInitialFocusRef.current = false;
+      return;
     }
+
+    const vehicle = vehicleLocations.find((v: VehicleLocationMessage) => v.vehicleId === selectedVehicleId);
+    if (!vehicle) return;
+
+    // Only focus ONCE when vehicle is first selected
+    if (!hasInitialFocusRef.current) {
+      console.log('[RouteMapWithRealTimeTracking] 🎯 Initial focus on selected vehicle (one-time)');
+      hasInitialFocusRef.current = true;
+      
+      // One-time smooth focus
+      mapInstance.easeTo({
+        center: [vehicle.longitude, vehicle.latitude],
+        zoom: 15,
+        duration: 1000,
+        easing: (t: number) => t * (2 - t)
+      });
+    }
+    // After initial focus, camera stays still - only marker moves
+
+    return () => {
+      hasInitialFocusRef.current = false;
+    };
   }, [selectedVehicleId, mapInstance]); // Remove vehicleLocations dependency!
 
   // Auto-scroll to map when tracking becomes active
@@ -161,7 +254,7 @@ const RouteMapWithRealTimeTracking: React.FC<RouteMapWithRealTimeTrackingProps> 
         setTimeout(() => {
           mapSectionRef.current?.scrollIntoView({ 
             behavior: 'smooth', 
-            block: 'start' 
+            block: 'center' 
           });
         }, 500);
       }
@@ -173,12 +266,13 @@ const RouteMapWithRealTimeTracking: React.FC<RouteMapWithRealTimeTrackingProps> 
     console.log('[RouteMapWithRealTimeTracking] 🖱️ Marker clicked:', vehicle.licensePlateNumber);
     setSelectedVehicleId(vehicle.vehicleId);
     
-    // Focus on selected vehicle
+    // Smooth focus on selected vehicle with easeTo
     if (mapInstance) {
-      mapInstance.flyTo({
+      mapInstance.easeTo({
         center: [vehicle.longitude, vehicle.latitude],
         zoom: 15,
-        duration: 1000
+        duration: 1200,
+        easing: (t: number) => t * (2 - t) // Ease-out quad
       });
     }
   }, [mapInstance]);
@@ -270,8 +364,25 @@ const RouteMapWithRealTimeTracking: React.FC<RouteMapWithRealTimeTrackingProps> 
       {/* Connection status */}
       {renderConnectionStatus()}
 
+      {/* Loading state when initializing tracking */}
+      {isInitializingTracking && (
+        <div className="mb-4 bg-blue-50 border border-blue-200 rounded-lg p-4 animate-pulse">
+          <div className="flex items-center justify-center space-x-3">
+            <LoadingOutlined className="text-2xl text-blue-500" />
+            <div>
+              <p className="text-blue-700 font-medium mb-1">
+                🚛 Đang kết nối với xe...
+              </p>
+              <p className="text-sm text-blue-600">
+                Tài xế đã bắt đầu chuyến đi. Đang nhận tín hiệu GPS...
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Hiển thị route map */}
-      <div className="relative">
+      <div className="relative map-container-wrapper">
         <RouteMapSection
           journeySegments={journeySegments}
           journeyInfo={journeyInfo}
@@ -425,7 +536,7 @@ const RouteMapWithRealTimeTracking: React.FC<RouteMapWithRealTimeTrackingProps> 
           {/* Overlay real-time vehicle markers - Always show if we have data */}
           {shouldShowRealTimeTracking && mapInstance && validVehicles.length > 0 && (
             <div className="real-time-vehicles-overlay">
-              {validVehicles.map((vehicle) => (
+              {validVehicles.map((vehicle: VehicleLocationMessage) => (
                 <RealTimeVehicleMarker
                   key={vehicle.vehicleId}
                   vehicle={vehicle}

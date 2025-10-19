@@ -60,6 +60,9 @@ export const useVehicleTracking = (options: UseVehicleTrackingOptions = {}): Use
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const reconnectAttemptsRef = useRef(0);
   const subscriptionsRef = useRef<any[]>([]);
+  const initialDataRequestedRef = useRef(false);
+  const retryInitialDataTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const vehicleLocationsRef = useRef<VehicleLocationMessage[]>([]);
 
   // Error logging function
   const logError = useCallback((message: string, error?: any) => {
@@ -74,6 +77,28 @@ export const useVehicleTracking = (options: UseVehicleTrackingOptions = {}): Use
     }
   }, []);
 
+  // Request initial data helper
+  const requestInitialData = useCallback(() => {
+    const client = clientRef.current;
+    if (!client || !client.connected) return;
+
+    if (config.orderId) {
+      console.log(`📤 Requesting initial locations for order ${config.orderId}`);
+      client.publish({
+        destination: `/app/order/${config.orderId}/get-locations`,
+        body: JSON.stringify({ orderId: config.orderId }),
+      });
+      initialDataRequestedRef.current = true;
+    } else if (config.vehicleId) {
+      console.log(`📤 Requesting initial location for vehicle ${config.vehicleId}`);
+      client.publish({
+        destination: `/app/vehicle/${config.vehicleId}/get-location`,
+        body: JSON.stringify({ vehicleId: config.vehicleId }),
+      });
+      initialDataRequestedRef.current = true;
+    }
+  }, [config.orderId, config.vehicleId]);
+
   // Handle incoming vehicle location messages
   const handleVehicleLocationMessage = useCallback((message: IMessage) => {
     try {
@@ -81,6 +106,7 @@ export const useVehicleTracking = (options: UseVehicleTrackingOptions = {}): Use
       
       if (Array.isArray(locationData)) {
         setVehicleLocations(locationData);
+        vehicleLocationsRef.current = locationData;
       } else {
         setVehicleLocations(prev => {
           const existingIndex = prev.findIndex(v => v.vehicleId === locationData.vehicleId);
@@ -95,12 +121,15 @@ export const useVehicleTracking = (options: UseVehicleTrackingOptions = {}): Use
             if (positionChanged || existing.lastUpdated !== locationData.lastUpdated) {
               const updated = [...prev];
               updated[existingIndex] = locationData;
+              vehicleLocationsRef.current = updated;
               return updated;
             } else {
               return prev; // No change, return same reference
             }
           } else {
-            return [...prev, locationData];
+            const updated = [...prev, locationData];
+            vehicleLocationsRef.current = updated;
+            return updated;
           }
         });
       }
@@ -143,7 +172,7 @@ export const useVehicleTracking = (options: UseVehicleTrackingOptions = {}): Use
       connectHeaders: {
         Authorization: `Bearer ${token}`,
       },
-      debug: (str) => {
+      debug: (_str) => {
       },
       reconnectDelay: config.reconnectInterval,
       heartbeatIncoming: 4000,
@@ -151,7 +180,7 @@ export const useVehicleTracking = (options: UseVehicleTrackingOptions = {}): Use
     });
 
     // Connection success handler
-    client.onConnect = (frame) => {
+    client.onConnect = (_frame) => {
       setIsConnected(true);
       setIsConnecting(false);
       setError(null);
@@ -159,46 +188,57 @@ export const useVehicleTracking = (options: UseVehicleTrackingOptions = {}): Use
 
       try {
         // Subscribe to appropriate topic based on configuration
-        if (config.orderId) {
-          const topicPath = `/topic/orders/${config.orderId}/vehicles`;
-          
-          const subscription = client.subscribe(
-            topicPath,
-            (message) => {
-              handleVehicleLocationMessage(message);
-            }
-          );
-          subscriptionsRef.current.push(subscription);
-
-          // Request initial location data for all vehicles in the order
-          // Add small delay to ensure subscription is fully established
-          setTimeout(() => {
-            client.publish({
-              destination: `/app/order/${config.orderId}/get-locations`,
-              body: JSON.stringify({ orderId: config.orderId }),
-            });
-          }, 500); // 500ms delay to ensure subscription is ready
-        }
-
+        // PRIORITY: vehicleId over orderId to avoid conflicts
         if (config.vehicleId) {
-          const topicPath = `/topic/vehicles/${config.vehicleId}`;
+          const topicPath = `/topic/vehicle/${config.vehicleId}/location`;
+          console.log(`🔗 Subscribing to vehicle location: ${topicPath}`);
           
           const subscription = client.subscribe(
             topicPath,
             (message) => {
+              console.log(`📍 WEBSOCKET: Received location for vehicle ${config.vehicleId}`);
               handleVehicleLocationMessage(message);
             }
           );
           subscriptionsRef.current.push(subscription);
 
-          // Request initial location data for the specific vehicle
-          // Add small delay to ensure subscription is fully established
+          // Request initial location after subscription
           setTimeout(() => {
-            client.publish({
-              destination: `/app/vehicle/${config.vehicleId}/get-location`,
-              body: JSON.stringify({ vehicleId: config.vehicleId }),
-            });
-          }, 500); // 500ms delay to ensure subscription is ready
+            requestInitialData();
+            
+            // Retry if no data received after 3 seconds
+            retryInitialDataTimeoutRef.current = setTimeout(() => {
+              if (vehicleLocationsRef.current.length === 0) {
+                console.log(`⚠️ No initial data received, retrying...`);
+                requestInitialData();
+              }
+            }, 3000);
+          }, 1000);
+        } else if (config.orderId) {
+          const topicPath = `/topic/orders/${config.orderId}/vehicles`;
+          console.log(`🔗 Subscribing to order vehicles: ${topicPath}`);
+          
+          const subscription = client.subscribe(
+            topicPath,
+            (message) => {
+              console.log(`📍 Received order vehicles update:`, message.body);
+              handleVehicleLocationMessage(message);
+            }
+          );
+          subscriptionsRef.current.push(subscription);
+
+          // Request initial locations for all vehicles in order
+          setTimeout(() => {
+            requestInitialData();
+            
+            // Retry if no data received after 3 seconds
+            retryInitialDataTimeoutRef.current = setTimeout(() => {
+              if (vehicleLocationsRef.current.length === 0) {
+                console.log(`⚠️ No initial data received for order, retrying...`);
+                requestInitialData();
+              }
+            }, 3000);
+          }, 1000);
         }
       } catch (subscriptionError) {
         setError('Lỗi khi đăng ký nhận dữ liệu');
@@ -218,7 +258,18 @@ export const useVehicleTracking = (options: UseVehicleTrackingOptions = {}): Use
     };
 
     // WebSocket error handler
-    client.onWebSocketError = (event) => {
+    client.onWebSocketError = (_event) => {
+      setIsConnected(false);
+      setIsConnecting(false);
+      setError('Lỗi kết nối WebSocket');
+      
+      if (reconnectAttemptsRef.current < config.maxReconnectAttempts) {
+        scheduleReconnect();
+      }
+    };
+
+    // WebSocket closed handler
+    client.onWebSocketClose = (_event) => {
       setIsConnected(false);
       setIsConnecting(false);
       setError('Lỗi kết nối WebSocket');
@@ -263,6 +314,13 @@ export const useVehicleTracking = (options: UseVehicleTrackingOptions = {}): Use
   // Disconnect from WebSocket
   const disconnect = useCallback(() => {
     clearReconnectTimeout();
+    
+    // Clear retry timeout
+    if (retryInitialDataTimeoutRef.current) {
+      clearTimeout(retryInitialDataTimeoutRef.current);
+      retryInitialDataTimeoutRef.current = null;
+    }
+    
     reconnectAttemptsRef.current = config.maxReconnectAttempts; // Prevent auto-reconnection
     
     // Unsubscribe from all topics

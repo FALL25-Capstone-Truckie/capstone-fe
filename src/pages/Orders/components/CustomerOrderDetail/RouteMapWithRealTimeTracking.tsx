@@ -35,6 +35,7 @@ const RouteMapWithRealTimeTracking: React.FC<RouteMapWithRealTimeTrackingProps> 
   const [isInitializingTracking, setIsInitializingTracking] = useState(false);
   const [hasShownTrackingNotification, setHasShownTrackingNotification] = useState(false);
   const mapSectionRef = useRef<HTMLDivElement>(null);
+  const mapContainerRef = useRef<HTMLDivElement>(null); // Ref for actual map card
   const previousTrackingStateRef = useRef(shouldShowRealTimeTracking);
 
   // WebSocket tracking
@@ -248,15 +249,32 @@ const RouteMapWithRealTimeTracking: React.FC<RouteMapWithRealTimeTrackingProps> 
       // Notify parent to switch to journey tab (if needed)
       onTrackingActive?.();
       
-      // Then scroll to map section
-      if (mapSectionRef.current) {
+      // Then scroll to center map vertically in viewport
+      // Need longer delay to wait for tab switch animation to complete
+      if (mapContainerRef.current) {
         console.log('[RouteMapWithRealTimeTracking] 📜 Scrolling to map...');
         setTimeout(() => {
-          mapSectionRef.current?.scrollIntoView({ 
-            behavior: 'smooth', 
-            block: 'center' 
+          if (!mapContainerRef.current) return; // Double check after delay
+          
+          const headerHeight = 120; // Customer header (blue banner + nav)
+          const mapElement = mapContainerRef.current;
+          const mapRect = mapElement.getBoundingClientRect();
+          const mapHeight = mapRect.height;
+          const viewportHeight = window.innerHeight;
+          
+          // Calculate position to center map in visible viewport (excluding header)
+          // Target: map center should be at (viewportHeight - headerHeight) / 2 + headerHeight
+          const visibleViewportCenter = headerHeight + (viewportHeight - headerHeight) / 2;
+          const mapCenter = mapRect.top + mapHeight / 2;
+          const scrollOffset = mapCenter - visibleViewportCenter;
+          
+          window.scrollTo({
+            top: window.pageYOffset + scrollOffset,
+            behavior: 'smooth'
           });
-        }, 500);
+          
+          console.log('[CustomerRouteMap] 📍 Scrolled to center map in viewport');
+        }, 1500); // Longer delay to ensure layout is stable after any re-renders
       }
     }
   }, [shouldShowRealTimeTracking, isConnected, onTrackingActive]);
@@ -387,6 +405,7 @@ const RouteMapWithRealTimeTracking: React.FC<RouteMapWithRealTimeTrackingProps> 
           journeySegments={journeySegments}
           journeyInfo={journeyInfo}
           onMapReady={handleMapReady}
+          mapContainerRef={mapContainerRef}
         >
           {/* Vehicle List Panel - Absolute positioned inside map */}
           {shouldShowRealTimeTracking && vehicleLocations.length > 0 && (

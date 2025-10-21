@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Card, Typography, Empty, Tag, Descriptions, Tooltip, Divider, Alert } from 'antd';
+import { Card, Typography, Empty, Tag, Descriptions, Divider, Alert } from 'antd';
 import { EnvironmentOutlined, DollarCircleOutlined, InfoCircleOutlined, ClockCircleOutlined } from '@ant-design/icons';
 import VietMapMap from '../../../../../components/common/VietMapMap';
 import type { MapLocation } from '@/models/Map';
@@ -31,9 +31,10 @@ interface RouteMapSectionProps {
     journeyInfo?: Partial<JourneyHistory>;
     onMapReady?: (map: any) => void;
     children?: React.ReactNode;
+    mapContainerRef?: React.RefObject<HTMLDivElement | null>; // Ref for map container div
 }
 
-const RouteMapSection: React.FC<RouteMapSectionProps> = ({ journeySegments, vehicleInfo, journeyInfo, onMapReady, children }) => {
+const RouteMapSection: React.FC<RouteMapSectionProps> = ({ journeySegments, vehicleInfo, journeyInfo, onMapReady, children, mapContainerRef }) => {
     const [mapLocation, setMapLocation] = useState<MapLocation | null>(null);
     const [markers, setMarkers] = useState<MapLocation[]>([]);
     const [routeSegments, setRouteSegments] = useState<RouteSegment[]>([]);
@@ -64,56 +65,64 @@ const RouteMapSection: React.FC<RouteMapSectionProps> = ({ journeySegments, vehi
             console.warn('[RouteMapSection] onMapReady callback is not provided!');
         }
 
-        // Apply closer zoom when map is loaded
-        if (map && markers.length > 1) {
+        // Apply closer zoom when map is loaded - using route path coordinates
+        if (map && routeSegments.length > 0) {
             setTimeout(() => {
                 try {
-                    // Filter out markers with invalid coordinates
-                    const validMarkers = markers.filter(marker =>
-                        !isNaN(marker.lat) && !isNaN(marker.lng) &&
-                        isFinite(marker.lat) && isFinite(marker.lng)
-                    );
+                    // Collect all coordinates from route paths
+                    const allCoordinates: [number, number][] = [];
+                    
+                    routeSegments.forEach(segment => {
+                        if (segment.path && Array.isArray(segment.path)) {
+                            segment.path.forEach((coord: any) => {
+                                // Handle different coordinate formats: [lng, lat] or {lng, lat}
+                                const lng = Array.isArray(coord) ? coord[0] : coord.lng;
+                                const lat = Array.isArray(coord) ? coord[1] : coord.lat;
+                                
+                                if (!isNaN(lng) && !isNaN(lat) && isFinite(lng) && isFinite(lat)) {
+                                    allCoordinates.push([lng, lat]);
+                                }
+                            });
+                        }
+                    });
 
-                    if (validMarkers.length > 1) {
+                    if (allCoordinates.length > 1) {
                         try {
-                            // Initialize bounds with first marker to avoid NaN
-                            const firstMarker = validMarkers[0];
+                            // Initialize bounds with first coordinate
                             const bounds = new window.vietmapgl.LngLatBounds(
-                                [firstMarker.lng, firstMarker.lat],
-                                [firstMarker.lng, firstMarker.lat]
+                                allCoordinates[0],
+                                allCoordinates[0]
                             );
                             
-                            // Extend bounds with remaining markers
-                            for (let i = 1; i < validMarkers.length; i++) {
-                                const marker = validMarkers[i];
-                                bounds.extend([marker.lng, marker.lat]);
-                            }
+                            // Extend bounds with all route coordinates
+                            allCoordinates.forEach(coord => {
+                                bounds.extend(coord);
+                            });
 
                             // Fit map to bounds with generous padding for full route overview
                             map.fitBounds(bounds, {
                                 padding: {
-                                    top: 100,
-                                    bottom: 100,
-                                    left: 100,
-                                    right: 100
+                                    top: 80,
+                                    bottom: 80,
+                                    left: 80,
+                                    right: 80
                                 },
-                                maxZoom: 13, // Lower zoom for better overview
                                 duration: 1000
                             });
                         } catch (err) {
                             console.error('Error fitting bounds:', err);
-                            // Fallback: center on first marker
-                            const marker = validMarkers[0];
-                            map.setCenter([marker.lng, marker.lat]);
-                            map.setZoom(12);
+                            // Fallback: center on first coordinate
+                            if (allCoordinates.length > 0) {
+                                map.setCenter(allCoordinates[0]);
+                                map.setZoom(12);
+                            }
                         }
-                    } else if (validMarkers.length === 1) {
-                        // If only one valid marker, center the map on it
-                        const marker = validMarkers[0];
-                        map.setCenter([marker.lng, marker.lat]);
+                    } else if (allCoordinates.length === 1) {
+                        // If only one coordinate, center the map on it
+                        map.setCenter(allCoordinates[0]);
                         map.setZoom(12);
                     } else {
-                        console.warn('No valid markers found for map bounds');
+                        console.warn('No valid coordinates found for map bounds');
                     }
                 } catch (error) {
                     console.error("Error adjusting map zoom:", error);
@@ -205,6 +214,64 @@ const RouteMapSection: React.FC<RouteMapSectionProps> = ({ journeySegments, vehi
             setHasValidRoute(validRouteFound);
         }
     }, [journeySegments]);
+
+    // Auto-fit bounds when routeSegments are ready and map is loaded
+    useEffect(() => {
+        if (!mapRef.current || routeSegments.length === 0) return;
+
+        const fitBoundsToRoute = () => {
+            try {
+                // Collect all coordinates from route paths
+                const allCoordinates: [number, number][] = [];
+                
+                routeSegments.forEach(segment => {
+                    if (segment.path && Array.isArray(segment.path)) {
+                        segment.path.forEach((coord: any) => {
+                            // Handle different coordinate formats: [lng, lat] or {lng, lat}
+                            const lng = Array.isArray(coord) ? coord[0] : coord.lng;
+                            const lat = Array.isArray(coord) ? coord[1] : coord.lat;
+                            
+                            if (!isNaN(lng) && !isNaN(lat) && isFinite(lng) && isFinite(lat)) {
+                                allCoordinates.push([lng, lat]);
+                            }
+                        });
+                    }
+                });
+
+                console.log('=== [RouteMapSection] Fitting bounds to route ===');
+                console.log('Total coordinates:', allCoordinates.length);
+
+                if (allCoordinates.length > 1) {
+                    // Initialize bounds with first coordinate
+                    const bounds = new window.vietmapgl.LngLatBounds(
+                        allCoordinates[0],
+                        allCoordinates[0]
+                    );
+                    
+                    // Extend bounds with all route coordinates
+                    allCoordinates.forEach(coord => {
+                        bounds.extend(coord);
+                    });
+
+                    // Fit map to bounds with generous padding for full route overview
+                    mapRef.current.fitBounds(bounds, {
+                        padding: {
+                            top: 80,
+                            bottom: 80,
+                            left: 80,
+                            right: 80
+                        },
+                        duration: 1000
+                    });
+                }
+            } catch (error) {
+                console.error('[RouteMapSection] Error fitting bounds to route:', error);
+            }
+        };
+
+        // Delay to ensure map is fully loaded
+        setTimeout(fitBoundsToRoute, 500);
+    }, [routeSegments, mapRef.current]);
 
     return (
         <>
@@ -326,7 +393,7 @@ const RouteMapSection: React.FC<RouteMapSectionProps> = ({ journeySegments, vehi
                 )}
 
                 {hasValidRoute && (
-                    <div className="h-[500px] rounded-lg overflow-hidden">
+                    <div className="h-[500px] rounded-lg overflow-hidden" ref={mapContainerRef}>
                         <VietMapMap
                             mapLocation={mapLocation}
                             onLocationChange={(location) => setMapLocation(location)}

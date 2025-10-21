@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { Modal, Form, Select, Input, Button, Tabs, Card, Row, Col, Tag, Tooltip, App, Spin, Empty, Divider, Skeleton, Steps } from "antd";
-import { CarOutlined, UserOutlined, CheckCircleOutlined, CloseCircleOutlined, InfoCircleOutlined, FileTextOutlined, BoxPlotOutlined, EnvironmentOutlined } from "@ant-design/icons";
-import type { VehicleSuggestion, SuggestedDriver, CreateGroupedVehicleAssignmentsRequest, OrderDetailGroup, GroupedVehicleAssignmentSuggestionData, GroupAssignment, OrderDetailInfo } from "../../../../models/VehicleAssignment";
+import { CarOutlined, UserOutlined, CheckCircleOutlined, CloseCircleOutlined, InfoCircleOutlined, FileTextOutlined, BoxPlotOutlined, EnvironmentOutlined, SafetyOutlined } from "@ant-design/icons";
+import type { VehicleSuggestion, SuggestedDriver, CreateGroupedVehicleAssignmentsRequest, OrderDetailGroup, GroupedVehicleAssignmentSuggestionData, GroupAssignment, OrderDetailInfo, Seal } from "../../../../models/VehicleAssignment";
 import { vehicleAssignmentService } from "../../../../services/vehicle-assignment/vehicleAssignmentService";
 import { RoutePlanningStep } from "../../../Admin/VehicleAssignment/components";
+import SealAssignmentStep from "./SealAssignmentStep";
 import type { RouteSegment } from "../../../../models/RoutePoint";
 import type { RouteInfo } from "../../../../models/VehicleAssignment";
 
@@ -47,12 +48,13 @@ const VehicleAssignmentModal: React.FC<VehicleAssignmentModalProps> = ({
     const [detailGroups, setDetailGroups] = useState<OrderDetailGroup[]>([]);
     const [suggestionsMap, setSuggestionsMap] = useState<Record<string, VehicleSuggestion[]>>({});
 
-    // State for two-step process
+    // State for three-step process
     const [currentStep, setCurrentStep] = useState<number>(0);
     const [routeSegments, setRouteSegments] = useState<RouteSegment[]>([]);
     const [routeInfo, setRouteInfo] = useState<RouteInfo | null>(null);
     const [formValues, setFormValues] = useState<any>({});
     const [currentGroupIndex, setCurrentGroupIndex] = useState<string>("0");
+    const [seals, setSeals] = useState<Seal[]>([]);
 
     // Fetch suggestions when modal opens
     useEffect(() => {
@@ -67,6 +69,7 @@ const VehicleAssignmentModal: React.FC<VehicleAssignmentModalProps> = ({
             setCurrentStep(0);
             setRouteSegments([]);
             setRouteInfo(null);
+            setSeals([]);
         }
     }, [visible, orderId]);
 
@@ -204,10 +207,20 @@ const VehicleAssignmentModal: React.FC<VehicleAssignmentModalProps> = ({
     const handleRouteComplete = (segments: RouteSegment[], routeInfoData: RouteInfo) => {
         setRouteSegments(segments);
         setRouteInfo(routeInfoData);
-        handleSubmitWithRoute(segments, routeInfoData);
+        // Move to seal assignment step
+        setCurrentStep(2);
     };
 
-    const handleSubmitWithRoute = async (segments: RouteSegment[], routeInfoData: RouteInfo) => {
+    const handleSealComplete = (assignedSeals: Seal[]) => {
+        setSeals(assignedSeals);
+        handleSubmitWithRouteAndSeals(routeSegments, routeInfo!, assignedSeals);
+    };
+
+    const handleSealBack = () => {
+        setCurrentStep(1);
+    };
+
+    const handleSubmitWithRouteAndSeals = async (segments: RouteSegment[], routeInfoData: RouteInfo, assignedSeals: Seal[]) => {
         try {
             setSubmitting(true);
 
@@ -245,7 +258,8 @@ const VehicleAssignmentModal: React.FC<VehicleAssignmentModalProps> = ({
                         driverId_1: groupData.driverId_1,
                         driverId_2: groupData.driverId_2,
                         description: groupData.description || "",
-                        routeInfo: completeRouteInfo // Add complete route info to the assignment
+                        routeInfo: completeRouteInfo, // Add complete route info to the assignment
+                        seals: assignedSeals.length > 0 ? assignedSeals : undefined // Add seals if any
                     });
                 }
             });
@@ -840,7 +854,7 @@ const VehicleAssignmentModal: React.FC<VehicleAssignmentModalProps> = ({
                     </Tabs>
                 </Form>
             );
-        } else {
+        } else if (currentStep === 1) {
             // Get the current group's order details
             const currentGroup = detailGroups[parseInt(currentGroupIndex)];
             const currentVehicle = getCurrentSelectedVehicle();
@@ -874,6 +888,15 @@ const VehicleAssignmentModal: React.FC<VehicleAssignmentModalProps> = ({
                     vehicle={vehicleForRoute}
                     onComplete={handleRouteComplete}
                     onBack={handlePreviousStep}
+                />
+            );
+        } else {
+            // Step 2: Seal Assignment
+            return (
+                <SealAssignmentStep
+                    onComplete={handleSealComplete}
+                    onBack={handleSealBack}
+                    initialSeals={seals}
                 />
             );
         }
@@ -977,6 +1000,7 @@ const VehicleAssignmentModal: React.FC<VehicleAssignmentModalProps> = ({
                     <Steps current={currentStep} className="mb-4">
                         <Step title="Thông tin phân công" icon={<CarOutlined />} />
                         <Step title="Định tuyến" icon={<EnvironmentOutlined />} />
+                        <Step title="Gán Seal" icon={<SafetyOutlined />} />
                     </Steps>
                     {renderStepContent()}
                 </div>

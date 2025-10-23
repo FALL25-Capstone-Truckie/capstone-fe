@@ -123,6 +123,11 @@ export interface RouteInfo {
     totalDistance: number; // Tổng khoảng cách
 }
 
+export interface Seal {
+    sealCode: string;
+    description: string;
+}
+
 export interface GroupAssignment {
     orderDetailIds: string[];
     vehicleId: string;
@@ -130,6 +135,7 @@ export interface GroupAssignment {
     driverId_2: string;
     description?: string;
     routeInfo?: RouteInfo;
+    seals?: Seal[];
 }
 
 export interface CreateGroupedVehicleAssignmentsRequest {

@@ -39,18 +39,23 @@ const StatusBadge: React.FC<StatusBadgeProps> = ({
 
     // Xác định màu dựa vào colorClass
     const getColorFromClass = () => {
-        if (colorClass?.includes('green')) return 'success';
-        if (colorClass?.includes('red')) return 'error';
-        if (colorClass?.includes('yellow')) return 'warning';
-        if (colorClass?.includes('blue')) return 'processing';
-        if (colorClass?.includes('gray')) return 'default';
-        return undefined;
+        if (!colorClass) return 'default';
+        
+        if (colorClass.includes('green') || colorClass.includes('emerald')) return 'success';
+        if (colorClass.includes('red')) return 'error';
+        if (colorClass.includes('yellow') || colorClass.includes('amber') || colorClass.includes('orange')) return 'warning';
+        if (colorClass.includes('blue') || colorClass.includes('cyan')) return 'processing';
+        if (colorClass.includes('indigo') || colorClass.includes('purple')) return 'purple';
+        if (colorClass.includes('gray')) return 'default';
+        return 'default';
     };
+
+    const antColor = getColorFromClass();
 
     // Sử dụng Ant Design Tag cho hiển thị nhất quán
     return (
         <Tag
-            color={getColorFromClass()}
+            color={antColor}
             className={classNames(
                 'text-center',
                 className

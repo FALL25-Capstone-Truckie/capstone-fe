@@ -1,11 +1,13 @@
 import React, { useState } from "react";
-import { Card, Descriptions, Empty, Button, Tag, App } from "antd";
+import { Card, Descriptions, Empty, Button, App } from "antd";
 import {
   FileTextOutlined,
   EditOutlined,
   CreditCardOutlined,
 } from "@ant-design/icons";
 import orderService from "../../../../services/order/orderService";
+import { ContractStatusTag } from "../../../../components/common/tags";
+import { ContractStatusEnum } from "../../../../constants/enums";
 
 interface ContractProps {
   contract?: {
@@ -20,12 +22,14 @@ interface ContractProps {
     status: string;
     staffName: string;
   };
+  orderStatus?: string;
 }
 
-const ContractSection: React.FC<ContractProps> = ({ contract }) => {
+const ContractSection: React.FC<ContractProps> = ({ contract, orderStatus }) => {
   const messageApi = App.useApp().message;
   const [signingContract, setSigningContract] = useState<boolean>(false);
   const [payingDeposit, setPayingDeposit] = useState<boolean>(false);
+  const [payingFullAmount, setPayingFullAmount] = useState<boolean>(false);
 
   const handleSignContract = async () => {
     if (!contract?.id) {
@@ -85,19 +89,44 @@ const ContractSection: React.FC<ContractProps> = ({ contract }) => {
     }
   };
 
-  const getStatusColor = (status: string) => {
-    const statusMap: Record<string, string> = {
-      PENDING: "orange",
-      PROCESSING: "blue",
-      CANCELLED: "red",
-      APPROVED: "green",
-      ACTIVE: "green",
-      EXPIRED: "red",
-      CONTRACT_DRAFT: "orange",
-      CONTRACT_SIGNED: "green",
-    };
-    return statusMap[status] || "default";
+  const handlePayFullAmount = async () => {
+    if (!contract?.id) {
+      messageApi.error("Không tìm thấy thông tin hợp đồng");
+      return;
+    }
+
+    setPayingFullAmount(true);
+    try {
+      const response = await orderService.payFullAmount(contract.id);
+      messageApi.success("Khởi tạo thanh toán toàn bộ thành công!");
+
+      // Parse the gatewayResponse to get the checkoutUrl
+      let checkoutUrl = null;
+      if (response?.data?.gatewayResponse) {
+        try {
+          const gatewayData = JSON.parse(response.data.gatewayResponse);
+          checkoutUrl = gatewayData.checkoutUrl;
+        } catch (parseError) {
+          console.error("Error parsing gatewayResponse:", parseError);
+        }
+      }
+
+      // If we have a checkout URL, redirect to it
+      if (checkoutUrl) {
+        window.open(checkoutUrl, "_blank");
+      } else {
+        messageApi.info("Đang chuyển hướng đến trang thanh toán...");
+        // Reload the page to reflect any status changes
+        window.location.reload();
+      }
+    } catch (error) {
+      console.error("Error paying full amount:", error);
+      messageApi.error("Có lỗi xảy ra khi thanh toán toàn bộ");
+    } finally {
+      setPayingFullAmount(false);
+    }
   };
+
 
   return (
     <Card
@@ -129,9 +158,7 @@ const ContractSection: React.FC<ContractProps> = ({ contract }) => {
             </Descriptions.Item>
             <Descriptions.Item label="Trạng thái">
               {contract.status ? (
-                <Tag color={getStatusColor(contract.status)}>
-                  {contract.status}
-                </Tag>
+                <ContractStatusTag status={contract.status as ContractStatusEnum} />
               ) : (
                 "Chưa có thông tin"
               )}
@@ -187,6 +214,22 @@ const ContractSection: React.FC<ContractProps> = ({ contract }) => {
                     Thanh Toán Đặt Cọc
                   </Button>
                 )}
+
+                {/* Nút thanh toán toàn bộ chỉ hiện khi contract status là DEPOSITED và order status là ASSIGNED_TO_DRIVER */}
+                {contract.status === "DEPOSITED" &&
+                  orderStatus === "ASSIGNED_TO_DRIVER" && (
+                    <Button
+                      type="primary"
+                      icon={<CreditCardOutlined />}
+                      onClick={handlePayFullAmount}
+                      loading={payingFullAmount}
+                      size="large"
+                      className="ml-3"
+                      style={{ backgroundColor: "#52c41a" }}
+                    >
+                      Thanh Toán Toàn Bộ
+                    </Button>
+                  )}
               </>
             ) : (
               <p className="text-gray-500">Chưa có file hợp đồng</p>

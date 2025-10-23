@@ -4,7 +4,6 @@ import {
   Descriptions,
   Empty,
   Button,
-  Tag,
   App,
   Modal,
   Form,
@@ -28,6 +27,8 @@ import httpClient from "../../../../services/api/httpClient";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 import dayjs from "dayjs";
+import { ContractStatusTag } from "../../../../components/common/tags";
+import { ContractStatusEnum } from "../../../../constants/enums";
 
 interface StaffContractProps {
   contract?: {
@@ -88,19 +89,6 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
     warrantyTerms: "Cung cấp bảo hiểm hàng hóa theo tỷ lệ quy định",
     generalTerms: "Hợp đồng có hiệu lực kể từ ngày ký và thanh toán đặt cọc.",
   });
-
-  const getStatusColor = (status: string) => {
-    const statusMap: Record<string, string> = {
-      PENDING: "orange",
-      PROCESSING: "blue",
-      CANCELLED: "red",
-      APPROVED: "green",
-      ACTIVE: "green",
-      EXPIRED: "red",
-      CONTRACT_DRAFT: "orange",
-    };
-    return statusMap[status] || "default";
-  };
 
   const handlePreviewContract = async () => {
     if (!contract?.id) return;
@@ -602,9 +590,7 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
             </Descriptions.Item>
             <Descriptions.Item label="Trạng thái">
               {contract.status ? (
-                <Tag color={getStatusColor(contract.status)}>
-                  {contract.status}
-                </Tag>
+                <ContractStatusTag status={contract.status as ContractStatusEnum} />
               ) : (
                 "Chưa có thông tin"
               )}

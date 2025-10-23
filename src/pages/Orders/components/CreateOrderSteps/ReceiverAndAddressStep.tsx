@@ -131,7 +131,7 @@ const ReceiverAndAddressStep: React.FC<ReceiverAndAddressStepProps> = ({
                 // Pass data to parent component for address fields
                 onReceiverDetailsLoaded(data);
 
-                message.success("Đã điền thông tin người nhận và địa chỉ");
+                // message.success("Đã điền thông tin người nhận và địa chỉ");
             }
         } catch (error) {
             message.error("Không thể tải thông tin người nhận");

@@ -4,7 +4,6 @@ import {
   Button,
   Space,
   Typography,
-  Tag,
   Divider,
   message,
   Alert,
@@ -19,6 +18,8 @@ import {
 } from "@ant-design/icons";
 import { useContractPdfGeneration } from "../../hooks/useContractPdfGeneration";
 import type { Contract } from "../../services/contract/types";
+import { ContractStatusTag } from "./tags";
+import { ContractStatusEnum } from "../../constants/enums";
 
 const { Text, Link } = Typography;
 
@@ -50,36 +51,6 @@ const ContractInfo: React.FC<ContractInfoProps> = ({
     }
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "CONTRACT_DRAFT":
-        return "orange";
-      case "CONTRACT_ACTIVE":
-        return "green";
-      case "CONTRACT_COMPLETED":
-        return "blue";
-      case "CONTRACT_CANCELLED":
-        return "red";
-      default:
-        return "default";
-    }
-  };
-
-  const getStatusText = (status: string) => {
-    switch (status) {
-      case "CONTRACT_DRAFT":
-        return "Bản nháp";
-      case "CONTRACT_ACTIVE":
-        return "Đang hiệu lực";
-      case "CONTRACT_COMPLETED":
-        return "Hoàn thành";
-      case "CONTRACT_CANCELLED":
-        return "Đã hủy";
-      default:
-        return status;
-    }
-  };
-
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("vi-VN", {
       day: "2-digit",
@@ -96,9 +67,7 @@ const ContractInfo: React.FC<ContractInfoProps> = ({
         <Space>
           <FileTextOutlined />
           <span>Thông tin hợp đồng</span>
-          <Tag color={getStatusColor(contract.status)}>
-            {getStatusText(contract.status)}
-          </Tag>
+          <ContractStatusTag status={contract.status as ContractStatusEnum} />
         </Space>
       }
       extra={

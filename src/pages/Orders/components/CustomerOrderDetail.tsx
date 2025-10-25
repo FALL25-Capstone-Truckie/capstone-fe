@@ -342,7 +342,11 @@ const CustomerOrderDetail: React.FC = () => {
           >
             <div>
               {/* Contract Information */}
-              <ContractSection contract={contract} orderStatus={order.status} />
+              <ContractSection 
+                contract={contract} 
+                orderStatus={order.status} 
+                depositAmount={order.depositAmount}
+              />
 
               {/* Transaction Information */}
               <TransactionSection transactions={transactions} />

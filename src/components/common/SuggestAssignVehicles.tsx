@@ -168,7 +168,7 @@ const SuggestAssignVehicles: React.FC<SuggestAssignVehiclesProps> = ({
                   {suggestData
                     .reduce((sum, item) => sum + item.currentLoad, 0)
                     .toFixed(1)}{" "}
-                  tấn
+                  {suggestData.length > 0 ? suggestData[0].currentLoadUnit : ""}
                 </Tag>
               </Space>
             </Card>

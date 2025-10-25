@@ -180,10 +180,6 @@ const ReceiverAndAddressStep: React.FC<ReceiverAndAddressStepProps> = ({
         <>
             <Title level={4}>Thông tin người nhận và địa chỉ</Title>
 
-            <Text className="text-gray-500 mb-4 block">
-                Bạn có thể tìm kiếm người nhận gần đây để tự động điền thông tin
-            </Text>
-
             <ReceiverSuggestions onSelect={handleSuggestionSelect} />
 
             <Divider className="my-4" />

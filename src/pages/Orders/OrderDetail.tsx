@@ -97,7 +97,7 @@ const OrderDetailPage: React.FC = () => {
       contractName: `Hợp đồng đơn hàng ${order.orderCode}`,
       effectiveDate: dayjs(),
       expirationDate: dayjs().add(1, "year"),
-      supportedValue: order.totalPrice || 0,
+      adjustedValue: order.totalPrice || 0,
       description: `Hợp đồng vận chuyển cho đơn hàng ${order.orderCode}`,
       orderId: id,
       staffId: "",
@@ -319,7 +319,7 @@ const OrderDetailPage: React.FC = () => {
 
           <Form.Item
             label="Giá trị hỗ trợ"
-            name="supportedValue"
+            name="adjustedValue"
             rules={[
               { required: true, message: "Vui lòng nhập giá trị hỗ trợ" },
             ]}

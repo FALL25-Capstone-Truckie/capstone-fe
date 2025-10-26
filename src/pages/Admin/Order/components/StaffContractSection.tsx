@@ -135,7 +135,7 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
         startDate: values.dateRange[0].format("YYYY-MM-DD"),
         endDate: values.dateRange[1].format("YYYY-MM-DD"),
         totalValue: values.totalValue,
-        supportedValue: values.supportedValue,
+        adjustedValue: values.adjustedValue,
         description: values.description,
         attachFileUrl: values.attachFileUrl || "N/A",
         orderId: orderId, // Using the orderId prop
@@ -339,7 +339,7 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
 
       formData.append("effectiveDate", formatDateTime(values.effectiveDate));
       formData.append("expirationDate", formatDateTime(values.expirationDate));
-      formData.append("supportedValue", values.supportedValue.toString());
+      formData.append("adjustedValue", values.adjustedValue.toString());
       formData.append("description", values.description);
 
       const { default: httpClient } = await import(
@@ -852,7 +852,7 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
                 getFieldValue("hasSupportValue") ? (
                   <Form.Item
                     label="Giá trị trợ giá"
-                    name="supportedValue"
+                    name="adjustedValue"
                     rules={[
                       {
                         required: true,
@@ -942,7 +942,7 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
           initialValues={{
             contractName: "Hợp đồng vận chuyển",
             totalValue: 0,
-            supportedValue: 0,
+            adjustedValue: 0,
             description: "Hợp đồng vận chuyển hàng hóa",
             attachFileUrl: "",
           }}
@@ -986,7 +986,7 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
 
           <Form.Item
             label="Giá trị hỗ trợ"
-            name="supportedValue"
+            name="adjustedValue"
             rules={[
               { required: true, message: "Vui lòng nhập giá trị hỗ trợ" },
             ]}
@@ -1091,7 +1091,7 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
 
           <Form.Item
             label="Giá trị hỗ trợ"
-            name="supportedValue"
+            name="adjustedValue"
             rules={[
               { required: true, message: "Vui lòng nhập giá trị hỗ trợ" },
             ]}

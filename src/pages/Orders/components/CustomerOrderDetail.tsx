@@ -190,7 +190,7 @@ const CustomerOrderDetail: React.FC = () => {
         contractName: "N/A",
         effectiveDate: formattedDate,
         expirationDate: formattedDate,
-        supportedValue: 0,
+        adjustedValue: 0,
         description: "N/A",
         attachFileUrl: "N/A",
         orderId: id,

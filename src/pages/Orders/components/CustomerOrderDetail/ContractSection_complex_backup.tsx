@@ -9,7 +9,7 @@ interface ContractProps {
     effectiveDate: string;
     expirationDate: string;
     totalValue: string;
-    supportedValue: string;
+    adjustedValue: string;
     description: string;
     attachFileUrl: string;
     status: string;
@@ -232,7 +232,7 @@ const ContractSection: React.FC<ContractProps> = ({ contract, orderId }) => {
         "expirationDate",
         formatDateTime(new Date(Date.now() + 365 * 24 * 60 * 60 * 1000))
       ); // 1 năm sau
-      formData.append("supportedValue", "0");
+      formData.append("adjustedValue", "0");
       formData.append(
         "description",
         contract.description || "Hợp đồng dịch vụ logistics"
@@ -487,7 +487,7 @@ const ContractSection: React.FC<ContractProps> = ({ contract, orderId }) => {
               {contract.totalValue || "Chưa có thông tin"}
             </Descriptions.Item>
             <Descriptions.Item label="Giá trị hỗ trợ">
-              {contract.supportedValue || "Chưa có thông tin"}
+              {contract.adjustedValue || "Chưa có thông tin"}
             </Descriptions.Item>
             <Descriptions.Item label="Trạng thái">
               {contract.status ? (

@@ -29,7 +29,6 @@ import {
 import { contractService } from "../../../../services/contract";
 import { StaffContractPreview } from "../../../../components/features/order";
 import type { ContractData } from "../../../../services/contract/contractTypes";
-import httpClient from "../../../../services/api/httpClient";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 import dayjs from "dayjs";
@@ -132,9 +131,8 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
     try {
       const contractData = {
         contractName: values.contractName,
-        startDate: values.dateRange[0].format("YYYY-MM-DD"),
-        endDate: values.dateRange[1].format("YYYY-MM-DD"),
-        totalValue: values.totalValue,
+        effectiveDate: values.dateRange[0].format("YYYY-MM-DD"),
+        expirationDate: values.dateRange[1].format("YYYY-MM-DD"),
         adjustedValue: values.adjustedValue,
         description: values.description,
         attachFileUrl: values.attachFileUrl || "N/A",
@@ -142,12 +140,9 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
       };
 
       console.log("Creating contract with data:", contractData);
-      const response = await httpClient.post(
-        "/contracts/both/for-cus",
-        contractData
-      );
+      const response = await contractService.createContractForCustomer(contractData);
 
-      if (response.data.success) {
+      if (response.success) {
         messageApi.success("Hợp đồng đã được tạo thành công!");
         setIsCreationModalOpen(false);
         form.resetFields();
@@ -155,7 +150,7 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
         // Reload the page to reflect the new contract status
         window.location.reload();
       } else {
-        throw new Error(response.data.message || "Failed to create contract");
+        throw new Error(response.message || "Failed to create contract");
       }
     } catch (error) {
       console.error("Error creating contract:", error);
@@ -342,20 +337,11 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
       formData.append("adjustedValue", values.adjustedValue.toString());
       formData.append("description", values.description);
 
-      const { default: httpClient } = await import(
-        "../../../../services/api/httpClient"
-      );
-      const response = await httpClient.post(
-        "/contracts/upload-contract",
-        formData,
-        {
-          headers: { "Content-Type": "multipart/form-data" },
-        }
-      );
+      const response = await contractService.uploadContract(formData);
 
       messageApi.destroy();
 
-      if (response.data && response.data.success) {
+      if (response && response.success) {
         messageApi.success("Đã xuất hợp đồng thành công!");
         setIsUploadModalOpen(false);
         uploadForm.resetFields();
@@ -364,7 +350,7 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
           window.location.reload();
         }, 1000);
       } else {
-        throw new Error(response.data?.message || "Upload failed");
+        throw new Error(response?.message || "Upload failed");
       }
     } catch (error: any) {
       messageApi.destroy();

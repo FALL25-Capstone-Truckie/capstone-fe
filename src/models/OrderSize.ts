@@ -15,26 +15,30 @@ export interface OrderSize {
 }
 
 export interface OrderSizeCreateDto {
+    name: string;
+    description: string;
     minWeight: number;
     maxWeight: number;
     minLength: number;
     maxLength: number;
-    minHeight: number;
-    maxHeight: number;
     minWidth: number;
     maxWidth: number;
-    description: string;
+    minHeight: number;
+    maxHeight: number;
+    price: number;
 }
 
 export interface OrderSizeUpdateDto {
+    name?: string;
+    description?: string;
     minWeight?: number;
     maxWeight?: number;
     minLength?: number;
     maxLength?: number;
-    minHeight?: number;
-    maxHeight?: number;
     minWidth?: number;
     maxWidth?: number;
-    description?: string;
-    status?: string;
-} 
+    minHeight?: number;
+    maxHeight?: number;
+    price?: number;
+    isActive?: boolean;
+}

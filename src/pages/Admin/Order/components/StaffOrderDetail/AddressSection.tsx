@@ -5,8 +5,8 @@ import { EnvironmentOutlined, UserOutlined, PhoneOutlined, ShopOutlined, IdcardO
 interface AddressSectionProps {
     pickupAddress: string;
     deliveryAddress: string;
-    senderRepresentativeName: string;
-    senderRepresentativePhone: string;
+    senderName: string;
+    senderPhone: string;
     senderCompanyName?: string;
     receiverName: string;
     receiverPhone: string;
@@ -16,8 +16,8 @@ interface AddressSectionProps {
 const AddressSection: React.FC<AddressSectionProps> = ({
     pickupAddress,
     deliveryAddress,
-    senderRepresentativeName,
-    senderRepresentativePhone,
+    senderName,
+    senderPhone,
     senderCompanyName,
     receiverName,
     receiverPhone,
@@ -35,11 +35,11 @@ const AddressSection: React.FC<AddressSectionProps> = ({
                         <div className="bg-gray-50 p-4 rounded-lg mb-4">
                             <p className="mb-2 flex items-center">
                                 <UserOutlined className="mr-2 text-gray-500" />
-                                <span className="font-medium mr-2">Người đại diện:</span> {senderRepresentativeName || "Chưa có thông tin"}
+                                <span className="font-medium mr-2">Họ tên:</span> {senderName || "Chưa có thông tin"}
                             </p>
                             <p className="mb-2 flex items-center">
                                 <PhoneOutlined className="mr-2 text-gray-500" />
-                                <span className="font-medium mr-2">Số điện thoại:</span> {senderRepresentativePhone || "Chưa có thông tin"}
+                                <span className="font-medium mr-2">Số điện thoại:</span> {senderPhone || "Chưa có thông tin"}
                             </p>
                             {senderCompanyName && (
                                 <p className="mb-0 flex items-center">

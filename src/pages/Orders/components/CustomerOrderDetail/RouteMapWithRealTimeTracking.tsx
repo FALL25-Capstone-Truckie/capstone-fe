@@ -54,6 +54,7 @@ const RouteMapWithRealTimeTracking: React.FC<RouteMapWithRealTimeTrackingProps> 
 
   // Filter valid vehicles
   const validVehicles = vehicleLocations.filter(vehicle =>
+    vehicle.latitude !== null && vehicle.longitude !== null &&
     !isNaN(vehicle.latitude) && !isNaN(vehicle.longitude) &&
     isFinite(vehicle.latitude) && isFinite(vehicle.longitude)
   );
@@ -118,22 +119,28 @@ const RouteMapWithRealTimeTracking: React.FC<RouteMapWithRealTimeTrackingProps> 
     previousTrackingStateRef.current = shouldShowRealTimeTracking;
   }, [shouldShowRealTimeTracking, hasShownTrackingNotification]);
 
-  // Handle initializing state: waiting for first vehicle location
+  // Handle initializing state: waiting for first vehicle location with valid GPS coordinates
   useEffect(() => {
-    if (shouldShowRealTimeTracking && isConnected && vehicleLocations.length === 0) {
+    // Show loading if:
+    // 1. Tracking is enabled
+    // 2. Connected to WebSocket
+    // 3. Either no vehicles received yet OR vehicles have null coordinates
+    const hasValidCoordinates = vehicleLocations.length > 0 && validVehicles.length > 0;
+    
+    if (shouldShowRealTimeTracking && isConnected && !hasValidCoordinates) {
       setIsInitializingTracking(true);
       
-      // Timeout after 15 seconds if no location received
+      // Timeout after 15 seconds if no valid location received
       const timeout = setTimeout(() => {
         setIsInitializingTracking(false);
         message.warning('Đang kết nối với xe... Vui lòng đợi trong giây lát.');
       }, 15000);
       
       return () => clearTimeout(timeout);
-    } else if (vehicleLocations.length > 0) {
+    } else if (hasValidCoordinates) {
       setIsInitializingTracking(false);
     }
-  }, [shouldShowRealTimeTracking, isConnected, vehicleLocations.length]);
+  }, [shouldShowRealTimeTracking, isConnected, vehicleLocations.length, validVehicles.length]);
 
   // Log state changes in effect to avoid triggering re-renders
   useEffect(() => {
@@ -153,14 +160,19 @@ const RouteMapWithRealTimeTracking: React.FC<RouteMapWithRealTimeTrackingProps> 
     setMapInstance(map);
   }, []); // Empty deps - only create once
 
+  // Helper to check if vehicle has valid coordinates
+  const isValidVehicleCoordinates = (v: VehicleLocationMessage): v is VehicleLocationMessage & { latitude: number; longitude: number } => {
+    if (v.latitude === null || v.longitude === null) return false;
+    const lat = v.latitude as number;
+    const lng = v.longitude as number;
+    return !isNaN(lat) && !isNaN(lng) && isFinite(lat) && isFinite(lng);
+  };
+
   // Auto-fit bounds to show all vehicles
   const fitBoundsToVehicles = useCallback(() => {
     if (!mapInstance || vehicleLocations.length === 0) return;
 
-    const validVehicles = vehicleLocations.filter((v: VehicleLocationMessage) =>
-      !isNaN(v.latitude) && !isNaN(v.longitude) &&
-      isFinite(v.latitude) && isFinite(v.longitude)
-    );
+    const validVehicles = vehicleLocations.filter(isValidVehicleCoordinates);
 
     if (validVehicles.length === 0) return;
 
@@ -330,6 +342,7 @@ const RouteMapWithRealTimeTracking: React.FC<RouteMapWithRealTimeTrackingProps> 
 
     if (isConnected && vehicleLocations.length > 0) {
       const validVehicleCount = vehicleLocations.filter(vehicle =>
+        vehicle.latitude !== null && vehicle.longitude !== null &&
         !isNaN(vehicle.latitude) && !isNaN(vehicle.longitude) &&
         isFinite(vehicle.latitude) && isFinite(vehicle.longitude)
       ).length;
@@ -512,7 +525,7 @@ const RouteMapWithRealTimeTracking: React.FC<RouteMapWithRealTimeTrackingProps> 
                           )}
                           <div className="flex items-center gap-1 text-[10px] text-gray-400 mt-1 pt-1 border-t border-gray-200">
                             <span>⏱️</span>
-                            <span>{new Date(vehicle.lastUpdated).toLocaleString('vi-VN')}</span>
+                            <span>{vehicle.lastUpdated ? new Date(vehicle.lastUpdated).toLocaleString('vi-VN') : 'Chưa cập nhật'}</span>
                           </div>
                         </div>
                       </div>

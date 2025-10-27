@@ -13,10 +13,6 @@ interface ImportMetaEnv {
     readonly VITE_FEATURE_LIVE_TRACKING: string;
     readonly VITE_FEATURE_NOTIFICATIONS: string;
     readonly VITE_FEATURE_CHAT: string;
-    readonly VITE_OPEN_MAP_API_KEY: string;
-    readonly VITE_OPEN_MAP_API_BASE_URL: string;
-    readonly VITE_TRACKASIA_MAP_API_KEY: string;
-    readonly VITE_TRACKASIA_MAP_API_BASE_URL: string;
 }
 
 interface ImportMeta {

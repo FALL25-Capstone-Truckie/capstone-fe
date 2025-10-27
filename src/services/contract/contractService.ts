@@ -7,7 +7,6 @@ import type {
   GeneratePdfResponse,
 } from "./types";
 import type { ContractPdfResponse } from "./contractTypes";
-import { at } from "lodash";
 
 /**
  * Service for handling contract-related API calls
@@ -103,6 +102,49 @@ const contractService = {
     } catch (error) {
       console.error("Error fetching contract PDF data:", error);
       throw handleApiError(error, "Không thể tải dữ liệu hợp đồng");
+    }
+  },
+
+  /**
+   * Create contract for customer (both contract and related data)
+   * @param contractData - The contract data to create
+   * @returns Promise with created contract response
+   */
+  createContractForCustomer: async (
+    contractData: CreateContractRequest
+  ): Promise<CreateContractResponse> => {
+    try {
+      const response = await httpClient.post<CreateContractResponse>(
+        `/contracts/both/for-cus`,
+        contractData
+      );
+      return response.data;
+    } catch (error) {
+      console.error("Error creating contract for customer:", error);
+      throw handleApiError(error, "Không thể tạo hợp đồng cho khách hàng");
+    }
+  },
+
+  /**
+   * Upload contract file
+   * @param formData - FormData containing contract file and metadata
+   * @returns Promise with upload response
+   */
+  uploadContract: async (formData: FormData): Promise<any> => {
+    try {
+      const response = await httpClient.post(
+        `/contracts/upload-contract`,
+        formData,
+        {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        }
+      );
+      return response.data;
+    } catch (error) {
+      console.error("Error uploading contract:", error);
+      throw handleApiError(error, "Không thể tải lên hợp đồng");
     }
   },
 };

@@ -16,6 +16,7 @@ import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
 import RouteMapWithRealTimeTracking from "./RouteMapWithRealTimeTracking";
 import { OrderStatusEnum } from "../../../../constants/enums";
+import { formatSealStatus, getSealStatusColor } from "../../../../models/JourneyHistory";
 
 // STABLE CONSTANTS - prevent re-renders
 const REAL_TIME_TRACKING_STATUSES = [
@@ -216,152 +217,7 @@ const OrderDetailsTab: React.FC<OrderDetailsTabProps> = ({
                             </div>
                         </Card>
 
-                        {/* Thông tin chi tiết của các order details */}
-                        {vaGroup.orderDetails.map((detail: any, detailIdx: number) => (
-                            <Card key={detail.id} className="mb-6 shadow-md rounded-xl">
-                                <div className="mb-4">
-                                    <h3 className="text-lg font-semibold text-blue-600">
-                                        Kiện {detailIdx + 1} - {detail.trackingCode || "Chưa có mã"}
-                                    </h3>
-                                </div>
-
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                                    {/* Thông tin cơ bản */}
-                                    <Card
-                                        className="h-full"
-                                        size="small"
-                                        title={
-                                            <div className="flex items-center">
-                                                <FileTextOutlined className="mr-2 text-blue-500" />
-                                                <span className="font-medium">Thông tin cơ bản</span>
-                                            </div>
-                                        }
-                                    >
-                                        <div className="mb-3">
-                                            <div className="flex items-center mb-1">
-                                                <TagOutlined className="mr-2 text-blue-500" />
-                                                <span className="font-medium">Mã theo dõi:</span>
-                                            </div>
-                                            <div className="ml-6">
-                                                {detail.trackingCode || "Chưa có"}
-                                            </div>
-                                        </div>
-                                        <div className="mb-3">
-                                            <div className="flex items-center mb-1">
-                                                <TagOutlined className="mr-2 text-blue-500" />
-                                                <span className="font-medium">Trạng thái:</span>
-                                            </div>
-                                            <div className="ml-6">
-                                                <Tag color={getStatusColor(detail.status)}>
-                                                    {detail.status}
-                                                </Tag>
-                                            </div>
-                                        </div>
-                                        <div className="mb-3">
-                                            <div className="flex items-center mb-1">
-                                                <TagOutlined className="mr-2 text-blue-500" />
-                                                <span className="font-medium">Trọng lượng:</span>
-                                            </div>
-                                            <div className="ml-6">
-                                                {detail.weightBaseUnit} {detail.unit}
-                                            </div>
-                                        </div>
-                                        <div className="mb-3">
-                                            <div className="flex items-center mb-1">
-                                                <FileTextOutlined className="mr-2 text-blue-500" />
-                                                <span className="font-medium">Mô tả:</span>
-                                            </div>
-                                            <div className="ml-6">
-                                                {detail.description || "Không có mô tả"}
-                                            </div>
-                                        </div>
-                                    </Card>
-
-                                    {/* Thông tin thời gian */}
-                                    <Card
-                                        className="h-full"
-                                        size="small"
-                                        title={
-                                            <div className="flex items-center">
-                                                <TagOutlined className="mr-2 text-blue-500" />
-                                                <span className="font-medium">Thông tin thời gian</span>
-                                            </div>
-                                        }
-                                    >
-                                        <div className="mb-3">
-                                            <div className="flex items-center mb-1">
-                                                <TagOutlined className="mr-2 text-blue-500" />
-                                                <span className="font-medium">Thời gian bắt đầu:</span>
-                                            </div>
-                                            <div className="ml-6">{formatDate(detail.startTime)}</div>
-                                        </div>
-                                        <div className="mb-3">
-                                            <div className="flex items-center mb-1">
-                                                <TagOutlined className="mr-2 text-blue-500" />
-                                                <span className="font-medium">Thời gian kết thúc:</span>
-                                            </div>
-                                            <div className="ml-6">{formatDate(detail.endTime)}</div>
-                                        </div>
-                                        <div className="mb-3">
-                                            <div className="flex items-center mb-1">
-                                                <TagOutlined className="mr-2 text-blue-500" />
-                                                <span className="font-medium">Thời gian dự kiến bắt đầu:</span>
-                                            </div>
-                                            <div className="ml-6">
-                                                {formatDate(detail.estimatedStartTime)}
-                                            </div>
-                                        </div>
-                                        <div className="mb-3">
-                                            <div className="flex items-center mb-1">
-                                                <TagOutlined className="mr-2 text-blue-500" />
-                                                <span className="font-medium">Thời gian dự kiến kết thúc:</span>
-                                            </div>
-                                            <div className="ml-6">
-                                                {formatDate(detail.estimatedEndTime)}
-                                            </div>
-                                        </div>
-                                    </Card>
-                                </div>
-
-                                {/* Thông tin kích thước */}
-                                {detail.orderSize && (
-                                    <Card
-                                        className="mb-4"
-                                        size="small"
-                                        title={
-                                            <div className="flex items-center">
-                                                <BoxPlotOutlined className="mr-2 text-blue-500" />
-                                                <span className="font-medium">Thông tin kích thước</span>
-                                            </div>
-                                        }
-                                    >
-                                        <table className="w-full border-collapse">
-                                            <thead>
-                                                <tr>
-                                                    <th className="border border-gray-300 bg-gray-50 p-2 text-left">
-                                                        Mô tả
-                                                    </th>
-                                                    <th className="border border-gray-300 bg-gray-50 p-2 text-left">
-                                                        Kích thước (Dài x Rộng x Cao)
-                                                    </th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                <tr>
-                                                    <td className="border border-gray-300 p-2">
-                                                        {detail.orderSize.description}
-                                                    </td>
-                                                    <td className="border border-gray-300 p-2">
-                                                        {`${detail.orderSize.minLength} x ${detail.orderSize.minWidth} x ${detail.orderSize.minHeight} m - 
-                                                        ${detail.orderSize.maxLength} x ${detail.orderSize.maxWidth} x ${detail.orderSize.maxHeight} m`}
-                                                    </td>
-                                                </tr>
-                                            </tbody>
-                                        </table>
-                                    </Card>
-                                )}
-                            </Card>
-                        ))}
+                        {/* Danh sách lô hàng sẽ được hiển thị ở tab bên dưới */}
 
                         {/* Tabs chi tiết */}
                         <Card className="mb-6 shadow-md rounded-xl">
@@ -375,41 +231,33 @@ const OrderDetailsTab: React.FC<OrderDetailsTabProps> = ({
                                     }
                                     key="orderDetails"
                                 >
-                                    <div className="overflow-x-auto">
-                                        <table className="w-full border-collapse">
+                                    <div className="overflow-x-auto rounded-lg border border-gray-200 shadow-sm">
+                                        <table className="w-full">
                                             <thead>
-                                                <tr>
-                                                    <th className="border border-gray-300 bg-gray-50 p-2 text-left">
-                                                        Mã theo dõi
-                                                    </th>
-                                                    <th className="border border-gray-300 bg-gray-50 p-2 text-left">
-                                                        Trạng thái
-                                                    </th>
-                                                    <th className="border border-gray-300 bg-gray-50 p-2 text-left">
-                                                        Trọng lượng
-                                                    </th>
-                                                    <th className="border border-gray-300 bg-gray-50 p-2 text-left">
-                                                        Mô tả
-                                                    </th>
+                                                <tr className="bg-gradient-to-r from-green-500 to-green-600 text-white">
+                                                    <th className="px-4 py-3 text-left font-semibold">Mã theo dõi</th>
+                                                    <th className="px-4 py-3 text-left font-semibold">Trạng thái</th>
+                                                    <th className="px-4 py-3 text-left font-semibold">Trọng lượng</th>
+                                                    <th className="px-4 py-3 text-left font-semibold">Mô tả</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
-                                                {vaGroup.orderDetails.map((detail: any) => (
-                                                    <tr key={detail.id}>
-                                                        <td className="border border-gray-300 p-2">
+                                                {vaGroup.orderDetails.map((detail: any, detailIdx: number) => (
+                                                    <tr key={detail.id} className={detailIdx % 2 === 0 ? "bg-white" : "bg-gray-50 hover:bg-gray-100"}>
+                                                        <td className="px-4 py-3 border-b border-gray-200 font-medium text-gray-900">
                                                             {detail.trackingCode || "Chưa có"}
                                                         </td>
-                                                        <td className="border border-gray-300 p-2">
+                                                        <td className="px-4 py-3 border-b border-gray-200">
                                                             <Tag
                                                                 color={getStatusColor(detail.status)}
                                                             >
                                                                 {detail.status}
                                                             </Tag>
                                                         </td>
-                                                        <td className="border border-gray-300 p-2">
+                                                        <td className="px-4 py-3 border-b border-gray-200 text-gray-700">
                                                             {detail.weightBaseUnit} {detail.unit}
                                                         </td>
-                                                        <td className="border border-gray-300 p-2">
+                                                        <td className="px-4 py-3 border-b border-gray-200 text-gray-700">
                                                             {detail.description || "Không có mô tả"}
                                                         </td>
                                                     </tr>
@@ -537,27 +385,59 @@ const OrderDetailsTab: React.FC<OrderDetailsTabProps> = ({
                                     }
                                     key="seals"
                                 >
-                                    {vaGroup.vehicleAssignment.orderSeals && vaGroup.vehicleAssignment.orderSeals.length > 0 ? (
-                                        <div className="p-2">
-                                            {vaGroup.vehicleAssignment.orderSeals.map((seal: any, sealIdx: number) => (
-                                                <div
-                                                    key={seal.id}
-                                                    className={`${sealIdx > 0 ? "mt-3" : ""} bg-gray-50 p-4 rounded-lg`}
-                                                >
-                                                    <div className="flex items-center mb-2">
-                                                        <span className="font-medium mr-1">Mô tả:</span>
-                                                        <span>{seal.description}</span>
+                                    {vaGroup.vehicleAssignment.seals && vaGroup.vehicleAssignment.seals.length > 0 ? (
+                                        <div className="p-4">
+                                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                                {vaGroup.vehicleAssignment.seals.map((seal: any) => (
+                                                    <div key={seal.id} className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow">
+                                                        <div className="flex items-start justify-between mb-3">
+                                                            <div className="flex-1">
+                                                                <p className="text-sm font-semibold text-gray-600">Mã niêm phong</p>
+                                                                <p className="text-base font-bold text-blue-600">{seal.sealCode || seal.sealId}</p>
+                                                            </div>
+                                                            <Tag color={getSealStatusColor(seal.status)} className="ml-2">
+                                                                {formatSealStatus(seal.status)}
+                                                            </Tag>
+                                                        </div>
+
+                                                        <div className="space-y-2 mb-3 pb-3 border-b border-blue-200">
+                                                            <div>
+                                                                <p className="text-xs text-gray-500">Mô tả</p>
+                                                                <p className="text-sm text-gray-700">{seal.description || "Không có mô tả"}</p>
+                                                            </div>
+                                                        </div>
+
+                                                        <div className="grid grid-cols-2 gap-2 text-xs">
+                                                            <div>
+                                                                <p className="text-gray-500">Ngày niêm phong</p>
+                                                                <p className="font-medium text-gray-700">{seal.sealDate ? formatDate(seal.sealDate) : "Chưa có"}</p>
+                                                            </div>
+                                                            <div>
+                                                                <p className="text-gray-500">Thời gian gỡ</p>
+                                                                <p className="font-medium text-gray-700">{seal.sealRemovalTime ? formatDate(seal.sealRemovalTime) : "Chưa gỡ"}</p>
+                                                            </div>
+                                                        </div>
+
+                                                        {seal.sealAttachedImage && (
+                                                            <div className="mt-3 pt-3 border-t border-blue-200">
+                                                                <p className="text-xs text-gray-500 mb-2">Hình ảnh niêm phong</p>
+                                                                <img
+                                                                    src={seal.sealAttachedImage}
+                                                                    alt={`Seal ${seal.sealCode}`}
+                                                                    className="w-full h-24 object-cover rounded"
+                                                                />
+                                                            </div>
+                                                        )}
+
+                                                        {seal.sealRemovalReason && (
+                                                            <div className="mt-3 pt-3 border-t border-blue-200">
+                                                                <p className="text-xs text-gray-500">Lý do gỡ niêm phong</p>
+                                                                <p className="text-sm text-red-600 font-medium">{seal.sealRemovalReason}</p>
+                                                            </div>
+                                                        )}
                                                     </div>
-                                                    <div className="flex items-center mb-2">
-                                                        <span className="font-medium mr-1">Ngày niêm phong:</span>
-                                                        <span>{formatDate(seal.sealDate)}</span>
-                                                    </div>
-                                                    <div className="flex items-center">
-                                                        <span className="font-medium mr-1">Trạng thái:</span>
-                                                        <Tag color={getStatusColor(seal.status)}>{seal.status}</Tag>
-                                                    </div>
-                                                </div>
-                                            ))}
+                                                ))}
+                                            </div>
                                         </div>
                                     ) : (
                                         <Empty description="Không có thông tin niêm phong" />
@@ -575,19 +455,16 @@ const OrderDetailsTab: React.FC<OrderDetailsTabProps> = ({
                                 >
                                     {vaGroup.vehicleAssignment.photoCompletions && vaGroup.vehicleAssignment.photoCompletions.length > 0 ? (
                                         <div className="p-2">
-                                            <div className="flex items-center mb-3">
-                                                <span className="font-medium">Hình ảnh hoàn thành:</span>
-                                            </div>
-                                            <div className="flex flex-wrap gap-2">
+                                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                                                 {vaGroup.vehicleAssignment.photoCompletions.map((url: string, idx: number) => (
-                                                    <img
-                                                        key={idx}
-                                                        src={url}
-                                                        alt={`Completion photo ${idx + 1}`}
-                                                        width={100}
-                                                        height={100}
-                                                        className="object-cover rounded"
-                                                    />
+                                                    <div key={idx} className="relative group">
+                                                        <img
+                                                            src={url}
+                                                            alt={`Completion photo ${idx + 1}`}
+                                                            className="object-cover rounded w-full h-32"
+                                                        />
+                                                        <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 rounded transition-all" />
+                                                    </div>
                                                 ))}
                                             </div>
                                         </div>

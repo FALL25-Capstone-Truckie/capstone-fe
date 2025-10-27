@@ -57,8 +57,8 @@ const BasicInfoTab: React.FC<BasicInfoTabProps> = ({ order }) => {
             <AddressSection
                 pickupAddress={order.pickupAddress}
                 deliveryAddress={order.deliveryAddress}
-                senderRepresentativeName={order.senderRepresentativeName}
-                senderRepresentativePhone={order.senderRepresentativePhone}
+                senderName={order.senderName}
+                senderPhone={order.senderPhone}
                 senderCompanyName={order.senderCompanyName}
                 receiverName={order.receiverName}
                 receiverPhone={order.receiverPhone}

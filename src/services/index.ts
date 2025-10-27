@@ -4,7 +4,7 @@ import httpClient from "./api";
 // Export services
 import authService from "./auth";
 import orderService from "./order";
-import { vietmapService, openmapService, trackasiaService } from "./map";
+import { vietmapService } from "./map";
 import issueService from "./issue";
 import penaltyService from "./penalty";
 import categoryService from "./category";
@@ -30,8 +30,6 @@ export {
   authService,
   orderService,
   vietmapService,
-  openmapService,
-  trackasiaService,
   issueService,
   penaltyService,
   categoryService,

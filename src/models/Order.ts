@@ -385,12 +385,16 @@ export interface CustomerVehicleAssignment {
       imageUrls: string[];
     };
     photoCompletions?: string[];
-    orderSeals?: {
+    seals?: {
       id: string;
       description: string;
       sealDate: string;
       status: string;
       sealId: string;
+      sealCode: string;
+      sealAttachedImage: string;
+      sealRemovalTime: string;
+      sealRemovalReason: string;
     }[];
     journeyHistories?: {
       id: string;
@@ -432,7 +436,6 @@ export interface CustomerVehicleAssignment {
       createdAt: string;
       modifiedAt: string;
     }[];
-  };
 }
 
 export interface CustomerContract {
@@ -482,8 +485,8 @@ export interface StaffOrderDetail {
   status: string;
   deliveryAddress: string;
   pickupAddress: string;
-  senderRepresentativeName: string;
-  senderRepresentativePhone: string;
+  senderName: string;
+  senderPhone: string;
   senderCompanyName: string;
   categoryName: string;
   orderDetails: StaffOrderDetailItem[];
@@ -579,31 +582,28 @@ export interface StaffVehicleAssignment {
       driverId: string;
       vehicleAssignmentId: string;
     }[];
-    cameraTrackings?: {
-      id: string;
-      videoUrl: string;
-      trackingAt: string;
-      status: string;
-      vehicleAssignmentId: string;
-      deviceName: string;
-    }[];
     fuelConsumption?: {
       id: string;
-      odometerReadingAtRefuel: number;
+      odometerReadingAtStart: number;
+      odometerReadingAtEnd: number;
       odometerAtStartUrl: string;
-      odometerAtFinishUrl: string;
       odometerAtEndUrl: string;
+      distanceTraveled: number;
       dateRecorded: string;
       notes: string;
-      fuelTypeName: string;
-      fuelTypeDescription: string;
+      fuelVolume: number;
+      companyInvoiceImageUrl: string;
     };
-    orderSeals?: {
+    seals?: {
       id: string;
       description: string;
       sealDate: string;
       status: string;
       sealId: string;
+      sealCode: string;
+      sealAttachedImage: string;
+      sealRemovalTime: string;
+      sealRemovalReason: string;
     }[];
     journeyHistories?: {
       id: string;
@@ -657,5 +657,104 @@ export interface StaffVehicleAssignment {
       };
       imageUrls: string[];
     }[];
+}
+
+// Additional types from order service
+export interface UnitsListResponse {
+  success: boolean;
+  message: string;
+  statusCode: number;
+  data: string[];
+}
+
+export interface ReceiverDetailsResponse {
+  success: boolean;
+  message: string;
+  statusCode: number;
+  data: {
+    receiverName: string;
+    receiverPhone: string;
+    receiverIdentity: string;
+    pickupAddressId: string;
+    deliveryAddressId: string;
+    pickupAddress: {
+      id: string;
+      province: string;
+      ward: string;
+      street: string;
+      addressType: boolean;
+      latitude: number;
+      longitude: number;
+      customerId: string;
+    };
+    deliveryAddress: {
+      id: string;
+      province: string;
+      ward: string;
+      street: string;
+      addressType: boolean;
+      latitude: number;
+      longitude: number;
+      customerId: string;
+    };
   };
+}
+
+export interface VehicleSuggestion {
+  vehicleIndex: number;
+  vehicleRuleId: string;
+  vehicleRuleName: string;
+  currentLoad: number;
+  currentLoadUnit: string;
+  assignedDetails: AssignedDetail[];
+  packedDetailDetails: PackedDetail[];
+}
+
+export interface PackedDetail {
+  orderDetailId: string;
+  x: number;
+  y: number;
+  z: number;
+  length: number;
+  width: number;
+  height: number;
+  orientation: string;
+}
+
+export interface AssignedDetail {
+  id: string;
+  weight: number;
+  weightBaseUnit: number;
+  unit: string;
+  trackingCode: string;
+}
+
+export interface VehicleSuggestionsResponse {
+  success: boolean;
+  message: string;
+  statusCode: number;
+  data: VehicleSuggestion[];
+}
+
+export interface BillOfLadingPreviewResponse {
+  success: boolean;
+  message: string;
+  statusCode: number;
+  data: {
+    fileName: string;
+    base64Content: string;
+    mimeType: string;
+  }[];
+}
+
+export interface BothOptimalAndRealisticVehicleSuggestionsResponse {
+  success: boolean;
+  message: string;
+  statusCode: number;
+  data: BothOptimalAndRealisticVehicle[];
+}
+
+export interface BothOptimalAndRealisticVehicle {
+  optimal: VehicleSuggestion[];
+  realistic: VehicleSuggestion[];
 }

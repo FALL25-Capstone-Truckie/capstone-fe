@@ -1,11 +1,8 @@
 import type { MaintenanceTypeEntity, MaintenanceTypeRequest } from '../../models';
 import type { ApiResponse } from '../api/types';
 
-export interface GetMaintenanceTypesResponse extends Omit<ApiResponse<MaintenanceTypeEntity[]>, 'data'> {
-    data: MaintenanceTypeEntity[];
-}
-export interface GetMaintenanceTypeResponse extends Omit<ApiResponse<MaintenanceTypeEntity>, 'data'> {
-    data: MaintenanceTypeEntity | null;
-}
+// Simplified response types
+export type GetMaintenanceTypesResponse = ApiResponse<MaintenanceTypeEntity[]>;
+export type GetMaintenanceTypeResponse = ApiResponse<MaintenanceTypeEntity | null>;
 export type CreateMaintenanceTypeRequest = MaintenanceTypeRequest;
-export type UpdateMaintenanceTypeRequest = MaintenanceTypeRequest; 
+export type UpdateMaintenanceTypeRequest = MaintenanceTypeRequest;

@@ -20,21 +20,9 @@ let initPromise: Promise<void> | null = null;
 // Khai báo kiểu cho window object
 declare global {
     interface Window {
-        updateTrackAsiaAuthToken?: (token: string | null) => void;
         __AUTH_TOKEN__?: string | null;
     }
 }
-
-// Hàm để cập nhật token cho TrackAsia
-const updateTrackAsiaToken = (token: string | null) => {
-    // Kiểm tra xem window.updateTrackAsiaAuthToken có tồn tại không
-    if (window.updateTrackAsiaAuthToken && typeof window.updateTrackAsiaAuthToken === 'function') {
-        window.updateTrackAsiaAuthToken(token);
-    }
-
-    // Đặt token vào window.__AUTH_TOKEN__ để các thư viện khác có thể truy cập
-    window.__AUTH_TOKEN__ = token;
-};
 
 /**
  * Service for handling authentication API calls
@@ -104,8 +92,8 @@ const authService = {
             // Store auth token in memory
             authToken = response.data.data.authToken;
 
-            // Cập nhật token cho TrackAsia
-            updateTrackAsiaToken(authToken);
+            // Store token in window for external access
+            window.__AUTH_TOKEN__ = authToken;
 
             // Lưu thông tin người dùng vào sessionStorage
             const user = response.data.data.user;
@@ -167,8 +155,8 @@ const authService = {
             const oldToken = authToken;
             authToken = response.data.data.accessToken;
 
-            // Cập nhật token cho TrackAsia
-            updateTrackAsiaToken(authToken);
+            // Store token in window for external access
+            window.__AUTH_TOKEN__ = authToken;
 
             // Kiểm tra xem token có thực sự thay đổi không
             if (oldToken === authToken) {
@@ -217,8 +205,8 @@ const authService = {
             // Clear in-memory token
             authToken = null;
 
-            // Cập nhật token cho TrackAsia (null)
-            updateTrackAsiaToken(null);
+            // Clear token from window
+            window.__AUTH_TOKEN__ = null;
 
             // Xóa thông tin người dùng khỏi sessionStorage
             sessionStorage.removeItem('user_role');

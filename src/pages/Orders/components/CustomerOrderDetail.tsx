@@ -8,7 +8,7 @@ import {
   ProfileOutlined,
 } from "@ant-design/icons";
 import orderService from "../../../services/order/orderService";
-import httpClient from "../../../services/api/httpClient";
+import { contractService } from "../../../services/contract";
 import { useOrderStatusTracking } from "../../../hooks/useOrderStatusTracking";
 import { playImportantNotificationSound } from "../../../utils/notificationSound";
 import type {
@@ -196,17 +196,17 @@ const CustomerOrderDetail: React.FC = () => {
         orderId: id,
       };
 
-      const response = await httpClient.post("/contracts/both", contractData);
+      const response = await contractService.createContract(contractData);
 
-      if (response.data.success) {
+      if (response.success) {
         messageApi.success(
-          response.data.message || "Đã đồng ý với đề xuất phân xe thành công!"
+          response.message || "Đã đồng ý với đề xuất phân xe thành công!"
         );
         setVehicleSuggestionsModalVisible(false);
         setHasContract(true);
         fetchOrderDetails(id);
       } else {
-        throw new Error(response.data.message || "Failed to create contract");
+        throw new Error(response.message || "Failed to create contract");
       }
     } catch (error) {
       messageApi.error("Không thể tạo hợp đồng. Vui lòng thử lại!");

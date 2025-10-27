@@ -7,7 +7,6 @@ const { Title } = Typography;
 interface AddressFormProps {
     form: any;
     useManualInput: boolean;
-    useTrackAsia: boolean;
     isValidData: boolean;
     wards: Ward[];
     selectedProvince: any;
@@ -20,7 +19,6 @@ interface AddressFormProps {
 const AddressForm: React.FC<AddressFormProps> = ({
     form,
     useManualInput,
-    useTrackAsia,
     isValidData,
     wards,
     selectedProvince,
@@ -52,7 +50,7 @@ const AddressForm: React.FC<AddressFormProps> = ({
                     <Input placeholder="Nhập đường và số nhà" />
                 </Form.Item>
 
-                {!useTrackAsia && !useManualInput && isValidData && wards.length > 0 ? (
+                {!useManualInput && isValidData && wards.length > 0 ? (
                     <>
                         <Form.Item
                             name="ward"
@@ -84,7 +82,7 @@ const AddressForm: React.FC<AddressFormProps> = ({
                             <Input disabled value={selectedProvince?.name || 'Thành phố Hồ Chí Minh'} />
                         </Form.Item>
                     </>
-                ) : (!useTrackAsia ? (
+                ) : (
                     <>
                         <Form.Item
                             name="ward"
@@ -114,29 +112,7 @@ const AddressForm: React.FC<AddressFormProps> = ({
                             />
                         </Form.Item>
                     </>
-                ) : (
-                    <>
-                        <Form.Item
-                            name="ward"
-                            label="Phường/Xã"
-                            rules={[{ required: true, message: 'Vui lòng nhập phường/xã' }]}
-                        >
-                            <Input placeholder="Phường/Xã sẽ được điền tự động từ bản đồ" />
-                        </Form.Item>
-
-                        <Form.Item
-                            name="province"
-                            label="Tỉnh/Thành phố"
-                            initialValue="Thành phố Hồ Chí Minh"
-                            rules={[{ required: true, message: 'Vui lòng nhập tỉnh/thành phố' }]}
-                        >
-                            <Input
-                                placeholder="Tỉnh/Thành phố sẽ được điền tự động từ bản đồ"
-                                disabled
-                            />
-                        </Form.Item>
-                    </>
-                ))}
+                )}
 
                 {/* Hidden fields for coordinates */}
                 <Form.Item name="latitude" hidden>

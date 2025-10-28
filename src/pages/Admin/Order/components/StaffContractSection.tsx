@@ -574,7 +574,7 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
                 message="Thông tin thanh toán"
                 description={
                   <Row gutter={[16, 16]} className="mt-3">
-                    <Col xs={24} sm={12} md={6}>
+                    <Col xs={24} sm={24} md={hasAdjustedValue ? 6 : 8}>
                       <Statistic
                         title="Tổng giá trị đơn hàng"
                         value={contract.totalValue}
@@ -583,7 +583,7 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
                       />
                     </Col>
                     {hasAdjustedValue && (
-                      <Col xs={24} sm={12} md={6}>
+                      <Col xs={24} sm={24} md={6}>
                         <Statistic
                           title="Giá trị điều chỉnh"
                           value={contract.adjustedValue}
@@ -592,7 +592,7 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
                         />
                       </Col>
                     )}
-                    <Col xs={24} sm={12} md={6}>
+                    <Col xs={24} sm={24} md={hasAdjustedValue ? 6 : 8}>
                       <Statistic
                         title="Số tiền cọc cần thanh toán"
                         value={depositAmount.toLocaleString('vi-VN')}
@@ -601,7 +601,7 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
                         valueStyle={{ color: '#52c41a', fontWeight: 'bold' }}
                       />
                     </Col>
-                    <Col xs={24} sm={12} md={6}>
+                    <Col xs={24} sm={24} md={hasAdjustedValue ? 6 : 8}>
                       <Statistic
                         title="Số tiền còn lại"
                         value={(() => {

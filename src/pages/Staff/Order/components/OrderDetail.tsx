@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   Button,
@@ -25,10 +25,11 @@ import {
 } from "@ant-design/icons";
 import orderService from "@/services/order/orderService";
 import { contractService } from "@/services/contract";
+import { useOrderStatusTracking } from "@/hooks/useOrderStatusTracking";
 import type { Order } from "@/models/Order";
 import type { CreateContractRequest } from "@/services/contract/types";
 import type { ContractData } from "@/services/contract/contractTypes";
-import { OrderStatusEnum } from "@/constants/enums";
+import { OrderStatusEnum, OrderStatusLabels } from "@/constants/enums";
 
 import dayjs from "dayjs";
 import {
@@ -62,6 +63,90 @@ const OrderDetailPage: React.FC = () => {
   const [contractData, setContractData] = useState<ContractData | null>(null);
   const [loadingContractData, setLoadingContractData] =
     useState<boolean>(false);
+
+  // Map status to notification icon and type
+  const getStatusNotification = (status: string) => {
+    const statusNotificationMap: Record<string, { icon: string; type: 'success' | 'error' | 'warning' | 'info'; duration: number }> = {
+      [OrderStatusEnum.PENDING]: { icon: '⏳', type: 'info', duration: 3 },
+      [OrderStatusEnum.PROCESSING]: { icon: '⚙️', type: 'info', duration: 3 },
+      [OrderStatusEnum.CONTRACT_DRAFT]: { icon: '📝', type: 'info', duration: 3 },
+      [OrderStatusEnum.CONTRACT_SIGNED]: { icon: '✍️', type: 'success', duration: 4 },
+      [OrderStatusEnum.ON_PLANNING]: { icon: '📋', type: 'info', duration: 3 },
+      [OrderStatusEnum.ASSIGNED_TO_DRIVER]: { icon: '👤', type: 'success', duration: 4 },
+      [OrderStatusEnum.FULLY_PAID]: { icon: '💳', type: 'success', duration: 4 },
+      [OrderStatusEnum.PICKING_UP]: { icon: '🚛', type: 'success', duration: 5 },
+      [OrderStatusEnum.ON_DELIVERED]: { icon: '🚚', type: 'success', duration: 5 },
+      [OrderStatusEnum.ONGOING_DELIVERED]: { icon: '📍', type: 'success', duration: 5 },
+      [OrderStatusEnum.DELIVERED]: { icon: '✅', type: 'success', duration: 5 },
+      [OrderStatusEnum.IN_TROUBLES]: { icon: '⚠️', type: 'error', duration: 8 },
+      [OrderStatusEnum.RESOLVED]: { icon: '🔧', type: 'success', duration: 5 },
+      [OrderStatusEnum.COMPENSATION]: { icon: '💰', type: 'warning', duration: 6 },
+      [OrderStatusEnum.SUCCESSFUL]: { icon: '🎉', type: 'success', duration: 5 },
+      [OrderStatusEnum.REJECT_ORDER]: { icon: '❌', type: 'error', duration: 6 },
+      [OrderStatusEnum.RETURNING]: { icon: '↩️', type: 'warning', duration: 5 },
+      [OrderStatusEnum.RETURNED]: { icon: '📦', type: 'info', duration: 4 },
+    };
+    return statusNotificationMap[status] || { icon: 'ℹ️', type: 'info', duration: 3 };
+  };
+
+  // Handle order status changes via WebSocket
+  const handleOrderStatusChange = useCallback((statusChange: any) => {
+    console.log('[StaffOrderDetail] 📢 Order status changed:', statusChange);
+    
+    // Check if this status change is for the current order
+    if (id && statusChange.orderId === id) {
+      console.log('[StaffOrderDetail] ✅ Order ID matched!');
+      
+      const notification = getStatusNotification(statusChange.newStatus);
+      const statusLabel = OrderStatusLabels[statusChange.newStatus as OrderStatusEnum] || statusChange.newStatus;
+      const notificationContent = `${notification.icon} ${statusChange.message || statusLabel}`;
+      
+      // Show notification based on status type
+      if (notification.type === 'success') {
+        messageApi.success({
+          content: notificationContent,
+          duration: notification.duration,
+        });
+      } else if (notification.type === 'error') {
+        messageApi.error({
+          content: notificationContent,
+          duration: notification.duration,
+        });
+      } else if (notification.type === 'warning') {
+        messageApi.warning({
+          content: notificationContent,
+          duration: notification.duration,
+        });
+      } else {
+        messageApi.info({
+          content: notificationContent,
+          duration: notification.duration,
+        });
+      }
+    } else {
+      console.log('[StaffOrderDetail] ❌ Order ID did not match:', {
+        statusChangeOrderId: statusChange.orderId,
+        currentOrderId: id
+      });
+    }
+  }, [id, messageApi]);
+
+  // Handle refresh when order status changes
+  const handleRefreshNeeded = useCallback(() => {
+    if (id) {
+      console.log('[StaffOrderDetail] 🔄 Refreshing order details due to status change...');
+      fetchOrderDetails(id);
+    }
+  }, [id]);
+
+  // Subscribe to order status changes
+  useOrderStatusTracking({
+    orderId: id,
+    autoConnect: true,
+    onStatusChange: handleOrderStatusChange,
+    onRefreshNeeded: handleRefreshNeeded,
+  });
+
   // Lấy thông tin đơn hàng khi component mount
   useEffect(() => {
     if (id) {

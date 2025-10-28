@@ -61,7 +61,7 @@ const AdditionalNavTabs: React.FC<AdditionalNavTabsProps> = ({
                 <TabPane
                     tab={
                         <span>
-                            <BoxPlotOutlined /> Danh sách lô hàng
+                            <BoxPlotOutlined /> Danh sách kiện hàng
                         </span>
                     }
                     key="packageList"

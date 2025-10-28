@@ -72,7 +72,7 @@ const VehicleSuggestionsModal: React.FC<VehicleSuggestionsModalProps> = ({
                 <Col span={8}>
                   <div className="text-center">
                     <div className="text-xs text-gray-600">
-                      <strong>Tổng kiện hàng</strong>
+                      <strong>Tổng kiện   hàng</strong>
                     </div>
                     <div className="text-lg font-bold text-blue-600">
                       {vehicleSuggestions.reduce(
@@ -140,7 +140,7 @@ const VehicleSuggestionsModal: React.FC<VehicleSuggestionsModalProps> = ({
                 <div>
                   <div className="text-xs font-semibold text-gray-700 mb-3 flex items-center">
                     <span className="bg-blue-100 text-blue-700 px-2 py-1 rounded">
-                      📦 Danh sách kiện hàng
+                      📦 Danh sách kiện   hàng
                     </span>
                   </div>
                   <div className="space-y-2">

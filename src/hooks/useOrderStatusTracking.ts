@@ -18,6 +18,7 @@ export interface UseOrderStatusTrackingOptions {
   orderId?: string;
   autoConnect?: boolean;
   onStatusChange?: (message: OrderStatusChangeMessage) => void;
+  onRefreshNeeded?: () => void; // Callback to trigger page refresh
 }
 
 export interface UseOrderStatusTrackingReturn {
@@ -29,7 +30,7 @@ export interface UseOrderStatusTrackingReturn {
   disconnect: () => void;
 }
 
-const DEFAULT_OPTIONS: Required<Omit<UseOrderStatusTrackingOptions, 'onStatusChange'>> = {
+const DEFAULT_OPTIONS: Required<Omit<UseOrderStatusTrackingOptions, 'onStatusChange' | 'onRefreshNeeded'>> = {
   orderId: '',
   autoConnect: false,
 };
@@ -60,12 +61,18 @@ export const useOrderStatusTracking = (
       
       setLatestStatusChange(statusChange);
       
-      // Call callback if provided
+      // Call onStatusChange callback if provided
       if (options.onStatusChange) {
         console.log('[OrderStatusTracking] Calling onStatusChange callback...');
         options.onStatusChange(statusChange);
       } else {
         console.log('[OrderStatusTracking] No onStatusChange callback provided');
+      }
+      
+      // Call onRefreshNeeded callback if provided (for automatic page refresh)
+      if (options.onRefreshNeeded) {
+        console.log('[OrderStatusTracking] 🔄 Triggering page refresh...');
+        options.onRefreshNeeded();
       }
       
       setError(null);

@@ -11,7 +11,7 @@ import {
 } from "@ant-design/icons";
 import orderService from "../../../../services/order/orderService";
 import type { StaffOrderDetailResponse } from "../../../../services/order/types";
-import VehicleAssignmentModal from "./VehicleAssignmentModal";
+import VehicleAssignmentModal from "./VehicleAssignmentModalContainer";
 import { OrderStatusEnum } from "../../../../constants/enums";
 import dayjs from "dayjs";
 import timezone from "dayjs/plugin/timezone";
@@ -361,11 +361,10 @@ const StaffOrderDetail: React.FC = () => {
       </Tabs>
 
       {/* Vehicle Assignment Modal */}
-      {id && orderData && orderData.order && orderData.order.orderDetails && (
+      {id && (
         <VehicleAssignmentModal
           visible={vehicleAssignmentModalVisible}
           orderId={id}
-          orderDetails={orderData.order.orderDetails}
           onClose={() => setVehicleAssignmentModalVisible(false)}
           onSuccess={handleVehicleAssignmentSuccess}
         />

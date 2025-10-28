@@ -189,7 +189,7 @@ const OrderDetailTabs: React.FC<OrderDetailTabsProps> = ({
                                 </div>
                             </Card>
 
-                            {/* Danh sách lô hàng sẽ được hiển thị ở AdditionalNavTabs */}
+                            {/* Danh sách kiện hàng sẽ được hiển thị ở AdditionalNavTabs */}
 
                         </TabPane>
                     ))}

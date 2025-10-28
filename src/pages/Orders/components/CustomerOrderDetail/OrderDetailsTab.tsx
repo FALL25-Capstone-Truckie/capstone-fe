@@ -217,16 +217,16 @@ const OrderDetailsTab: React.FC<OrderDetailsTabProps> = ({
                             </div>
                         </Card>
 
-                        {/* Danh sách lô hàng sẽ được hiển thị ở tab bên dưới */}
+                        {/* Danh sách kiện hàng sẽ được hiển thị ở tab bên dưới */}
 
                         {/* Tabs chi tiết */}
                         <Card className="mb-6 shadow-md rounded-xl">
                             <Tabs defaultActiveKey="journey" type="card">
-                                {/* Tab danh sách lô hàng */}
+                                {/* Tab danh sách kiện hàng */}
                                 <Tabs.TabPane
                                     tab={
                                         <span>
-                                            <BoxPlotOutlined /> Danh sách lô hàng
+                                            <BoxPlotOutlined /> Danh sách kiện hàng
                                         </span>
                                     }
                                     key="orderDetails"

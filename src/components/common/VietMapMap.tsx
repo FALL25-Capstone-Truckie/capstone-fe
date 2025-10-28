@@ -754,7 +754,7 @@ const VietMapMap: React.FC<VietMapMapProps> = ({
             .setLngLat(popupCoordinates)
             .setHTML(popupContent);
 
-        // Thêm sự kiện khi popup đóng
+        // Thêm sự kiện   khi popup đóng
         popup.on('close', () => {
             if (activePopupIndex === index) {
                 setActivePopupIndex(null);
@@ -840,9 +840,9 @@ const VietMapMap: React.FC<VietMapMapProps> = ({
                     // Không tự động hiển thị popup khi load map
                     // User sẽ click vào route để xem thông tin
 
-                    // Thêm sự kiện click vào route để hiển thị/ẩn popup
+                    // Thêm sự kiện   click vào route để hiển thị/ẩn popup
                     mapRef.current.on('click', layerId, (e: any) => {
-                        // Ngăn sự kiện lan truyền
+                        // Ngăn sự kiện   lan truyền
                         e.originalEvent.stopPropagation();
 
                         // Đóng tất cả các popup khác

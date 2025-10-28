@@ -63,14 +63,35 @@ const CustomerOrderDetail: React.FC = () => {
     
     // Check if this status change is for the current order
     if (id && statusChange.orderId === id) {
-      console.log('[CustomerOrderDetail] ✅ Order ID matched! Scheduling refetch...');
+      console.log('[CustomerOrderDetail] ✅ Order ID matched!');
       
-      // Debounce refetch to avoid spike load and prevent mobile WebSocket disruption
-      // Wait 500ms to let WebSocket broadcasts settle
-      setTimeout(() => {
-        console.log('[CustomerOrderDetail] 🔄 Refetching order details...');
-        fetchOrderDetails(id);
-      }, 500);
+      // CRITICAL: Only refetch for important status transitions
+      // For other status changes, just update the status locally to avoid disrupting real-time tracking
+      const shouldRefetch = 
+        (statusChange.newStatus === 'PICKING_UP' && statusChange.previousStatus === 'FULLY_PAID') ||
+        statusChange.newStatus === 'DELIVERED' ||
+        statusChange.newStatus === 'SUCCESSFUL' ||
+        statusChange.newStatus === 'IN_TROUBLES';
+      
+      if (shouldRefetch) {
+        console.log('[CustomerOrderDetail] 🔄 Important status change - refetching order details...');
+        // Debounce refetch to avoid spike load and prevent mobile WebSocket disruption
+        setTimeout(() => {
+          fetchOrderDetails(id);
+        }, 500);
+      } else {
+        console.log('[CustomerOrderDetail] ℹ️ Minor status change - updating status locally only');
+        // Just update the status locally without full refetch
+        if (orderData) {
+          setOrderData({
+            ...orderData,
+            order: {
+              ...orderData.order,
+              status: statusChange.newStatus
+            }
+          });
+        }
+      }
       
       // Show notification for important status changes
       if (statusChange.newStatus === 'PICKING_UP' && statusChange.previousStatus === 'FULLY_PAID') {
@@ -103,7 +124,7 @@ const CustomerOrderDetail: React.FC = () => {
         currentOrderId: id
       });
     }
-  }, [id]);
+  }, [id, orderData]);
 
   // Subscribe to order status changes
   useOrderStatusTracking({

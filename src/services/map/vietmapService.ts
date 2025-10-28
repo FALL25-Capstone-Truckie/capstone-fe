@@ -1,4 +1,3 @@
-import { VIET_MAPS_API_KEY } from '../../config/env';
 import httpClient from '../api/httpClient';
 import type { MapLocation, MapStyle } from '@/models/Map';
 import type { RouteResponse } from '@/models/Route';
@@ -135,15 +134,25 @@ const vietmapService = {
     },
 
     /**
-     * Lấy style cho bản đồ
+     * Lấy style cho bản đồ từ API
      * @returns Style cho bản đồ
      */
     getMapStyles: async (): Promise<VietMapStyle | null> => {
         try {
             const response = await httpClient.get<VietMapStyle>('/vietmap/styles');
-            return response.data;
+            
+            // Log response để debug
+            console.log('[vietmapService] Map style response:', response.data);
+            
+            // Kiểm tra response có chứa style không
+            if (response.data) {
+                return response.data;
+            }
+            
+            console.error('[vietmapService] Map style response is empty');
+            return null;
         } catch (error) {
-            console.error('Error getting map styles:', error);
+            console.error('[vietmapService] Error getting map styles:', error);
             return null;
         }
     },

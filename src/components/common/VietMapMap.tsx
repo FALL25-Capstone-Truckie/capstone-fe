@@ -133,6 +133,8 @@ const VietMapMap: React.FC<VietMapMapProps> = ({
     const [mapStyle, setMapStyle] = useState<any>(null);
     const [isAnimating, setIsAnimating] = useState(false);
     const [activePopupIndex, setActivePopupIndex] = useState<number | null>(null);
+    const [styleFromCache, setStyleFromCache] = useState(false);
+    const [retryCount, setRetryCount] = useState(0);
     const { getMapStyle, reverseGeocode } = useVietMapRouting();
 
     // Inject CSS cho popup
@@ -164,6 +166,7 @@ const VietMapMap: React.FC<VietMapMapProps> = ({
                             console.log('[VietMapMap] Using cached VietMap style from localStorage');
                             console.log('[VietMapMap] Cache age:', Math.floor((now - timestamp) / (1000 * 60 * 60)), 'hours');
                             setMapStyle(style);
+                            setStyleFromCache(true);
                             return;
                         } else {
                             console.log('[VietMapMap] Cached VietMap style expired, fetching new data');
@@ -186,6 +189,7 @@ const VietMapMap: React.FC<VietMapMapProps> = ({
                     
                     // Lưu style vào state
                     setMapStyle(style);
+                    setStyleFromCache(false);
 
                     // Lưu style và timestamp vào localStorage
                     const cacheData = {
@@ -344,6 +348,17 @@ const VietMapMap: React.FC<VietMapMapProps> = ({
             });
         } catch (error) {
             console.error('Error initializing VietMap:', error);
+            
+            // Nếu map khởi tạo thất bại và style từ cache, xóa cache và retry
+            if (styleFromCache && retryCount < 1) {
+                console.warn('[VietMapMap] Map initialization failed with cached style, clearing cache and retrying...');
+                localStorage.removeItem(VIETMAP_STYLE_CACHE_KEY);
+                setMapStyle(null);
+                setStyleFromCache(false);
+                setRetryCount(retryCount + 1);
+                return;
+            }
+            
             setLoading(false);
         }
     };

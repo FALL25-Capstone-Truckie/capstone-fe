@@ -528,6 +528,17 @@ const VietMapMap: React.FC<VietMapMapProps> = ({
                         }
 
                         console.log('[VietMapMap] Bounds ready, calling fitBounds');
+                        
+                        // Validate bounds object before calling fitBounds
+                        if (!bounds || !bounds._sw || !bounds._ne || 
+                            bounds._sw.lng === undefined || bounds._sw.lat === undefined ||
+                            bounds._ne.lng === undefined || bounds._ne.lat === undefined) {
+                            console.warn('[VietMapMap] Invalid bounds object, using fallback');
+                            const marker = validMarkers[0];
+                            mapRef.current.setCenter([marker.lng, marker.lat]);
+                            mapRef.current.setZoom(12);
+                            return;
+                        }
 
                         // Fit map to bounds with generous padding for full route overview
                         mapRef.current.fitBounds(bounds, {

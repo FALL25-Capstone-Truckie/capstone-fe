@@ -14,7 +14,7 @@ import {
     CalendarOutlined,
     EnvironmentOutlined,
 } from "@ant-design/icons";
-import RouteMapWithRealTimeTracking from "./RouteMapWithRealTimeTracking";
+import RouteMapSection from "./RouteMapSection";
 import { OrderStatusEnum } from "../../../../../constants/enums";
 import type { StaffOrderDetail, StaffOrderDetailItem } from "../../../../../models/Order";
 import { formatJourneyType, getJourneyStatusColor, formatSealStatus, getSealStatusColor } from "../../../../../models/JourneyHistory";
@@ -28,6 +28,7 @@ interface AdditionalNavTabsProps {
         transactions?: any[];
     };
     formatDate: (dateString?: string) => string;
+    vehicleAssignment?: any;
 }
 
 const AdditionalNavTabs: React.FC<AdditionalNavTabsProps> = ({
@@ -149,33 +150,21 @@ const AdditionalNavTabs: React.FC<AdditionalNavTabsProps> = ({
                                         journey.journeySegments && journey.journeySegments.length > 0
                                     )
                                 )
-                                .map((va: any, idx: number) => (
-                                    <div key={idx} className="mb-6">
+                                .map((va: any, vaIdx: number) => (
+                                    <div key={vaIdx} className="mb-6">
+                                        <h3 className="text-lg font-semibold mb-4 text-blue-600">
+                                            Chuyến xe #{vaIdx + 1} - {va.vehicle?.licensePlateNumber || "Chưa có mã"}
+                                        </h3>
                                         {va.journeyHistories.map((journey: any, journeyIdx: number) => {
                                             if (!journey.journeySegments || journey.journeySegments.length === 0) {
                                                 return null;
                                             }
-                                            // Check if order status allows real-time tracking
-                                            const shouldShowRealTimeTracking = orderData.order?.status ? [
-                                                OrderStatusEnum.PICKING_UP,
-                                                OrderStatusEnum.ON_DELIVERED,
-                                                OrderStatusEnum.ONGOING_DELIVERED,
-                                                OrderStatusEnum.DELIVERED,
-                                                OrderStatusEnum.IN_TROUBLES,
-                                                OrderStatusEnum.RESOLVED,
-                                                OrderStatusEnum.COMPENSATION,
-                                                OrderStatusEnum.SUCCESSFUL,
-                                                OrderStatusEnum.RETURNING,
-                                                OrderStatusEnum.RETURNED
-                                            ].includes(orderData.order.status as OrderStatusEnum) : false;
 
                                             return (
                                                 <div key={journey.id || `journey-${journeyIdx}`} className="mb-4">
-                                                    <RouteMapWithRealTimeTracking
+                                                    <RouteMapSection
                                                         journeySegments={journey.journeySegments}
                                                         journeyInfo={journey}
-                                                        orderId={orderData.order.id}
-                                                        shouldShowRealTimeTracking={shouldShowRealTimeTracking}
                                                     />
                                                 </div>
                                             );

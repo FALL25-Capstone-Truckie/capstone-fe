@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { App, Button, Typography, Skeleton, Empty, Tabs, Card, message } from "antd";
 import {
@@ -6,6 +6,7 @@ import {
   InfoCircleOutlined,
   CarOutlined,
   ProfileOutlined,
+  EnvironmentOutlined,
 } from "@ant-design/icons";
 import orderService from "../../../services/order/orderService";
 import { contractService } from "../../../services/contract";
@@ -23,6 +24,7 @@ import timezone from "dayjs/plugin/timezone";
 // Import components
 import BasicInfoTab from "./CustomerOrderDetail/BasicInfoTab";
 import OrderDetailsTab from "./CustomerOrderDetail/OrderDetailsTab";
+import OrderLiveTrackingOnly from "./CustomerOrderDetail/OrderLiveTrackingOnly";
 import ContractSection from "./CustomerOrderDetail/ContractSection";
 import TransactionSection from "./CustomerOrderDetail/TransactionSection";
 import VehicleSuggestionsModal from "./CustomerOrderDetail/VehicleSuggestionsModal";
@@ -83,6 +85,21 @@ const CustomerOrderDetail: React.FC = () => {
     return statusNotificationMap[status] || { icon: 'ℹ️', type: 'info', duration: 3 };
   };
 
+  // Fetch order details - must be defined before handleRefreshNeeded
+  const fetchOrderDetails = useCallback(async (orderId: string) => {
+    setLoading(true);
+    try {
+      const data = await orderService.getOrderForCustomerByOrderId(orderId);
+      setOrderData(data);
+      checkContractExists(orderId);
+    } catch (error) {
+      messageApi.error("Không thể tải thông tin đơn hàng");
+      console.error("Error fetching order details:", error);
+    } finally {
+      setLoading(false);
+    }
+  }, [messageApi]);
+
   // Handle order status changes via WebSocket
   const handleOrderStatusChange = useCallback((statusChange: any) => {
     console.log('[CustomerOrderDetail] 📢 Order status changed:', statusChange);
@@ -90,6 +107,36 @@ const CustomerOrderDetail: React.FC = () => {
     // Check if this status change is for the current order
     if (id && statusChange.orderId === id) {
       console.log('[CustomerOrderDetail] ✅ Order ID matched!');
+      
+      // CRITICAL: Only refetch for important status transitions
+      // For other status changes, just update the status locally to avoid disrupting live tracking
+      const shouldRefetch = 
+        statusChange.newStatus === 'DELIVERED' ||
+        statusChange.newStatus === 'SUCCESSFUL' ||
+        statusChange.newStatus === 'IN_TROUBLES' ||
+        statusChange.newStatus === 'REJECT_ORDER' ||
+        statusChange.newStatus === 'RETURNING' ||
+        statusChange.newStatus === 'RETURNED';
+      
+      if (shouldRefetch) {
+        console.log('[CustomerOrderDetail] 🔄 Important status change - refetching order details...');
+        // Debounce refetch to avoid spike load
+        setTimeout(() => {
+          fetchOrderDetails(id);
+        }, 500);
+      } else {
+        console.log('[CustomerOrderDetail] ℹ️ Minor status change - updating status locally only');
+        // Just update the status locally without full refetch
+        if (orderData) {
+          setOrderData({
+            ...orderData,
+            order: {
+              ...orderData.order,
+              status: statusChange.newStatus
+            }
+          });
+        }
+      }
       
       const notification = getStatusNotification(statusChange.newStatus);
       const statusLabel = OrderStatusLabels[statusChange.newStatus as OrderStatusEnum] || statusChange.newStatus;
@@ -120,10 +167,11 @@ const CustomerOrderDetail: React.FC = () => {
       
       playImportantNotificationSound();
       
-      // Auto-switch to "Chi tiết vận chuyển" tab for delivery-related statuses
+      // Auto-switch to "Live Tracking" tab for delivery-related statuses
       if ([OrderStatusEnum.PICKING_UP, OrderStatusEnum.ON_DELIVERED, OrderStatusEnum.ONGOING_DELIVERED].includes(statusChange.newStatus)) {
         setTimeout(() => {
-          setActiveMainTab('details');
+          setActiveMainTab('liveTracking');
+          // Auto scroll will be handled by useEffect watching activeMainTab
         }, 1000);
       }
     } else {
@@ -132,15 +180,14 @@ const CustomerOrderDetail: React.FC = () => {
         currentOrderId: id
       });
     }
-  }, [id]);
+  }, [id, orderData]);
 
-  // Handle refresh when order status changes
+  // Handle refresh when order status changes (only for critical status changes)
   const handleRefreshNeeded = useCallback(() => {
-    if (id) {
-      console.log('[CustomerOrderDetail] 🔄 Refreshing order details due to status change...');
-      fetchOrderDetails(id);
-    }
-  }, [id]);
+    // This callback is no longer used since we handle refresh in handleOrderStatusChange
+    // Keeping it for backward compatibility with useOrderStatusTracking hook
+    console.log('[CustomerOrderDetail] handleRefreshNeeded called (no-op)');
+  }, []);
 
   // Subscribe to order status changes
   useOrderStatusTracking({
@@ -157,7 +204,7 @@ const CustomerOrderDetail: React.FC = () => {
     if (id) {
       fetchOrderDetails(id);
     }
-  }, [id]);
+  }, [id, fetchOrderDetails]);
 
   // Track order status changes for logging
   useEffect(() => {
@@ -172,19 +219,57 @@ const CustomerOrderDetail: React.FC = () => {
     }
   }, [orderData?.order?.status, previousOrderStatus]);
 
-  const fetchOrderDetails = async (orderId: string) => {
-    setLoading(true);
-    try {
-      const data = await orderService.getOrderForCustomerByOrderId(orderId);
-      setOrderData(data);
-      checkContractExists(orderId);
-    } catch (error) {
-      messageApi.error("Không thể tải thông tin đơn hàng");
-      console.error("Error fetching order details:", error);
-    } finally {
-      setLoading(false);
+  // Auto-switch to live tracking tab when order status >= PICKING_UP
+  const hasAutoSwitchedRef = useRef<boolean>(false);
+  useEffect(() => {
+    const currentStatus = orderData?.order?.status;
+    // Auto-switch if status >= PICKING_UP and we haven't switched yet
+    const isDeliveryStatus = [
+      OrderStatusEnum.PICKING_UP,
+      OrderStatusEnum.ON_DELIVERED,
+      OrderStatusEnum.ONGOING_DELIVERED,
+      OrderStatusEnum.IN_TROUBLES,
+      OrderStatusEnum.RESOLVED,
+      OrderStatusEnum.COMPENSATION,
+      OrderStatusEnum.DELIVERED,
+      OrderStatusEnum.SUCCESSFUL,
+      OrderStatusEnum.RETURNING,
+      OrderStatusEnum.RETURNED
+    ].includes(currentStatus as OrderStatusEnum);
+    
+    if (isDeliveryStatus && !hasAutoSwitchedRef.current) {
+      console.log('[CustomerOrderDetail] 🎯 Order status >= PICKING_UP - switching to live tracking tab');
+      setActiveMainTab('liveTracking');
+      hasAutoSwitchedRef.current = true;
     }
-  };
+  }, [orderData?.order?.status]);
+
+  // Auto scroll to map when activeMainTab changes to liveTracking
+  useEffect(() => {
+    if (activeMainTab === 'liveTracking') {
+      setTimeout(() => {
+        const mapContainer = document.querySelector('[style*="height: 600px"]');
+        if (mapContainer) {
+          console.log('[CustomerOrderDetail] 📍 Scrolling to map');
+          mapContainer.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+      }, 200);
+    }
+  }, [activeMainTab]);
+
+  // Check if should show Live Tracking tab (status >= PICKING_UP)
+  const shouldShowLiveTracking = orderData?.order && [
+    OrderStatusEnum.PICKING_UP,
+    OrderStatusEnum.ON_DELIVERED,
+    OrderStatusEnum.ONGOING_DELIVERED,
+    OrderStatusEnum.IN_TROUBLES,
+    OrderStatusEnum.RESOLVED,
+    OrderStatusEnum.COMPENSATION,
+    OrderStatusEnum.DELIVERED,
+    OrderStatusEnum.SUCCESSFUL,
+    OrderStatusEnum.RETURNING,
+    OrderStatusEnum.RETURNED
+  ].includes(orderData.order.status as OrderStatusEnum);
 
   const checkContractExists = async (orderId: string) => {
     setCheckingContract(true);
@@ -333,7 +418,18 @@ const CustomerOrderDetail: React.FC = () => {
       <Card className="mb-6 shadow-md rounded-xl">
         <Tabs
           activeKey={activeMainTab}
-          onChange={setActiveMainTab}
+          onChange={(key) => {
+            setActiveMainTab(key);
+            // Scroll map to view when live tracking tab is clicked
+            if (key === 'liveTracking') {
+              setTimeout(() => {
+                const mapContainer = document.querySelector('[style*="height: 600px"]');
+                if (mapContainer) {
+                  mapContainer.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                }
+              }, 100);
+            }
+          }}
           type="card"
           size="large"
           className="order-main-tabs"
@@ -352,6 +448,7 @@ const CustomerOrderDetail: React.FC = () => {
               checkingContract={checkingContract}
               loadingVehicleSuggestions={loadingVehicleSuggestions}
               onFetchVehicleSuggestions={fetchVehicleSuggestions}
+              contract={contract}
             />
           </TabPane>
           <TabPane
@@ -370,6 +467,23 @@ const CustomerOrderDetail: React.FC = () => {
               getStatusColor={getStatusColor}
             />
           </TabPane>
+          {/* Live Tracking Tab - Only show when status >= PICKING_UP */}
+          {shouldShowLiveTracking && (
+            <TabPane
+              tab={
+                <span className="px-2 py-1">
+                  <EnvironmentOutlined className="mr-2" /> Theo dõi trực tiếp
+                </span>
+              }
+              key="liveTracking"
+            >
+              <OrderLiveTrackingOnly
+                orderId={order.id}
+                shouldShowRealTimeTracking={true}
+                vehicleAssignments={order.vehicleAssignments || []}
+              />
+            </TabPane>
+          )}
           <TabPane
             tab={
               <span className="px-2 py-1">

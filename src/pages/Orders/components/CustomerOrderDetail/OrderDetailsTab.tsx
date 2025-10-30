@@ -1,22 +1,25 @@
-import React, { useCallback } from "react";
-import { Tabs, Empty, Card, Typography, Tag } from "antd";
+import React from "react";
+import { Empty, Tabs, Card, Typography, Tag } from "antd";
 import {
     BoxPlotOutlined,
     CarOutlined,
-    FileTextOutlined,
-    ToolOutlined,
-    CameraOutlined,
+    TagOutlined,
     UserOutlined,
     PhoneOutlined,
-    TagOutlined,
-    EnvironmentOutlined
 } from "@ant-design/icons";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
-import RouteMapWithRealTimeTracking from "./RouteMapWithRealTimeTracking";
+import OrderLiveTrackingOnly from "./OrderLiveTrackingOnly";
+import VehicleAssignmentSection from "./VehicleAssignmentSection";
+import OrderDetailStatusCard from "../../../../components/common/OrderDetailStatusCard";
 import { OrderStatusEnum } from "../../../../constants/enums";
-import { formatSealStatus, getSealStatusColor } from "../../../../models/JourneyHistory";
+
+dayjs.extend(utc);
+dayjs.extend(timezone);
+
+const { TabPane } = Tabs;
+const { Title } = Typography;
 
 // STABLE CONSTANTS - prevent re-renders
 const REAL_TIME_TRACKING_STATUSES = [
@@ -31,13 +34,6 @@ const REAL_TIME_TRACKING_STATUSES = [
     OrderStatusEnum.RETURNING,
     OrderStatusEnum.RETURNED
 ];
-
-// Configure dayjs to use timezone
-dayjs.extend(utc);
-dayjs.extend(timezone);
-
-const { TabPane } = Tabs;
-const { Title } = Typography;
 
 interface OrderDetailsTabProps {
     order: any;
@@ -54,12 +50,39 @@ const OrderDetailsTab: React.FC<OrderDetailsTabProps> = ({
     formatDate,
     getStatusColor,
 }) => {
-    // STABLE CALLBACK - prevent re-renders
-    const handleTrackingActive = useCallback(() => {
-        console.log('[OrderDetailsTab] 🎯 Tracking active!');
-        // Inner tab already defaults to "journey", no need to switch
-        // Just let the scroll happen
-    }, []);
+    const liveTrackingRef = React.useRef<HTMLDivElement>(null);
+
+    // Memoize shouldShowRealTimeTracking to prevent unnecessary re-renders of OrderLiveTrackingOnly
+    const shouldShowRealTimeTracking = React.useMemo(
+        () => REAL_TIME_TRACKING_STATUSES.includes(order.status as OrderStatusEnum),
+        [order.status]
+    );
+
+    // Auto scroll to live tracking when component mounts or order status changes to tracking status
+    React.useEffect(() => {
+        const REAL_TIME_TRACKING_STATUSES = [
+            'PICKING_UP',
+            'ON_DELIVERED',
+            'ONGOING_DELIVERED',
+            'DELIVERED',
+            'IN_TROUBLES',
+            'RESOLVED',
+            'COMPENSATION',
+            'SUCCESSFUL',
+            'RETURNING',
+            'RETURNED'
+        ];
+
+        if (
+            liveTrackingRef.current &&
+            REAL_TIME_TRACKING_STATUSES.includes(order.status)
+        ) {
+            // Delay to ensure component is fully rendered
+            setTimeout(() => {
+                liveTrackingRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 300);
+        }
+    }, [order.status]); // Re-run when order status changes
 
     if (!order.orderDetails || order.orderDetails.length === 0) {
         return <Empty description="Chưa có thông tin chi tiết vận chuyển" />;
@@ -70,413 +93,16 @@ const OrderDetailsTab: React.FC<OrderDetailsTabProps> = ({
 
     // Nếu có vehicle assignment, hiển thị theo vehicle assignment
     if (hasVehicleAssignment) {
-        // Nhóm các order details theo vehicle assignment
-        interface VehicleAssignmentGroup {
-            vehicleAssignment: any;
-            orderDetails: any[];
-        }
-
-        const vehicleAssignmentMap = new Map<string, VehicleAssignmentGroup>();
-
-        // Initialize map with vehicle assignments from order level
-        order.vehicleAssignments.forEach((va: any) => {
-            vehicleAssignmentMap.set(va.id, {
-                vehicleAssignment: va,
-                orderDetails: [],
-            });
-        });
-
-        // Group order details by their vehicleAssignmentId
-        order.orderDetails.forEach((detail: any) => {
-            if (detail.vehicleAssignmentId) {
-                const group = vehicleAssignmentMap.get(detail.vehicleAssignmentId);
-                if (group) {
-                    group.orderDetails.push(detail);
-                }
-            }
-        });
-
-        const vehicleAssignments = Array.from(vehicleAssignmentMap.values());
-
-        if (vehicleAssignments.length === 0) {
-            return <Empty description="Chưa có thông tin phân công xe" />;
-        }
-
         return (
-            <Tabs
-                activeKey={activeDetailTab}
-                onChange={onTabChange}
-                type="card"
-                className="order-detail-tabs"
-            >
-                {vehicleAssignments.map((vaGroup, index) => (
-                    <TabPane
-                        tab={
-                            <span>
-                                <CarOutlined /> Chuyến xe #{index + 1} -{" "}
-                                {vaGroup.vehicleAssignment.trackingCode || "Chưa có mã"}
-                            </span>
-                        }
-                        key={index.toString()}
-                    >
-                        {/* Thông tin phương tiện */}
-                        <Card
-                            className="shadow-md mb-6 rounded-xl"
-                            size="small"
-                        >
-                            <div className="p-2">
-                                <div className="mb-4 bg-blue-50 p-4 rounded-lg">
-                                    <div className="flex items-center mb-3">
-                                        <CarOutlined className="text-xl text-blue-500 mr-3" />
-                                        <span className="text-lg font-medium">
-                                            {vaGroup.vehicleAssignment.vehicle?.licensePlateNumber ||
-                                                vaGroup.vehicleAssignment.licensePlateNumber ||
-                                                "Chưa có thông tin"}
-                                        </span>
-                                        <Tag
-                                            className="ml-3"
-                                            color={getStatusColor(vaGroup.vehicleAssignment.status || "")}
-                                        >
-                                            {vaGroup.vehicleAssignment.status}
-                                        </Tag>
-                                    </div>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                        <div className="flex items-center">
-                                            <TagOutlined className="mr-2 text-gray-500" />
-                                            <span className="font-medium mr-1">Nhà sản xuất:</span>
-                                            <span>
-                                                {vaGroup.vehicleAssignment.vehicle?.manufacturer ||
-                                                    vaGroup.vehicleAssignment.manufacturer ||
-                                                    "Chưa có thông tin"}
-                                            </span>
-                                        </div>
-                                        <div className="flex items-center">
-                                            <CarOutlined className="mr-2 text-gray-500" />
-                                            <span className="font-medium mr-1">Mẫu xe:</span>
-                                            <span>
-                                                {vaGroup.vehicleAssignment.vehicle?.model ||
-                                                    vaGroup.vehicleAssignment.model ||
-                                                    "Chưa có thông tin"}
-                                            </span>
-                                        </div>
-                                        <div className="flex items-center">
-                                            <TagOutlined className="mr-2 text-gray-500" />
-                                            <span className="font-medium mr-1">Loại xe:</span>
-                                            <span>
-                                                {vaGroup.vehicleAssignment.vehicle?.vehicleType ||
-                                                    vaGroup.vehicleAssignment.vehicleType ||
-                                                    "Chưa có thông tin"}
-                                            </span>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div className="bg-green-50 p-4 rounded-lg">
-                                        <div className="flex items-center mb-2">
-                                            <UserOutlined className="text-green-500 mr-2" />
-                                            <span className="font-medium">Tài xế chính</span>
-                                        </div>
-                                        {vaGroup.vehicleAssignment.primaryDriver ? (
-                                            <div className="ml-6">
-                                                <div className="flex items-center mb-1">
-                                                    <UserOutlined className="mr-2 text-gray-500" />
-                                                    <span>{vaGroup.vehicleAssignment.primaryDriver.fullName}</span>
-                                                </div>
-                                                <div className="flex items-center">
-                                                    <PhoneOutlined className="mr-2 text-gray-500" />
-                                                    <span>{vaGroup.vehicleAssignment.primaryDriver.phoneNumber}</span>
-                                                </div>
-                                            </div>
-                                        ) : (
-                                            <div className="ml-6 text-gray-500">Chưa có thông tin</div>
-                                        )}
-                                    </div>
-
-                                    <div className="bg-blue-50 p-4 rounded-lg">
-                                        <div className="flex items-center mb-2">
-                                            <UserOutlined className="text-blue-500 mr-2" />
-                                            <span className="font-medium">Tài xế phụ</span>
-                                        </div>
-                                        {vaGroup.vehicleAssignment.secondaryDriver ? (
-                                            <div className="ml-6">
-                                                <div className="flex items-center mb-1">
-                                                    <UserOutlined className="mr-2 text-gray-500" />
-                                                    <span>{vaGroup.vehicleAssignment.secondaryDriver.fullName}</span>
-                                                </div>
-                                                <div className="flex items-center">
-                                                    <PhoneOutlined className="mr-2 text-gray-500" />
-                                                    <span>{vaGroup.vehicleAssignment.secondaryDriver.phoneNumber}</span>
-                                                </div>
-                                            </div>
-                                        ) : (
-                                            <div className="ml-6 text-gray-500">Chưa có thông tin</div>
-                                        )}
-                                    </div>
-                                </div>
-                            </div>
-                        </Card>
-
-                        {/* Danh sách kiện hàng sẽ được hiển thị ở tab bên dưới */}
-
-                        {/* Tabs chi tiết */}
-                        <Card className="mb-6 shadow-md rounded-xl">
-                            <Tabs defaultActiveKey="journey" type="card">
-                                {/* Tab danh sách kiện hàng */}
-                                <Tabs.TabPane
-                                    tab={
-                                        <span>
-                                            <BoxPlotOutlined /> Danh sách kiện hàng
-                                        </span>
-                                    }
-                                    key="orderDetails"
-                                >
-                                    <div className="overflow-x-auto rounded-lg border border-gray-200 shadow-sm">
-                                        <table className="w-full">
-                                            <thead>
-                                                <tr className="bg-gradient-to-r from-green-500 to-green-600 text-white">
-                                                    <th className="px-4 py-3 text-left font-semibold">Mã theo dõi</th>
-                                                    <th className="px-4 py-3 text-left font-semibold">Trạng thái</th>
-                                                    <th className="px-4 py-3 text-left font-semibold">Trọng lượng</th>
-                                                    <th className="px-4 py-3 text-left font-semibold">Mô tả</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {vaGroup.orderDetails.map((detail: any, detailIdx: number) => (
-                                                    <tr key={detail.id} className={detailIdx % 2 === 0 ? "bg-white" : "bg-gray-50 hover:bg-gray-100"}>
-                                                        <td className="px-4 py-3 border-b border-gray-200 font-medium text-gray-900">
-                                                            {detail.trackingCode || "Chưa có"}
-                                                        </td>
-                                                        <td className="px-4 py-3 border-b border-gray-200">
-                                                            <Tag
-                                                                color={getStatusColor(detail.status)}
-                                                            >
-                                                                {detail.status}
-                                                            </Tag>
-                                                        </td>
-                                                        <td className="px-4 py-3 border-b border-gray-200 text-gray-700">
-                                                            {detail.weightBaseUnit} {detail.unit}
-                                                        </td>
-                                                        <td className="px-4 py-3 border-b border-gray-200 text-gray-700">
-                                                            {detail.description || "Không có mô tả"}
-                                                        </td>
-                                                    </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </Tabs.TabPane>
-
-                                {/* Tab lộ trình vận chuyển */}
-                                <Tabs.TabPane
-                                    tab={
-                                        <span>
-                                            <EnvironmentOutlined /> Lộ trình vận chuyển
-                                        </span>
-                                    }
-                                    key="journey"
-                                >
-                                    {vaGroup.vehicleAssignment.journeyHistories && vaGroup.vehicleAssignment.journeyHistories.length > 0 ? (
-                                        <div className="p-2">
-                                            {vaGroup.vehicleAssignment.journeyHistories.map((journey: any, journeyIdx: number) => {
-                                                if (!journey.journeySegments || journey.journeySegments.length === 0) {
-                                                    return null;
-                                                }
-                                                
-                                                return (
-                                                    <div key={journey.id || `journey-${journeyIdx}`} className="mb-4">
-                                                        <RouteMapWithRealTimeTracking
-                                                            journeySegments={journey.journeySegments}
-                                                            journeyInfo={journey}
-                                                            orderId={order.id}
-                                                            shouldShowRealTimeTracking={REAL_TIME_TRACKING_STATUSES.includes(order.status as OrderStatusEnum)}
-                                                            onTrackingActive={handleTrackingActive}
-                                                        />
-                                                    </div>
-                                                );
-                                            })}
-                                        </div>
-                                    ) : (
-                                        <Empty description="Không có lịch sử hành trình nào" />
-                                    )}
-                                </Tabs.TabPane>
-
-                                {/* Tab sự cố */}
-                                <Tabs.TabPane
-                                    tab={
-                                        <span>
-                                            <ToolOutlined /> Sự cố
-                                        </span>
-                                    }
-                                    key="issues"
-                                >
-                                    {vaGroup.vehicleAssignment.issues && vaGroup.vehicleAssignment.issues.length > 0 ? (
-                                        <div className="p-2">
-                                            {vaGroup.vehicleAssignment.issues.map((issueItem: any, issueIdx: number) => (
-                                                <div key={issueIdx} className="bg-red-50 p-4 rounded-lg mb-3">
-                                                    <div className="flex items-center mb-3">
-                                                        <span className="font-medium">Mô tả sự cố:</span>
-                                                        <span className="ml-2">{issueItem.issue.description}</span>
-                                                        <Tag
-                                                            className="ml-2"
-                                                            color={getStatusColor(issueItem.issue.status)}
-                                                        >
-                                                            {issueItem.issue.status}
-                                                        </Tag>
-                                                    </div>
-                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                                        {issueItem.issue.issueTypeName && (
-                                                            <div className="flex items-center">
-                                                                <span className="font-medium mr-1">Loại sự cố:</span>
-                                                                <span>{issueItem.issue.issueTypeName}</span>
-                                                            </div>
-                                                        )}
-                                                        {issueItem.issue.staff && (
-                                                            <>
-                                                                <div className="flex items-center">
-                                                                    <span className="font-medium mr-1">Nhân viên xử lý:</span>
-                                                                    <span>{issueItem.issue.staff.name}</span>
-                                                                </div>
-                                                                <div className="flex items-center">
-                                                                    <span className="font-medium mr-1">Liên hệ:</span>
-                                                                    <span>{issueItem.issue.staff.phone}</span>
-                                                                </div>
-                                                            </>
-                                                        )}
-                                                    </div>
-
-                                                    {issueItem.imageUrls && issueItem.imageUrls.length > 0 ? (
-                                                        <div className="mt-4">
-                                                            <div className="flex items-center mb-2">
-                                                                <span className="font-medium">Hình ảnh:</span>
-                                                            </div>
-                                                            <div className="flex flex-wrap gap-2">
-                                                                {issueItem.imageUrls.map((url: string, idx: number) => (
-                                                                    <img
-                                                                        key={idx}
-                                                                        src={url}
-                                                                        alt={`Issue image ${idx + 1}`}
-                                                                        width={100}
-                                                                        height={100}
-                                                                        className="object-cover rounded"
-                                                                    />
-                                                                ))}
-                                                            </div>
-                                                        </div>
-                                                    ) : (
-                                                        <div className="mt-4 text-gray-500">
-                                                            <span>Chưa có hình ảnh</span>
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            ))}
-                                        </div>
-                                    ) : (
-                                        <Empty description="Không có sự cố nào được ghi nhận" />
-                                    )}
-                                </Tabs.TabPane>
-
-                                {/* Tab niêm phong */}
-                                <Tabs.TabPane
-                                    tab={
-                                        <span>
-                                            <FileTextOutlined /> Niêm phong
-                                        </span>
-                                    }
-                                    key="seals"
-                                >
-                                    {vaGroup.vehicleAssignment.seals && vaGroup.vehicleAssignment.seals.length > 0 ? (
-                                        <div className="p-4">
-                                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                                {vaGroup.vehicleAssignment.seals.map((seal: any) => (
-                                                    <div key={seal.id} className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow">
-                                                        <div className="flex items-start justify-between mb-3">
-                                                            <div className="flex-1">
-                                                                <p className="text-sm font-semibold text-gray-600">Mã niêm phong</p>
-                                                                <p className="text-base font-bold text-blue-600">{seal.sealCode || seal.sealId}</p>
-                                                            </div>
-                                                            <Tag color={getSealStatusColor(seal.status)} className="ml-2">
-                                                                {formatSealStatus(seal.status)}
-                                                            </Tag>
-                                                        </div>
-
-                                                        <div className="space-y-2 mb-3 pb-3 border-b border-blue-200">
-                                                            <div>
-                                                                <p className="text-xs text-gray-500">Mô tả</p>
-                                                                <p className="text-sm text-gray-700">{seal.description || "Không có mô tả"}</p>
-                                                            </div>
-                                                        </div>
-
-                                                        <div className="grid grid-cols-2 gap-2 text-xs">
-                                                            <div>
-                                                                <p className="text-gray-500">Ngày niêm phong</p>
-                                                                <p className="font-medium text-gray-700">{seal.sealDate ? formatDate(seal.sealDate) : "Chưa có"}</p>
-                                                            </div>
-                                                            <div>
-                                                                <p className="text-gray-500">Thời gian gỡ</p>
-                                                                <p className="font-medium text-gray-700">{seal.sealRemovalTime ? formatDate(seal.sealRemovalTime) : "Chưa gỡ"}</p>
-                                                            </div>
-                                                        </div>
-
-                                                        {seal.sealAttachedImage && (
-                                                            <div className="mt-3 pt-3 border-t border-blue-200">
-                                                                <p className="text-xs text-gray-500 mb-2">Hình ảnh niêm phong</p>
-                                                                <img
-                                                                    src={seal.sealAttachedImage}
-                                                                    alt={`Seal ${seal.sealCode}`}
-                                                                    className="w-full h-24 object-cover rounded"
-                                                                />
-                                                            </div>
-                                                        )}
-
-                                                        {seal.sealRemovalReason && (
-                                                            <div className="mt-3 pt-3 border-t border-blue-200">
-                                                                <p className="text-xs text-gray-500">Lý do gỡ niêm phong</p>
-                                                                <p className="text-sm text-red-600 font-medium">{seal.sealRemovalReason}</p>
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    ) : (
-                                        <Empty description="Không có thông tin niêm phong" />
-                                    )}
-                                </Tabs.TabPane>
-
-                                {/* Tab hình ảnh hoàn thành */}
-                                <Tabs.TabPane
-                                    tab={
-                                        <span>
-                                            <CameraOutlined /> Hình ảnh hoàn thành
-                                        </span>
-                                    }
-                                    key="photos"
-                                >
-                                    {vaGroup.vehicleAssignment.photoCompletions && vaGroup.vehicleAssignment.photoCompletions.length > 0 ? (
-                                        <div className="p-2">
-                                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                                {vaGroup.vehicleAssignment.photoCompletions.map((url: string, idx: number) => (
-                                                    <div key={idx} className="relative group">
-                                                        <img
-                                                            src={url}
-                                                            alt={`Completion photo ${idx + 1}`}
-                                                            className="object-cover rounded w-full h-32"
-                                                        />
-                                                        <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 rounded transition-all" />
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    ) : (
-                                        <Empty description="Không có hình ảnh hoàn thành" />
-                                    )}
-                                </Tabs.TabPane>
-                            </Tabs>
-                        </Card>
-                    </TabPane>
-                ))}
-            </Tabs>
+            <>
+                {/* Gộp thông tin chuyến xe + các tab chi tiết */}
+                <VehicleAssignmentSection
+                    vehicleAssignments={order.vehicleAssignments}
+                    orderDetails={order.orderDetails}
+                    formatDate={formatDate}
+                    getStatusColor={getStatusColor}
+                />
+            </>
         );
     }
 
@@ -530,9 +156,7 @@ const OrderDetailsTab: React.FC<OrderDetailsTabProps> = ({
                                         <tr>
                                             <td className="border border-gray-300 p-2">Trạng thái</td>
                                             <td className="border border-gray-300 p-2">
-                                                <Tag color={getStatusColor(detail.status)}>
-                                                    {detail.status}
-                                                </Tag>
+                                                <OrderDetailStatusCard status={detail.status} />
                                             </td>
                                         </tr>
                                         <tr>
@@ -763,4 +387,13 @@ const OrderDetailsTab: React.FC<OrderDetailsTabProps> = ({
     );
 };
 
-export default OrderDetailsTab; 
+export default React.memo(OrderDetailsTab, (prevProps, nextProps) => {
+    // Return TRUE to SKIP re-render, FALSE to DO re-render
+    if (prevProps.order?.id !== nextProps.order?.id) return false;
+    if (prevProps.order?.status !== nextProps.order?.status) return false;
+    if (prevProps.order?.vehicleAssignments?.length !== nextProps.order?.vehicleAssignments?.length) return false;
+    if (prevProps.activeDetailTab !== nextProps.activeDetailTab) return false;
+    
+    // All checks passed - props are the same, SKIP re-render
+    return true;
+}); 

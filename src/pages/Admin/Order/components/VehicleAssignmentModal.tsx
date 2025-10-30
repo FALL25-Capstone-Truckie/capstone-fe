@@ -7,6 +7,7 @@ import { RoutePlanningStep } from "../../../Admin/VehicleAssignment/components";
 import SealAssignmentStep from "./SealAssignmentStep";
 import type { RouteSegment } from "../../../../models/RoutePoint";
 import type { RouteInfo } from "../../../../models/VehicleAssignment";
+import { sortAndNormalizeRouteSegments } from "../../../../utils/routeUtils";
 
 const { TabPane } = Tabs;
 const { Option } = Select;
@@ -236,9 +237,12 @@ const VehicleAssignmentModal: React.FC<VehicleAssignmentModalProps> = ({
             // Format the request according to the required structure
             const groupAssignments: GroupAssignment[] = [];
 
+            // Sắp xếp và normalize segments trước khi gửi
+            const sortedSegments = sortAndNormalizeRouteSegments(routeInfoData.segments);
+
             // Ensure the route info has all required fields
             const completeRouteInfo: RouteInfo = {
-                segments: routeInfoData.segments.map(segment => ({
+                segments: sortedSegments.map(segment => ({
                     ...segment,
                     // Ensure each segment has tollDetails properly formatted
                     tollDetails: segment.tollDetails?.map(toll => ({

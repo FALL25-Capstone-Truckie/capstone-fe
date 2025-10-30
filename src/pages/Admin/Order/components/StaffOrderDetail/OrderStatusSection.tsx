@@ -9,6 +9,10 @@ interface OrderStatusSectionProps {
     status: string;
     createdAt: string;
     totalPrice: number | null;
+    contract?: {
+        totalValue: number;
+        adjustedValue: number;
+    } | null;
 }
 
 const OrderStatusSection: React.FC<OrderStatusSectionProps> = ({
@@ -16,6 +20,7 @@ const OrderStatusSection: React.FC<OrderStatusSectionProps> = ({
     status,
     createdAt,
     totalPrice,
+    contract,
 }) => {
     const formatDate = (dateString: string) => {
         return dayjs(dateString).format("DD/MM/YYYY HH:mm:ss");
@@ -26,6 +31,16 @@ const OrderStatusSection: React.FC<OrderStatusSectionProps> = ({
             return "0 VND";
         }
         return amount.toLocaleString("vi-VN", { style: "currency", currency: "VND" });
+    };
+
+    // Calculate display price: prioritize contract adjustedValue, then totalValue, then totalPrice
+    const getDisplayPrice = () => {
+        if (contract) {
+            // If contract exists, prioritize adjustedValue, then totalValue
+            return contract.adjustedValue || contract.totalValue;
+        }
+        // Fallback to order totalPrice
+        return totalPrice;
     };
 
     return (
@@ -53,7 +68,7 @@ const OrderStatusSection: React.FC<OrderStatusSectionProps> = ({
                     <div className="text-center px-4 border-l border-gray-200">
                         <p className="text-gray-500 text-sm">Tổng tiền</p>
                         <p className="font-semibold text-lg text-blue-600">
-                            {formatCurrency(totalPrice)}
+                            {formatCurrency(getDisplayPrice())}
                         </p>
                     </div>
                 </div>

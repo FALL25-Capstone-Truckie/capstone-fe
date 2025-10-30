@@ -18,3 +18,4 @@ export * from "./Contract";
 export * from "./Province";
 export * from "./VietMap";
 export * from "./JourneyHistory";
+export * from "./OrderDetailStatus";

@@ -14,6 +14,7 @@ import type { RouteInfo } from "../../../../models/VehicleAssignment";
 import { RoutePlanningStep } from "../../VehicleAssignment/components";
 import SealAssignmentStep from "./SealAssignmentStep";
 import type { RouteSegment } from "../../../../models/RoutePoint";
+import { sortAndNormalizeRouteSegments } from "../../../../utils/routeUtils";
 import { 
     TripSelectionStep, 
     TripProgressHeader, 
@@ -245,15 +246,23 @@ const VehicleAssignmentModal: React.FC<VehicleAssignmentModalProps> = ({
                 return;
             }
 
-            const groupAssignments: GroupAssignment[] = finalAssignments.map(trip => ({
-                orderDetailIds: trip.group.orderDetails.map(d => d.id),
-                vehicleId: trip.vehicleId!,
-                driverId_1: trip.driverId_1!,
-                driverId_2: trip.driverId_2!,
-                description: trip.description || "",
-                routeInfo: trip.routeInfo!,
-                seals: trip.seals || []
-            }));
+            const groupAssignments: GroupAssignment[] = finalAssignments.map(trip => {
+                // Sắp xếp và normalize segments trước khi gửi
+                const sortedRouteInfo = trip.routeInfo ? {
+                    ...trip.routeInfo,
+                    segments: sortAndNormalizeRouteSegments(trip.routeInfo.segments)
+                } : trip.routeInfo;
+
+                return {
+                    orderDetailIds: trip.group.orderDetails.map(d => d.id),
+                    vehicleId: trip.vehicleId!,
+                    driverId_1: trip.driverId_1!,
+                    driverId_2: trip.driverId_2!,
+                    description: trip.description || "",
+                    routeInfo: sortedRouteInfo!,
+                    seals: trip.seals || []
+                };
+            });
 
             await vehicleAssignmentService.createGroupedAssignments({
                 groupAssignments

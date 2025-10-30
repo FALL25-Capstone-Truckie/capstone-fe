@@ -8,8 +8,8 @@ interface ContractAndPaymentTabProps {
     contractName: string;
     effectiveDate: string;
     expirationDate: string;
-    totalValue: string;
-    adjustedValue: string;
+    totalValue: number;
+    adjustedValue: number;
     description: string;
     attachFileUrl: string;
     status: string;

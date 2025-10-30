@@ -8,9 +8,13 @@ const { Title } = Typography;
 
 interface BasicInfoTabProps {
     order: any;
+    contract?: {
+        totalValue: number;
+        adjustedValue: number;
+    } | null;
 }
 
-const BasicInfoTab: React.FC<BasicInfoTabProps> = ({ order }) => {
+const BasicInfoTab: React.FC<BasicInfoTabProps> = ({ order, contract }) => {
     return (
         <div>
             {/* Order Status */}
@@ -19,6 +23,7 @@ const BasicInfoTab: React.FC<BasicInfoTabProps> = ({ order }) => {
                 status={order.status}
                 createdAt={order.createdAt}
                 totalPrice={order.totalPrice}
+                contract={contract}
             />
 
             {/* Order Information */}

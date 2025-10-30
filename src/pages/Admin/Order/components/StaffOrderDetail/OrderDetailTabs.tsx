@@ -1,18 +1,30 @@
 import React, { useState } from "react";
-import { Empty, Tabs, Card, Tag } from "antd";
-import { BoxPlotOutlined, CarOutlined, UserOutlined, PhoneOutlined, TagOutlined } from "@ant-design/icons";
+import { Empty, Tabs } from "antd";
+import { BoxPlotOutlined } from "@ant-design/icons";
 import type { StaffOrderDetailItem } from "../../../../../models/Order";
 import AdditionalNavTabs from "./AdditionalNavTabs";
+import OrderLiveTrackingMap from "./OrderLiveTrackingOnly";
+import VehicleAssignmentSection from "./VehicleAssignmentSection";
+import { OrderStatusEnum } from "../../../../../constants/enums";
 
 // Import missing components that need to be created
 import OrderDetailPackageTab from "./OrderDetailPackageTab";
 
-const { TabPane } = Tabs;
+// STABLE CONSTANTS - prevent re-renders
+const REAL_TIME_TRACKING_STATUSES = [
+    OrderStatusEnum.PICKING_UP,
+    OrderStatusEnum.ON_DELIVERED,
+    OrderStatusEnum.ONGOING_DELIVERED,
+    OrderStatusEnum.DELIVERED,
+    OrderStatusEnum.IN_TROUBLES,
+    OrderStatusEnum.RESOLVED,
+    OrderStatusEnum.COMPENSATION,
+    OrderStatusEnum.SUCCESSFUL,
+    OrderStatusEnum.RETURNING,
+    OrderStatusEnum.RETURNED
+];
 
-interface VehicleAssignmentGroup {
-    vehicleAssignment: any;
-    orderDetails: StaffOrderDetailItem[];
-}
+const { TabPane } = Tabs;
 
 interface OrderDetailTabsProps {
     order: any;
@@ -26,6 +38,27 @@ const OrderDetailTabs: React.FC<OrderDetailTabsProps> = ({
     setVehicleAssignmentModalVisible,
 }) => {
     const [activeDetailTab, setActiveDetailTab] = useState<string>("0");
+    const liveTrackingRef = React.useRef<HTMLDivElement>(null);
+
+    // Memoize shouldShowRealTimeTracking to prevent unnecessary re-renders of OrderLiveTrackingOnly
+    const shouldShowRealTimeTracking = React.useMemo(
+        () => REAL_TIME_TRACKING_STATUSES.includes(order.status as OrderStatusEnum),
+        [order.status]
+    );
+
+    // Auto switch to vehicle assignment tab and scroll when order has live tracking
+    React.useEffect(() => {
+        if (
+            REAL_TIME_TRACKING_STATUSES.includes(order.status as OrderStatusEnum) &&
+            order.vehicleAssignments &&
+            order.vehicleAssignments.length > 0
+        ) {
+            // Delay to ensure component is fully rendered
+            setTimeout(() => {
+                liveTrackingRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 300);
+        }
+    }, [order.status]); // Re-run when order status changes
 
     if (!order.orderDetails || order.orderDetails.length === 0) {
         return <Empty description="Không có thông tin chi tiết vận chuyển" />;
@@ -36,32 +69,6 @@ const OrderDetailTabs: React.FC<OrderDetailTabsProps> = ({
 
     // Nếu có vehicle assignment, hiển thị theo vehicle assignment
     if (hasVehicleAssignment) {
-        const vehicleAssignmentMap = new Map<string, VehicleAssignmentGroup>();
-
-        // Initialize map with vehicle assignments from order level
-        order.vehicleAssignments.forEach((va: any) => {
-            vehicleAssignmentMap.set(va.id, {
-                vehicleAssignment: va,
-                orderDetails: [],
-            });
-        });
-
-        // Group order details by their vehicleAssignmentId
-        order.orderDetails.forEach((detail: StaffOrderDetailItem) => {
-            if (detail.vehicleAssignmentId) {
-                const group = vehicleAssignmentMap.get(detail.vehicleAssignmentId);
-                if (group) {
-                    group.orderDetails.push(detail);
-                }
-            }
-        });
-
-        const vehicleAssignments = Array.from(vehicleAssignmentMap.values());
-
-        if (vehicleAssignments.length === 0) {
-            return <Empty description="Chưa có thông tin phân công xe" />;
-        }
-
         const getStatusColor = (status: string) => {
             switch (status) {
                 case "PENDING":
@@ -83,124 +90,22 @@ const OrderDetailTabs: React.FC<OrderDetailTabsProps> = ({
 
         return (
             <>
-                <Tabs
-                    activeKey={activeDetailTab}
-                    onChange={setActiveDetailTab}
-                    type="card"
-                    className="order-detail-tabs"
-                >
-                    {vehicleAssignments.map((vaGroup, index) => (
-                        <TabPane
-                            tab={
-                                <span>
-                                    <CarOutlined /> Chuyến xe #{index + 1} -{" "}
-                                    {vaGroup.vehicleAssignment.trackingCode || "Chưa có mã"}
-                                </span>
-                            }
-                            key={index.toString()}
-                        >
-                            {/* Thông tin phương tiện */}
-                            <Card
-                                className="shadow-md mb-6 rounded-xl"
-                                size="small"
-                            >
-                                <div className="p-2">
-                                    <div className="mb-4 bg-blue-50 p-4 rounded-lg">
-                                        <div className="flex items-center mb-3">
-                                            <CarOutlined className="text-xl text-blue-500 mr-3" />
-                                            <span className="text-lg font-medium">
-                                                {vaGroup.vehicleAssignment.vehicle?.licensePlateNumber || "Chưa có thông tin"}
-                                            </span>
-                                            <Tag
-                                                className="ml-3"
-                                                color={getStatusColor(vaGroup.vehicleAssignment.status || "")}
-                                            >
-                                                {vaGroup.vehicleAssignment.status}
-                                            </Tag>
-                                        </div>
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                            <div className="flex items-center">
-                                                <TagOutlined className="mr-2 text-gray-500" />
-                                                <span className="font-medium mr-1">Nhà sản xuất:</span>
-                                                <span>
-                                                    {vaGroup.vehicleAssignment.vehicle?.manufacturer || "Chưa có thông tin"}
-                                                </span>
-                                            </div>
-                                            <div className="flex items-center">
-                                                <CarOutlined className="mr-2 text-gray-500" />
-                                                <span className="font-medium mr-1">Mẫu xe:</span>
-                                                <span>
-                                                    {vaGroup.vehicleAssignment.vehicle?.model || "Chưa có thông tin"}
-                                                </span>
-                                            </div>
-                                            <div className="flex items-center">
-                                                <TagOutlined className="mr-2 text-gray-500" />
-                                                <span className="font-medium mr-1">Loại xe:</span>
-                                                <span>
-                                                    {vaGroup.vehicleAssignment.vehicle?.vehicleType || "Chưa có thông tin"}
-                                                </span>
-                                            </div>
-                                        </div>
-                                    </div>
+                {/* Live Tracking Map cho toàn bộ ORDER */}
+                <div ref={liveTrackingRef} key={`map-${order.id}`}>
+                    <OrderLiveTrackingMap
+                        key={`tracking-${order.id}`}
+                        orderId={order.id}
+                        shouldShowRealTimeTracking={shouldShowRealTimeTracking}
+                        vehicleAssignments={order.vehicleAssignments}
+                    />
+                </div>
 
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <div className="bg-green-50 p-4 rounded-lg">
-                                            <div className="flex items-center mb-2">
-                                                <UserOutlined className="text-green-500 mr-2" />
-                                                <span className="font-medium">Tài xế chính</span>
-                                            </div>
-                                            {vaGroup.vehicleAssignment.primaryDriver ? (
-                                                <div className="ml-6">
-                                                    <div className="flex items-center mb-1">
-                                                        <UserOutlined className="mr-2 text-gray-500" />
-                                                        <span>{vaGroup.vehicleAssignment.primaryDriver.fullName}</span>
-                                                    </div>
-                                                    <div className="flex items-center">
-                                                        <PhoneOutlined className="mr-2 text-gray-500" />
-                                                        <span>{vaGroup.vehicleAssignment.primaryDriver.phoneNumber}</span>
-                                                    </div>
-                                                </div>
-                                            ) : (
-                                                <div className="ml-6 text-gray-500">Chưa có thông tin</div>
-                                            )}
-                                        </div>
-
-                                        <div className="bg-blue-50 p-4 rounded-lg">
-                                            <div className="flex items-center mb-2">
-                                                <UserOutlined className="text-blue-500 mr-2" />
-                                                <span className="font-medium">Tài xế phụ</span>
-                                            </div>
-                                            {vaGroup.vehicleAssignment.secondaryDriver ? (
-                                                <div className="ml-6">
-                                                    <div className="flex items-center mb-1">
-                                                        <UserOutlined className="mr-2 text-gray-500" />
-                                                        <span>{vaGroup.vehicleAssignment.secondaryDriver.fullName}</span>
-                                                    </div>
-                                                    <div className="flex items-center">
-                                                        <PhoneOutlined className="mr-2 text-gray-500" />
-                                                        <span>{vaGroup.vehicleAssignment.secondaryDriver.phoneNumber}</span>
-                                                    </div>
-                                                </div>
-                                            ) : (
-                                                <div className="ml-6 text-gray-500">Chưa có thông tin</div>
-                                            )}
-                                        </div>
-                                    </div>
-                                </div>
-                            </Card>
-
-                            {/* Danh sách kiện hàng sẽ được hiển thị ở AdditionalNavTabs */}
-
-                        </TabPane>
-                    ))}
-                </Tabs>
-
-                {/* Hiển thị AdditionalNavTabs */}
-                <AdditionalNavTabs
-                    orderData={{
-                        order: order,
-                    }}
+                {/* Gộp thông tin chuyến xe + các tab chi tiết */}
+                <VehicleAssignmentSection
+                    vehicleAssignments={order.vehicleAssignments}
+                    orderDetails={order.orderDetails}
                     formatDate={formatDate}
+                    getStatusColor={getStatusColor}
                 />
             </>
         );
@@ -246,4 +151,12 @@ const OrderDetailTabs: React.FC<OrderDetailTabsProps> = ({
     );
 };
 
-export default OrderDetailTabs; 
+export default React.memo(OrderDetailTabs, (prevProps, nextProps) => {
+    // Return TRUE to SKIP re-render, FALSE to DO re-render
+    if (prevProps.order?.id !== nextProps.order?.id) return false;
+    if (prevProps.order?.status !== nextProps.order?.status) return false;
+    if (prevProps.order?.vehicleAssignments?.length !== nextProps.order?.vehicleAssignments?.length) return false;
+    
+    // All checks passed - props are the same, SKIP re-render
+    return true;
+}); 

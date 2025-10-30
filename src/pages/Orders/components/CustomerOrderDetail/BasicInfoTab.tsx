@@ -12,6 +12,10 @@ interface BasicInfoTabProps {
     checkingContract: boolean;
     loadingVehicleSuggestions: boolean;
     onFetchVehicleSuggestions: () => void;
+    contract?: {
+        totalValue: number;
+        adjustedValue: number;
+    } | null;
 }
 
 const BasicInfoTab: React.FC<BasicInfoTabProps> = ({
@@ -20,6 +24,7 @@ const BasicInfoTab: React.FC<BasicInfoTabProps> = ({
     checkingContract,
     loadingVehicleSuggestions,
     onFetchVehicleSuggestions,
+    contract,
 }) => {
     return (
         <div>
@@ -33,6 +38,7 @@ const BasicInfoTab: React.FC<BasicInfoTabProps> = ({
                 checkingContract={checkingContract}
                 loadingVehicleSuggestions={loadingVehicleSuggestions}
                 onFetchVehicleSuggestions={onFetchVehicleSuggestions}
+                contract={contract}
             />
 
             {/* Address and Contact Information */}

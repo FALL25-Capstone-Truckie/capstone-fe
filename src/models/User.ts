@@ -101,6 +101,7 @@ export interface LoginResponseData {
 
 export interface RefreshTokenResponseData {
     accessToken: string;
+    refreshToken?: string; // Optional - backend may return new refresh token (token rotation)
 }
 
 export interface RegisterResponseData {

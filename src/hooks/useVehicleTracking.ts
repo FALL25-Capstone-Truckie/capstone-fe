@@ -14,7 +14,7 @@ export interface VehicleLocationMessage {
   vehicleTypeName: string;
   vehicleAssignmentId: string;
   trackingCode: string;
-  assignmentStatus: string;
+  orderDetailStatus: string;
   driver1Name: string | null;
   driver1Phone: string | null;
   driver2Name: string | null;

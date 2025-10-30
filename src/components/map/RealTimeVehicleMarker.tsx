@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import type { VehicleLocationMessage } from '../../hooks/useVehicleTracking';
+import { getOrderDetailStatusLabel, getOrderDetailStatusCardColor } from '../../utils/statusHelpers';
 
 interface RealTimeVehicleMarkerProps {
   vehicle: VehicleLocationMessage;
@@ -8,6 +9,24 @@ interface RealTimeVehicleMarkerProps {
   isSelected?: boolean;
   isHighlighted?: boolean;
 }
+
+// Helper to convert status to inline styles
+const getStatusInlineStyle = (status: string): string => {
+  const cardColor = getOrderDetailStatusCardColor(status);
+  
+  // Map background colors to text colors
+  const textColorMap: Record<string, string> = {
+    '#f3f4f6': '#374151', // gray
+    '#f3e8ff': '#7c3aed', // purple
+    '#dbeafe': '#0369a1', // blue
+    '#dcfce7': '#166534', // green
+    '#fee2e2': '#991b1b', // red
+    '#ffedd5': '#92400e', // orange
+  };
+  
+  const textCol = textColorMap[cardColor.backgroundColor] || '#374151';
+  return `background: ${cardColor.backgroundColor}; color: ${textCol}; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 500;`;
+};
 
 /**
  * Component để hiển thị marker xe real-time trên bản đồ
@@ -85,8 +104,8 @@ const RealTimeVehicleMarker: React.FC<RealTimeVehicleMarkerProps> = ({
         <div style="font-weight: bold; font-size: 14px; margin-bottom: 8px; color: #1890ff; display: flex; align-items: center; gap: 8px;">
           <span style="font-size: 18px;">🚛</span>
           <span>${vehicle.licensePlateNumber}</span>
-          <span style="background: #1890ff; color: white; padding: 2px 8px; border-radius: 4px; font-size: 11px;">
-            ${vehicle.assignmentStatus}
+          <span style="${getStatusInlineStyle(vehicle.orderDetailStatus)}">
+            ${getOrderDetailStatusLabel(vehicle.orderDetailStatus)}
           </span>
         </div>
         
@@ -372,8 +391,8 @@ const RealTimeVehicleMarker: React.FC<RealTimeVehicleMarkerProps> = ({
         <div style="font-weight: bold; font-size: 14px; margin-bottom: 8px; color: #1890ff; display: flex; align-items: center; gap: 8px;">
           <span style="font-size: 18px;">🚛</span>
           <span>${vehicle.licensePlateNumber}</span>
-          <span style="background: #1890ff; color: white; padding: 2px 8px; border-radius: 4px; font-size: 11px;">
-            ${vehicle.assignmentStatus}
+          <span style="${getStatusInlineStyle(vehicle.orderDetailStatus)}">
+            ${getOrderDetailStatusLabel(vehicle.orderDetailStatus)}
           </span>
         </div>
         <div style="border-top: 1px solid #e8e8e8; padding-top: 8px; margin-top: 8px;">

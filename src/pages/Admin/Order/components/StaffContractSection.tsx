@@ -41,8 +41,8 @@ interface StaffContractProps {
     contractName: string;
     effectiveDate: string;
     expirationDate: string;
-    totalValue: string;
-    adjustedValue: string;
+    totalValue: number;
+    adjustedValue: number;
     description: string;
     attachFileUrl: string;
     status: string;
@@ -66,7 +66,7 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
     useState<boolean>(false);
   const [creatingContract, setCreatingContract] = useState<boolean>(false);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState<boolean>(false);
-  const hasAdjustedValue = Boolean(contract?.adjustedValue && contract.adjustedValue !== "0");
+  const hasAdjustedValue = Boolean(contract?.adjustedValue && contract.adjustedValue !== 0);
   const [uploadingContract, setUploadingContract] = useState<boolean>(false);
   const [isEditContentModalOpen, setIsEditContentModalOpen] =
     useState<boolean>(false);

@@ -20,8 +20,8 @@ interface ContractProps {
     contractName: string;
     effectiveDate: string;
     expirationDate: string;
-    totalValue: string;
-    adjustedValue: string;
+    totalValue: number;
+    adjustedValue: number;
     description: string;
     attachFileUrl: string;
     status: string;
@@ -37,7 +37,7 @@ const ContractSection: React.FC<ContractProps> = ({
   depositAmount,
 }) => {
   const messageApi = App.useApp().message;
-  const hasAdjustedValue = Boolean(contract?.adjustedValue && contract.adjustedValue !== "0");
+  const hasAdjustedValue = Boolean(contract?.adjustedValue && contract.adjustedValue !== 0);
   const [signingContract, setSigningContract] = useState<boolean>(false);
   const [payingDeposit, setPayingDeposit] = useState<boolean>(false);
   const [payingFullAmount, setPayingFullAmount] = useState<boolean>(false);
@@ -223,6 +223,22 @@ const ContractSection: React.FC<ContractProps> = ({
     >
       {contract ? (
         <>
+        
+          {contract.status === "PAID" && (
+            <Alert
+              message="Thanh toán hoàn tất"
+              description="Cảm ơn bạn! Đơn hàng của bạn đã được thanh toán đầy đủ. Tài xế sẽ bắt đầu vận chuyển ngay."
+              type="success"
+              showIcon
+              className="mt-4"
+              style={{ 
+                backgroundColor: "#f6ffed",
+                borderColor: "#b7eb8f",
+                borderRadius: "8px",
+                marginBottom: "16px"
+              }}
+            />
+          )}
           {/* Payment Summary */}
           {depositAmount !== undefined && (
             <div className="mb-6">
@@ -443,7 +459,7 @@ const ContractSection: React.FC<ContractProps> = ({
                       className="ml-3"
                       style={{ backgroundColor: "#52c41a" }}
                     >
-                      Thanh Toán Toàn Bộ
+                      Thanh Toán Toàn Bộ {remainingAmount > 0 ? `${formatCurrency(remainingAmount)} VNĐ` : ''}
                     </Button>
                   )}
               </>

@@ -1,4 +1,4 @@
-import type { PlaceDetailResult } from '../models/TrackAsia';
+// TrackAsia has been removed from this project. Use VietMap instead.
 
 // Hàm so sánh tiếng Việt không dấu để cải thiện tìm kiếm
 export const removeVietnameseAccents = (str: string): string => {
@@ -175,7 +175,8 @@ export const fillAddressFromComponents = (components: any[] | undefined, placeDe
 };
 
 // Xử lý kết quả từ TrackAsia Place Detail
-export const processPlaceDetail = (placeDetail: PlaceDetailResult) => {
+// DEPRECATED: TrackAsia is no longer used, use VietMap instead
+export const processPlaceDetail = (placeDetail: any) => {
     if (!placeDetail || !placeDetail.geometry || !placeDetail.geometry.location) {
         console.log('Invalid place detail object:', placeDetail);
         return null;
@@ -186,14 +187,14 @@ export const processPlaceDetail = (placeDetail: PlaceDetailResult) => {
     const location = placeDetail.geometry.location;
 
     // Tìm street_number và route để tạo street
-    const streetNumber = placeDetail.address_components?.find(c => c.types && c.types.includes('street_number'));
-    const route = placeDetail.address_components?.find(c => c.types && c.types.includes('route'));
+    const streetNumber = placeDetail.address_components?.find((c: any) => c.types && c.types.includes('street_number'));
+    const route = placeDetail.address_components?.find((c: any) => c.types && c.types.includes('route'));
 
     // Tìm ward từ administrative_area_level_2
-    const ward = placeDetail.address_components?.find(c => c.types && c.types.includes('administrative_area_level_2'));
+    const ward = placeDetail.address_components?.find((c: any) => c.types && c.types.includes('administrative_area_level_2'));
 
     // Tìm province từ administrative_area_level_1
-    const province = placeDetail.address_components?.find(c => c.types && c.types.includes('administrative_area_level_1'));
+    const province = placeDetail.address_components?.find((c: any) => c.types && c.types.includes('administrative_area_level_1'));
 
     // Xử lý street
     let street = '';

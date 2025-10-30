@@ -135,7 +135,7 @@ export default function CreateOrder() {
         const orderDetailsList = currentValues.orderDetailsList || [];
         if (orderDetailsList.length === 0) {
           message.error(
-            "Vui lòng thêm ít nhất một lô hàng trước khi tiếp tục!"
+            "Vui lòng thêm ít nhất một kiện hàng trước khi tiếp tục!"
           );
           return;
         }
@@ -185,7 +185,7 @@ export default function CreateOrder() {
         : [];
 
       if (orderDetailsList.length === 0) {
-        throw new Error("Vui lòng thêm ít nhất một lô hàng");
+        throw new Error("Vui lòng thêm ít nhất một kiện hàng");
       }
 
       // Kiểm tra các trường bắt buộc trong orderDetailsList
@@ -199,7 +199,7 @@ export default function CreateOrder() {
 
       if (invalidDetails.length > 0) {
         throw new Error(
-          "Một số lô hàng thiếu thông tin. Vui lòng kiểm tra lại trọng lượng, kích thước, mô tả và số lượng."
+          "Một số kiện hàng thiếu thông tin. Vui lòng kiểm tra lại trọng lượng, kích thước, mô tả và số lượng."
         );
       }
 
@@ -347,7 +347,7 @@ export default function CreateOrder() {
         return (
           <OrderDetailFormList
             name="orderDetailsList"
-            label="Danh sách lô hàng"
+            label="Danh sách kiện hàng"
             orderSizes={orderSizes}
             units={units}
           />
@@ -406,8 +406,8 @@ export default function CreateOrder() {
           <div className="bg-gradient-to-r from-blue-50 to-indigo-50 px-8 py-6">
             <Steps current={currentStep} className="mb-0">
               <Step
-                title="Thông tin lô hàng"
-                description="Nhập thông tin lô hàng"
+                title="Thông tin kiện hàng"
+                description="Nhập thông tin kiện hàng"
               />
               <Step
                 title="Thông tin vận chuyển"

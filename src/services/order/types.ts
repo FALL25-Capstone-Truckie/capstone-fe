@@ -12,16 +12,30 @@ import type {
   RecentReceiverSuggestion,
   StaffOrderDetail,
   StaffOrderDetailItem,
+  UnitsListResponse,
+  ReceiverDetailsResponse,
+  VehicleSuggestion,
+  PackedDetail,
+  AssignedDetail,
+  VehicleSuggestionsResponse,
+  BillOfLadingPreviewResponse,
+  BothOptimalAndRealisticVehicleSuggestionsResponse,
+  BothOptimalAndRealisticVehicle,
 } from "@/models/Order";
 import type { ApiResponse, PaginatedResponse } from "../api/types";
 
-// Response type interfaces
-export interface UnitsListResponse {
-  success: boolean;
-  message: string;
-  statusCode: number;
-  data: string[];
-}
+// Re-export types from models
+export type {
+  UnitsListResponse,
+  ReceiverDetailsResponse,
+  VehicleSuggestion,
+  PackedDetail,
+  AssignedDetail,
+  VehicleSuggestionsResponse,
+  BillOfLadingPreviewResponse,
+  BothOptimalAndRealisticVehicleSuggestionsResponse,
+  BothOptimalAndRealisticVehicle,
+};
 
 export interface CustomerOrdersResponse {
   success: boolean;
@@ -48,73 +62,7 @@ export interface RecentReceiversResponse {
   data: RecentReceiverSuggestion[];
 }
 
-export interface ReceiverDetailsResponse {
-  success: boolean;
-  message: string;
-  statusCode: number;
-  data: {
-    receiverName: string;
-    receiverPhone: string;
-    receiverIdentity: string;
-    pickupAddressId: string;
-    deliveryAddressId: string;
-    pickupAddress: {
-      id: string;
-      province: string;
-      ward: string;
-      street: string;
-      addressType: boolean;
-      latitude: number;
-      longitude: number;
-      customerId: string;
-    };
-    deliveryAddress: {
-      id: string;
-      province: string;
-      ward: string;
-      street: string;
-      addressType: boolean;
-      latitude: number;
-      longitude: number;
-      customerId: string;
-    };
-  };
-}
-
-export interface VehicleSuggestion {
-  vehicleIndex: number;
-  vehicleRuleId: string;
-  vehicleRuleName: string;
-  currentLoad: number;
-  currentLoadUnit: string;
-  assignedDetails: AssignedDetail[];
-  packedDetailDetails: PackedDetail[];
-}
-
-export interface PackedDetail {
-  orderDetailId: string;
-  x: number;
-  y: number;
-  z: number;
-  length: number;
-  width: number;
-  height: number;
-  orientation: string;
-}
-
-export interface AssignedDetail {
-  id: string;
-  weight: number;
-  weightBaseUnit: number;
-  unit: string;
-  trackingCode: string;
-}
-export interface VehicleSuggestionsResponse {
-  success: boolean;
-  message: string;
-  statusCode: number;
-  data: VehicleSuggestion[];
-}
+// Types imported from models - no need to redefine
 
 export interface StaffOrderDetailResponse {
   success: boolean;
@@ -134,31 +82,5 @@ export type PaginatedOrdersResponse = ApiResponse<PaginatedResponse<Order>>;
 export type OrderTrackingApiResponse = ApiResponse<OrderTrackingResponse>;
 export type VehicleAssignmentResponse = ApiResponse<OrderDetail[]>;
 
-/**
- * Response type for bill of lading preview API
- */
-export interface BillOfLadingPreviewResponse {
-  success: boolean;
-  message: string;
-  statusCode: number;
-  data: {
-    fileName: string;
-    base64Content: string;
-    mimeType: string;
-  }[];
-}
-
-/**
- * Response for relistice suggested vehicles
- */
-export interface BothOptimalAndRealisticVehicleSuggestionsResponse {
-  success: boolean;
-  message: string;
-  statusCode: number;
-  data: BothOptimalAndRealisticVehicle[];
-}
-
-export interface BothOptimalAndRealisticVehicle {
-  optimal: VehicleSuggestion[];
-  realistic: VehicleSuggestion[];
-}
+// BillOfLadingPreviewResponse, BothOptimalAndRealisticVehicleSuggestionsResponse, 
+// and BothOptimalAndRealisticVehicle are imported from models

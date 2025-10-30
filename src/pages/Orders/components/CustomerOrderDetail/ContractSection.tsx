@@ -18,6 +18,9 @@ import {
   CreditCardOutlined,
   DollarOutlined,
   LoadingOutlined,
+  CalendarOutlined,
+  UserOutlined,
+  FileProtectOutlined,
 } from "@ant-design/icons";
 import orderService from "../../../../services/order/orderService";
 import { ContractStatusTag } from "../../../../components/common/tags";
@@ -58,8 +61,8 @@ interface ContractProps {
     contractName: string;
     effectiveDate: string;
     expirationDate: string;
-    totalValue: string;
-    adjustedValue: string;
+    totalValue: number;
+    adjustedValue: number;
     description: string;
     attachFileUrl: string;
     status: string;
@@ -79,12 +82,77 @@ const ContractSection: React.FC<ContractProps> = ({
   loadingPriceDetails = false,
 }) => {
   const messageApi = App.useApp().message;
-  const hasAdjustedValue = Boolean(
-    contract?.adjustedValue && contract.adjustedValue !== "0"
-  );
+  const hasAdjustedValue = Boolean(contract?.adjustedValue && contract.adjustedValue !== 0);
   const [signingContract, setSigningContract] = useState<boolean>(false);
   const [payingDeposit, setPayingDeposit] = useState<boolean>(false);
   const [payingFullAmount, setPayingFullAmount] = useState<boolean>(false);
+
+  const parseCurrencyValue = (value?: string | number | null) => {
+    if (value === undefined || value === null) {
+      return 0;
+    }
+
+    if (typeof value === "number") {
+      return value;
+    }
+
+    const numericValue = parseFloat(value.replace(/[^0-9.-]+/g, ""));
+    return Number.isNaN(numericValue) ? 0 : numericValue;
+  };
+
+  const formatCurrency = (amount: number) => amount.toLocaleString("vi-VN");
+
+  const totalValue = parseCurrencyValue(contract?.totalValue);
+  const adjustedValue = parseCurrencyValue(contract?.adjustedValue);
+  const depositAmountValue = depositAmount ?? 0;
+  const baseContractValue = hasAdjustedValue ? adjustedValue : totalValue;
+  const remainingAmount = Math.max(baseContractValue - depositAmountValue, 0);
+
+  const paymentStats = [
+    {
+      key: "totalValue",
+      title: "Tổng giá trị đơn hàng",
+      value: formatCurrency(totalValue),
+      prefix: <DollarOutlined />,
+      valueStyle: { color: "#1890ff" },
+      suffix: undefined,
+    },
+    hasAdjustedValue
+      ? {
+          key: "adjustedValue",
+          title: "Giá trị điều chỉnh",
+          value: formatCurrency(adjustedValue),
+          prefix: <DollarOutlined />,
+          valueStyle: { color: "#722ed1" },
+          suffix: undefined,
+        }
+      : null,
+    {
+      key: "depositAmount",
+      title: "Số tiền cọc cần thanh toán",
+      value: formatCurrency(depositAmountValue),
+      prefix: <CreditCardOutlined />,
+      valueStyle: { color: "#52c41a", fontWeight: "bold" },
+      suffix: "VNĐ",
+    },
+    {
+      key: "remainingAmount",
+      title: "Số tiền còn lại",
+      value: formatCurrency(remainingAmount),
+      prefix: <DollarOutlined />,
+      valueStyle: { color: "#faad14" },
+      suffix: "VNĐ",
+    },
+  ].filter(Boolean) as {
+    key: string;
+    title: string;
+    value: string;
+    prefix: React.ReactNode;
+    valueStyle?: React.CSSProperties;
+    suffix?: string;
+  }[];
+
+  const gridColsClass = paymentStats.length >= 4 ? "lg:grid-cols-4" : "lg:grid-cols-3";
 
   const handleSignContract = async () => {
     if (!contract?.id) {
@@ -200,116 +268,156 @@ const ContractSection: React.FC<ContractProps> = ({
     >
       {contract ? (
         <>
+        
+          {contract.status === "PAID" && (
+            <Alert
+              message="Thanh toán hoàn tất"
+              description="Cảm ơn bạn! Đơn hàng của bạn đã được thanh toán đầy đủ. Tài xế sẽ bắt đầu vận chuyển ngay."
+              type="success"
+              showIcon
+              className="mt-4"
+              style={{ 
+                backgroundColor: "#f6ffed",
+                borderColor: "#b7eb8f",
+                borderRadius: "8px",
+                marginBottom: "16px"
+              }}
+            />
+          )}
           {/* Payment Summary */}
-          {depositAmount && (
+          {depositAmount !== undefined && (
             <div className="mb-6">
-              <Row gutter={[16, 16]}>
-                {!hasAdjustedValue && (
-                  <Col xs={24} sm={12} md={6}>
-                    <Statistic
-                      title="Tổng giá trị"
-                      value={parseContractValue(
-                        contract.totalValue
-                      ).toLocaleString("vi-VN")}
-                      suffix="VNĐ"
-                      prefix={<DollarOutlined />}
-                      valueStyle={{ fontSize: "18px", fontWeight: "600" }}
-                    />
-                  </Col>
-                )}
-
-                {hasAdjustedValue && (
-                  <>
-                    <Col xs={24} sm={12} md={6}>
-                      <div className="text-sm text-gray-600">Giá niêm yết</div>
-                      <div className="text-base text-gray-500 line-through">
-                        {parseContractValue(contract.totalValue).toLocaleString(
-                          "vi-VN"
-                        )}{" "}
-                        VNĐ
+              <Alert
+                message="Thông tin thanh toán"
+                description={
+                  <div
+                    className={`mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2 ${gridColsClass}`}
+                  >
+                    {paymentStats.map((stat) => (
+                      <div
+                        key={stat.key}
+                        className="rounded-lg bg-white/70 p-4 shadow-sm"
+                      >
+                        <Statistic
+                          title={stat.title}
+                          value={stat.value}
+                          prefix={stat.prefix}
+                          suffix={stat.suffix}
+                          valueStyle={stat.valueStyle}
+                        />
                       </div>
-                    </Col>
-                    <Col xs={24} sm={12} md={6}>
-                      <div className="text-sm text-gray-600">Giá thực tế</div>
-                      <div className="text-base font-semibold">
-                        {parseContractValue(
-                          contract.adjustedValue
-                        ).toLocaleString("vi-VN")}{" "}
-                        VNĐ
-                      </div>
-                      <div className="text-xs text-gray-500 mt-1">
-                        Giá ưu đãi áp dụng cho hợp đồng này
-                      </div>
-                    </Col>
-                  </>
-                )}
-
-                <Col xs={24} sm={12} md={6}>
-                  <Statistic
-                    title="Đặt cọc"
-                    value={depositAmount.toLocaleString("vi-VN")}
-                    suffix="VNĐ"
-                    prefix={<CreditCardOutlined />}
-                    valueStyle={{ fontSize: "18px", fontWeight: "600" }}
-                  />
-                </Col>
-
-                <Col xs={24} sm={12} md={6}>
-                  <Statistic
-                    title="Còn phải thanh toán"
-                    value={(() => {
-                      const baseValue = hasAdjustedValue
-                        ? parseContractValue(contract.adjustedValue)
-                        : parseContractValue(contract.totalValue);
-                      return (baseValue - depositAmount).toLocaleString(
-                        "vi-VN"
-                      );
-                    })()}
-                    suffix="VNĐ"
-                    prefix={<DollarOutlined />}
-                    valueStyle={{ fontSize: "18px", fontWeight: "600" }}
-                  />
-                </Col>
-              </Row>
+                    ))}
+                  </div>
+                }
+                type="info"
+                icon={<InfoCircleOutlined />}
+                showIcon
+              />
             </div>
           )}
 
-          <Divider orientation="left">Chi tiết hợp đồng</Divider>
+          <div className="mb-6 flex items-center gap-3">
+            <FileProtectOutlined className="text-2xl text-blue-500" />
+            <h3 className="text-lg font-semibold text-gray-800">Chi tiết hợp đồng</h3>
+          </div>
 
-          <Descriptions bordered column={{ xs: 1, sm: 2, md: 3 }} size="small">
-            <Descriptions.Item label="Tên hợp đồng">
-              {contract.contractName || "Chưa có thông tin"}
-            </Descriptions.Item>
-            <Descriptions.Item label="Ngày hiệu lực">
-              {contract.effectiveDate || "Chưa có thông tin"}
-            </Descriptions.Item>
-            <Descriptions.Item label="Ngày hết hạn">
-              {contract.expirationDate || "Chưa có thông tin"}
-            </Descriptions.Item>
-            <Descriptions.Item label="Giá trị hợp đồng">
-              {contract.totalValue || "Chưa có thông tin"}
-            </Descriptions.Item>
+          <div className="grid grid-cols-1 gap-4 rounded-lg bg-gradient-to-br from-gray-50 to-gray-100 p-6 sm:grid-cols-2 lg:grid-cols-3">
+            {/* Tên hợp đồng */}
+            <div className="rounded-lg bg-white p-4 shadow-sm hover:shadow-md transition-shadow">
+              <div className="mb-2 flex items-center gap-2">
+                <FileTextOutlined className="text-blue-500" />
+                <label className="text-sm font-medium text-gray-600">Tên hợp đồng</label>
+              </div>
+              <p className="text-base font-semibold text-gray-900">
+                {contract.contractName || <span className="text-gray-400">Chưa có thông tin</span>}
+              </p>
+            </div>
+
+            {/* Ngày hiệu lực */}
+            <div className="rounded-lg bg-white p-4 shadow-sm hover:shadow-md transition-shadow">
+              <div className="mb-2 flex items-center gap-2">
+                <CalendarOutlined className="text-green-500" />
+                <label className="text-sm font-medium text-gray-600">Ngày hiệu lực</label>
+              </div>
+              <p className="text-base font-semibold text-gray-900">
+                {contract.effectiveDate || <span className="text-gray-400">Chưa có thông tin</span>}
+              </p>
+            </div>
+
+            {/* Ngày hết hạn */}
+            <div className="rounded-lg bg-white p-4 shadow-sm hover:shadow-md transition-shadow">
+              <div className="mb-2 flex items-center gap-2">
+                <CalendarOutlined className="text-red-500" />
+                <label className="text-sm font-medium text-gray-600">Ngày hết hạn</label>
+              </div>
+              <p className="text-base font-semibold text-gray-900">
+                {contract.expirationDate || <span className="text-gray-400">Chưa có thông tin</span>}
+              </p>
+            </div>
+
+            {/* Giá trị hợp đồng */}
+            <div className="rounded-lg bg-white p-4 shadow-sm hover:shadow-md transition-shadow">
+              <div className="mb-2 flex items-center gap-2">
+                <DollarOutlined className="text-blue-600" />
+                <label className="text-sm font-medium text-gray-600">Giá trị hợp đồng</label>
+              </div>
+              <p className="text-base font-semibold text-blue-600">
+                {contract.totalValue || <span className="text-gray-400">Chưa có thông tin</span>}
+              </p>
+            </div>
+
+            {/* Giá trị điều chỉnh */}
             {hasAdjustedValue && (
-              <Descriptions.Item label="Giá trị điều chỉnh">
-                {contract.adjustedValue}
-              </Descriptions.Item>
+              <div className="rounded-lg bg-white p-4 shadow-sm hover:shadow-md transition-shadow">
+                <div className="mb-2 flex items-center gap-2">
+                  <DollarOutlined className="text-purple-600" />
+                  <label className="text-sm font-medium text-gray-600">Giá trị điều chỉnh</label>
+                </div>
+                <p className="text-base font-semibold text-purple-600">
+                  {contract.adjustedValue}
+                </p>
+              </div>
             )}
-            <Descriptions.Item label="Trạng thái">
-              {contract.status ? (
-                <ContractStatusTag
-                  status={contract.status as ContractStatusEnum}
-                />
-              ) : (
-                "Chưa có thông tin"
-              )}
-            </Descriptions.Item>
-            <Descriptions.Item label="Nhân viên phụ trách">
-              {contract.staffName || "Chưa có thông tin"}
-            </Descriptions.Item>
-            <Descriptions.Item label="Mô tả" span={3}>
-              {contract.description || "Không có mô tả"}
-            </Descriptions.Item>
-          </Descriptions>
+
+            {/* Trạng thái */}
+            <div className="rounded-lg bg-white p-4 shadow-sm hover:shadow-md transition-shadow">
+              <div className="mb-2 flex items-center gap-2">
+                <InfoCircleOutlined className="text-orange-500" />
+                <label className="text-sm font-medium text-gray-600">Trạng thái</label>
+              </div>
+              <div>
+                {contract.status ? (
+                  <ContractStatusTag status={contract.status as ContractStatusEnum} />
+                ) : (
+                  <span className="text-gray-400">Chưa có thông tin</span>
+                )}
+              </div>
+            </div>
+
+            {/* Nhân viên phụ trách */}
+            <div className="rounded-lg bg-white p-4 shadow-sm hover:shadow-md transition-shadow">
+              <div className="mb-2 flex items-center gap-2">
+                <UserOutlined className="text-cyan-500" />
+                <label className="text-sm font-medium text-gray-600">Nhân viên phụ trách</label>
+              </div>
+              <p className="text-base font-semibold text-gray-900">
+                {contract.staffName || <span className="text-gray-400">Chưa có thông tin</span>}
+              </p>
+            </div>
+          </div>
+
+          {/* Mô tả - Full width */}
+          {contract.description && contract.description !== "N/A" && (
+            <div className="mt-6 rounded-lg bg-blue-50 p-4">
+              <div className="mb-3 flex items-center gap-2">
+                <InfoCircleOutlined className="text-blue-500" />
+                <label className="text-sm font-medium text-gray-700">Mô tả</label>
+              </div>
+              <p className="whitespace-pre-wrap text-gray-800">
+                {contract.description}
+              </p>
+            </div>
+          )}
 
           {/* Chi tiết giá cả và thanh toán - Hiển thị khi hợp đồng đã ký */}
           {(contract.status === "CONTRACT_SIGNED" ||
@@ -627,7 +735,7 @@ const ContractSection: React.FC<ContractProps> = ({
                       className="ml-3"
                       style={{ backgroundColor: "#52c41a" }}
                     >
-                      Thanh Toán Toàn Bộ
+                      Thanh Toán Toàn Bộ {remainingAmount > 0 ? `${formatCurrency(remainingAmount)} VNĐ` : ''}
                     </Button>
                   )}
               </>

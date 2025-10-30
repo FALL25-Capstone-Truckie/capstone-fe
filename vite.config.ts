@@ -23,6 +23,17 @@ export default defineConfig(({ mode }) => {
       alias: {
         '@': path.resolve(__dirname, './src'),
       },
+    },
+    server: {
+      proxy: {
+        // Proxy Vietmap tiles to avoid CORS issues in development
+        '/vietmap-tiles': {
+          target: 'https://maps.vietmap.vn',
+          changeOrigin: true,
+          rewrite: (path) => path.replace(/^\/vietmap-tiles/, '/maps/tiles'),
+          secure: false,
+        }
+      }
     }
   }
 })

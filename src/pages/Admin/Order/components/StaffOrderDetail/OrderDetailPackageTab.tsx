@@ -1,5 +1,5 @@
 import React from "react";
-import { Card, Row, Col, Typography, Tag, Divider, Button } from "antd";
+import { Card, Row, Col, Typography, Divider, Button } from "antd";
 import {
     InfoCircleOutlined,
     FileTextOutlined,
@@ -10,6 +10,7 @@ import {
     CarOutlined,
 } from "@ant-design/icons";
 import VehicleInfoSection from "./VehicleInfoSection";
+import OrderDetailStatusCard from "../../../../../components/common/OrderDetailStatusCard";
 import { OrderStatusEnum } from "../../../../../constants/enums";
 import type { StaffOrderDetailItem } from "../../../../../models/Order";
 
@@ -67,23 +68,7 @@ const OrderDetailPackageTab: React.FC<OrderDetailPackageTabProps> = ({
                                 <Text strong>Trạng thái:</Text>
                             </div>
                             <div className="ml-6">
-                                <Tag
-                                    color={
-                                        detail.status === "PENDING"
-                                            ? "orange"
-                                            : detail.status === "PROCESSING"
-                                                ? "blue"
-                                                : detail.status === "DELIVERED" ||
-                                                    detail.status === "SUCCESSFUL"
-                                                    ? "green"
-                                                    : detail.status === "CANCELLED" ||
-                                                        detail.status === "IN_TROUBLES"
-                                                        ? "red"
-                                                        : "default"
-                                    }
-                                >
-                                    {detail.status}
-                                </Tag>
+                                <OrderDetailStatusCard status={detail.status} />
                             </div>
                         </div>
                         <div className="mb-3">
@@ -204,44 +189,6 @@ const OrderDetailPackageTab: React.FC<OrderDetailPackageTabProps> = ({
                 </Col>
             </Row>
 
-            {/* Vehicle Assignment Information in a separate row */}
-            <Row>
-                <Col xs={24}>
-                    {detail.vehicleAssignment ? (
-                        <Card
-                            className="mb-4"
-                            size="small"
-                        >
-                            <VehicleInfoSection
-                                vehicleAssignment={detail.vehicleAssignment}
-                            />
-                        </Card>
-                    ) : (
-                        <Card
-                            className="mb-4"
-                            size="small"
-                        >
-                            <div className="text-center py-4">
-                                <p className="text-gray-500 mb-4">
-                                    Chưa có thông tin phân công xe
-                                </p>
-                                {order.status === OrderStatusEnum.ON_PLANNING && (
-                                    <Button
-                                        type="primary"
-                                        icon={<CarOutlined />}
-                                        onClick={() =>
-                                            setVehicleAssignmentModalVisible(true)
-                                        }
-                                        className="bg-blue-500 hover:bg-blue-600"
-                                    >
-                                        Phân công xe
-                                    </Button>
-                                )}
-                            </div>
-                        </Card>
-                    )}
-                </Col>
-            </Row>
         </Card>
     );
 };

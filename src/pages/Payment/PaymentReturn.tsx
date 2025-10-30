@@ -8,7 +8,7 @@ import {
   HomeOutlined,
   FileTextOutlined,
 } from "@ant-design/icons";
-import httpClient from "../../services/api/httpClient";
+import transactionService from "../../services/transaction";
 
 const PaymentReturn: React.FC = () => {
   const [searchParams] = useSearchParams();
@@ -31,17 +31,15 @@ const PaymentReturn: React.FC = () => {
       try {
         console.log("Calling PayOS webhook with:", { orderCode, status });
 
-        const response = await httpClient.post("/transactions/pay-os/webhook", {
-          data: {
-            orderCode: Number(orderCode),
-            status: status,
-          },
+        const response = await transactionService.sendPayOsWebhook({
+          orderCode: Number(orderCode),
+          status: status,
         });
 
-        console.log("Webhook response:", response.data);
+        console.log("Webhook response:", response);
         setWebhookCalled(true);
 
-        if (response.data?.success) {
+        if (response?.success) {
           console.log("Webhook called SUCCESSFUL");
         }
       } catch (error) {

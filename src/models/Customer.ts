@@ -1,4 +1,4 @@
-import type { User, UserResponse } from './User';
+import type { UserResponse } from './User';
 
 export interface Customer {
     id: string;
@@ -25,4 +25,7 @@ export interface CustomerUpdateDto {
     representativePhone?: string;
     businessLicenseNumber?: string;
     businessAddress?: string;
-} 
+}
+
+// Alias for consistency with service layer
+export type CustomerUpdateRequest = CustomerUpdateDto;

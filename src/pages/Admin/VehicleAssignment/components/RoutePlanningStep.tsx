@@ -1393,7 +1393,7 @@ const RoutePlanningStep: React.FC<RoutePlanningStepProps> = ({
                     disabled={segments.length === 0}
                     loading={isSubmitting}
                 >
-                    {isSubmitting ? 'Đang xử lý...' : 'Hoàn thành'}
+                    {isSubmitting ? 'Đang xử lý...' : 'Tiếp theo'}
                 </Button>
             </div>
         </div>

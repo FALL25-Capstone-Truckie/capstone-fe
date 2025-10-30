@@ -1,12 +1,3 @@
-import type { UserModel, UserResponse, UsersResponse, RegisterEmployeeRequest } from '../../models/User';
+import type { UserModel, UserResponse, UsersResponse, RegisterEmployeeRequest, UserUpdateRequest } from '../../models/User';
 
-export interface UserUpdateRequest {
-    fullName?: string;
-    email?: string;
-    phoneNumber?: string;
-    gender?: boolean;
-    dateOfBirth?: string;
-    imageUrl?: string;
-}
-
-export type { UserModel, UserResponse, UsersResponse, RegisterEmployeeRequest }; 
+export type { UserModel, UserResponse, UsersResponse, RegisterEmployeeRequest, UserUpdateRequest };

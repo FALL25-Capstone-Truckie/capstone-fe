@@ -14,7 +14,7 @@ interface OrderDetailFormListProps {
 
 const OrderDetailFormList: React.FC<OrderDetailFormListProps> = ({
   name = "orderDetailsList",
-  label = "Danh sách lô hàng",
+  label = "Danh sách kiện hàng",
   orderSizes,
   units = [], // Empty default array, will be populated from API
 }) => {
@@ -198,7 +198,7 @@ const OrderDetailFormList: React.FC<OrderDetailFormListProps> = ({
                 icon={<PlusOutlined />}
                 size="large"
               >
-                Thêm lô hàng mới
+                Thêm kiện hàng mới
               </Button>
             </Form.Item>
           </>

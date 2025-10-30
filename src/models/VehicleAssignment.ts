@@ -85,10 +85,9 @@ export interface UpdateVehicleAssignmentRequest {
 export interface OrderDetailInfo {
     id: string;
     trackingCode: string;
-    originAddress: string;
-    destinationAddress: string;
-    totalWeight: number;
-    totalVolume: number;
+    weightBaseUnit: number | null;
+    unit: string | null;
+    description: string | null;
 }
 
 export interface OrderDetailGroup {

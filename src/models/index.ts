@@ -16,6 +16,6 @@ export * from "./Vehicle";
 export * from "./VehicleRule";
 export * from "./Contract";
 export * from "./Province";
-export * from "./TrackAsia";
 export * from "./VietMap";
 export * from "./JourneyHistory";
+export * from "./OrderDetailStatus";

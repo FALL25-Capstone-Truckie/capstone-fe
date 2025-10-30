@@ -9,20 +9,16 @@ import type {
 } from "../../models/VehicleAssignment";
 import type { ApiResponse } from "../api/types";
 
-export interface VehicleAssignmentResponse extends ApiResponse<VehicleAssignment[]> { }
+// Simplified response types using ApiResponse<T> directly
+export type VehicleAssignmentResponse = ApiResponse<VehicleAssignment[]>;
+export type VehicleAssignmentDetailResponse = ApiResponse<VehicleAssignment>;
+export type CreateVehicleAssignmentResponse = ApiResponse<VehicleAssignment>;
+export type UpdateVehicleAssignmentResponse = ApiResponse<VehicleAssignment>;
+export type DeleteVehicleAssignmentResponse = ApiResponse<void>;
+export type VehicleAssignmentSuggestionResponse = ApiResponse<VehicleAssignmentSuggestionData>;
+export type CreateVehicleAssignmentForDetailsResponse = ApiResponse<any>;
 
-export interface VehicleAssignmentDetailResponse extends ApiResponse<VehicleAssignment> { }
-
-export interface CreateVehicleAssignmentResponse extends ApiResponse<VehicleAssignment> { }
-
-export interface UpdateVehicleAssignmentResponse extends ApiResponse<VehicleAssignment> { }
-
-export interface DeleteVehicleAssignmentResponse extends ApiResponse<void> { }
-
-export interface VehicleAssignmentSuggestionResponse extends ApiResponse<VehicleAssignmentSuggestionData> { }
-
-export interface CreateVehicleAssignmentForDetailsResponse extends ApiResponse<any> { }
-
+// Re-export model types
 export type {
     VehicleAssignment,
     CreateVehicleAssignmentRequest,
@@ -31,4 +27,4 @@ export type {
     CreateVehicleAssignmentForDetailsRequest,
     GroupedVehicleAssignmentSuggestionData,
     CreateGroupedVehicleAssignmentsRequest
-}; 
+};

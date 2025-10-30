@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { App, Button, Typography, Skeleton, Empty, Tabs, Space } from "antd";
 import {
@@ -8,10 +8,11 @@ import {
   CreditCardOutlined,
   PrinterOutlined,
   UserAddOutlined,
+  EnvironmentOutlined,
 } from "@ant-design/icons";
 import orderService from "../../../../services/order/orderService";
 import type { StaffOrderDetailResponse } from "../../../../services/order/types";
-import VehicleAssignmentModal from "./VehicleAssignmentModal";
+import VehicleAssignmentModal from "./VehicleAssignmentModalContainer";
 import { OrderStatusEnum } from "../../../../constants/enums";
 import dayjs from "dayjs";
 import timezone from "dayjs/plugin/timezone";
@@ -21,6 +22,7 @@ import {
   ContractAndPaymentTab,
 } from "./StaffOrderDetail/index";
 import BillOfLadingPreviewModal from "./StaffOrderDetail/BillOfLadingPreviewModal";
+import OrderLiveTrackingOnly from "./StaffOrderDetail/OrderLiveTrackingOnly";
 import { useOrderStatusTracking } from "../../../../hooks/useOrderStatusTracking";
 import { playImportantNotificationSound } from "../../../../utils/notificationSound";
 
@@ -57,14 +59,36 @@ const StaffOrderDetail: React.FC = () => {
     
     // Check if this status change is for the current order
     if (id && statusChange.orderId === id) {
-      console.log('[StaffOrderDetail] ✅ Order ID matched! Scheduling refetch...');
+      console.log('[StaffOrderDetail] ✅ Order ID matched!');
       
-      // Debounce refetch to avoid spike load and prevent mobile WebSocket disruption
-      // Wait 500ms to let WebSocket broadcasts settle
-      setTimeout(() => {
-        console.log('[StaffOrderDetail] 🔄 Refetching order details...');
-        fetchOrderDetails(id);
-      }, 500);
+      // CRITICAL: Only refetch for important status transitions
+      // For other status changes, just update the status locally to avoid disrupting real-time tracking
+      const shouldRefetch = 
+        (statusChange.newStatus === 'PICKING_UP' && statusChange.previousStatus === 'FULLY_PAID') ||
+        statusChange.newStatus === 'DELIVERED' ||
+        statusChange.newStatus === 'SUCCESSFUL' ||
+        statusChange.newStatus === 'IN_TROUBLES' ||
+        statusChange.newStatus === 'ASSIGNED_TO_DRIVER';
+      
+      if (shouldRefetch) {
+        console.log('[StaffOrderDetail] 🔄 Important status change - refetching order details...');
+        // Debounce refetch to avoid spike load and prevent mobile WebSocket disruption
+        setTimeout(() => {
+          fetchOrderDetails(id);
+        }, 500);
+      } else {
+        console.log('[StaffOrderDetail] ℹ️ Minor status change - updating status locally only');
+        // Just update the status locally without full refetch
+        if (orderData) {
+          setOrderData({
+            ...orderData,
+            order: {
+              ...orderData.order,
+              status: statusChange.newStatus
+            }
+          });
+        }
+      }
       
       // Show notification for important status changes
       if (statusChange.newStatus === 'PICKING_UP' && statusChange.previousStatus === 'FULLY_PAID') {
@@ -73,18 +97,30 @@ const StaffOrderDetail: React.FC = () => {
           duration: 5,
         });
         playImportantNotificationSound();
+        // Auto-switch to live tracking tab for delivery-related statuses
+        setTimeout(() => {
+          setActiveMainTab('liveTracking');
+        }, 1000);
       } else if (statusChange.newStatus === 'DELIVERED') {
         messageApi.success({
           content: `✅ ${statusChange.message || 'Đơn hàng đã được giao thành công!'}`,
           duration: 5,
         });
         playImportantNotificationSound();
+        // Auto-switch to live tracking tab
+        setTimeout(() => {
+          setActiveMainTab('liveTracking');
+        }, 1000);
       } else if (statusChange.newStatus === 'IN_TROUBLES') {
         messageApi.error({
           content: `⚠️ ${statusChange.message || 'Đơn hàng gặp sự cố!'}`,
           duration: 8,
         });
         playImportantNotificationSound();
+        // Auto-switch to live tracking tab for incident visibility
+        setTimeout(() => {
+          setActiveMainTab('liveTracking');
+        }, 1000);
       } else if (statusChange.newStatus === 'ASSIGNED_TO_DRIVER') {
         messageApi.info({
           content: `🚗 ${statusChange.message || 'Đơn hàng đã được phân công cho tài xế!'}`,
@@ -104,7 +140,7 @@ const StaffOrderDetail: React.FC = () => {
         currentOrderId: id
       });
     }
-  }, [id, messageApi]);
+  }, [id, messageApi, orderData]);
 
   // Subscribe to order status changes
   useOrderStatusTracking({
@@ -134,6 +170,31 @@ const StaffOrderDetail: React.FC = () => {
       setPreviousOrderStatus(orderData.order.status);
     }
   }, [orderData?.order?.status, previousOrderStatus]);
+
+  // Auto-switch to live tracking tab when order status >= PICKING_UP
+  const hasAutoSwitchedRef = useRef<boolean>(false);
+  useEffect(() => {
+    const currentStatus = orderData?.order?.status;
+    // Auto-switch if status >= PICKING_UP and we haven't switched yet
+    const isDeliveryStatus = [
+      OrderStatusEnum.PICKING_UP,
+      OrderStatusEnum.ON_DELIVERED,
+      OrderStatusEnum.ONGOING_DELIVERED,
+      OrderStatusEnum.IN_TROUBLES,
+      OrderStatusEnum.RESOLVED,
+      OrderStatusEnum.COMPENSATION,
+      OrderStatusEnum.DELIVERED,
+      OrderStatusEnum.SUCCESSFUL,
+      OrderStatusEnum.RETURNING,
+      OrderStatusEnum.RETURNED
+    ].includes(currentStatus as OrderStatusEnum);
+    
+    if (isDeliveryStatus && !hasAutoSwitchedRef.current) {
+      console.log('[StaffOrderDetail] 🎯 Order status >= PICKING_UP - switching to live tracking tab');
+      setActiveMainTab('liveTracking');
+      hasAutoSwitchedRef.current = true;
+    }
+  }, [orderData?.order?.status]);
 
   const fetchOrderDetails = async (orderId: string) => {
     setLoading(true);
@@ -177,6 +238,20 @@ const StaffOrderDetail: React.FC = () => {
       setBillOfLadingPreviewLoading(false);
     }
   };
+
+  // Check if should show Live Tracking tab (status >= PICKING_UP)
+  const shouldShowLiveTracking = orderData?.order && [
+    OrderStatusEnum.PICKING_UP,
+    OrderStatusEnum.ON_DELIVERED,
+    OrderStatusEnum.ONGOING_DELIVERED,
+    OrderStatusEnum.IN_TROUBLES,
+    OrderStatusEnum.RESOLVED,
+    OrderStatusEnum.COMPENSATION,
+    OrderStatusEnum.DELIVERED,
+    OrderStatusEnum.SUCCESSFUL,
+    OrderStatusEnum.RETURNING,
+    OrderStatusEnum.RETURNED
+  ].includes(orderData.order.status as OrderStatusEnum);
 
   // Check if order status is ASSIGNED_TO_DRIVER or later
   const canPrintBillOfLading = () => {
@@ -305,7 +380,7 @@ const StaffOrderDetail: React.FC = () => {
           }
           key="basic"
         >
-          <BasicInfoTab order={order} />
+          <BasicInfoTab order={order} contract={contract} />
         </TabPane>
         <TabPane
           tab={
@@ -321,6 +396,23 @@ const StaffOrderDetail: React.FC = () => {
             setVehicleAssignmentModalVisible={setVehicleAssignmentModalVisible}
           />
         </TabPane>
+        {/* Live Tracking Tab - Only show when status >= PICKING_UP */}
+        {shouldShowLiveTracking && (
+          <TabPane
+            tab={
+              <span className="px-2 py-1">
+                <EnvironmentOutlined className="mr-2" /> Theo dõi trực tiếp
+              </span>
+            }
+            key="liveTracking"
+          >
+            <OrderLiveTrackingOnly
+              orderId={order.id}
+              shouldShowRealTimeTracking={true}
+              vehicleAssignments={order.vehicleAssignments || []}
+            />
+          </TabPane>
+        )}
         <TabPane
           tab={
             <span>
@@ -339,11 +431,10 @@ const StaffOrderDetail: React.FC = () => {
       </Tabs>
 
       {/* Vehicle Assignment Modal */}
-      {id && orderData && orderData.order && orderData.order.orderDetails && (
+      {id && (
         <VehicleAssignmentModal
           visible={vehicleAssignmentModalVisible}
           orderId={id}
-          orderDetails={orderData.order.orderDetails}
           onClose={() => setVehicleAssignmentModalVisible(false)}
           onSuccess={handleVehicleAssignmentSuccess}
         />

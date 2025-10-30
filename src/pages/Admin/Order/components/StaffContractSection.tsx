@@ -27,7 +27,6 @@ import {
 import { contractService } from "../../../../services/contract";
 import { StaffContractPreview } from "../../../../components/features/order";
 import type { ContractData } from "../../../../services/contract/contractTypes";
-import httpClient from "../../../../services/api/httpClient";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 import { ContractStatusTag } from "../../../../components/common/tags";
@@ -39,8 +38,8 @@ interface StaffContractProps {
     contractName: string;
     effectiveDate: string;
     expirationDate: string;
-    totalValue: string;
-    adjustedValue: string;
+    totalValue: number;
+    adjustedValue: number;
     description: string;
     attachFileUrl: string;
     status: string;
@@ -64,9 +63,7 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
     useState<boolean>(false);
   const [creatingContract, setCreatingContract] = useState<boolean>(false);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState<boolean>(false);
-  const hasAdjustedValue = Boolean(
-    contract?.adjustedValue && contract.adjustedValue !== "0"
-  );
+  const hasAdjustedValue = Boolean(contract?.adjustedValue && contract.adjustedValue !== 0);
   const [uploadingContract, setUploadingContract] = useState<boolean>(false);
   const [form] = Form.useForm();
   const [uploadForm] = Form.useForm();
@@ -112,22 +109,18 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
     try {
       const contractData = {
         contractName: values.contractName,
-        startDate: values.dateRange[0].format("YYYY-MM-DD"),
-        endDate: values.dateRange[1].format("YYYY-MM-DD"),
-        totalValue: values.totalValue,
-        supportedValue: values.supportedValue,
+        effectiveDate: values.dateRange[0].format("YYYY-MM-DD"),
+        expirationDate: values.dateRange[1].format("YYYY-MM-DD"),
+        adjustedValue: values.adjustedValue,
         description: values.description,
         attachFileUrl: values.attachFileUrl || "N/A",
         orderId: orderId, // Using the orderId prop
       };
 
       console.log("Creating contract with data:", contractData);
-      const response = await httpClient.post(
-        "/contracts/both/for-cus",
-        contractData
-      );
+      const response = await contractService.createContractForCustomer(contractData);
 
-      if (response.data.success) {
+      if (response.success) {
         messageApi.success("Hợp đồng đã được tạo thành công!");
         setIsCreationModalOpen(false);
         form.resetFields();
@@ -135,7 +128,7 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
         // Reload the page to reflect the new contract status
         window.location.reload();
       } else {
-        throw new Error(response.data.message || "Failed to create contract");
+        throw new Error(response.message || "Failed to create contract");
       }
     } catch (error) {
       console.error("Error creating contract:", error);
@@ -319,23 +312,14 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
 
       formData.append("effectiveDate", formatDateTime(values.effectiveDate));
       formData.append("expirationDate", formatDateTime(values.expirationDate));
-      formData.append("supportedValue", values.supportedValue.toString());
+      formData.append("adjustedValue", values.adjustedValue.toString());
       formData.append("description", values.description);
 
-      const { default: httpClient } = await import(
-        "../../../../services/api/httpClient"
-      );
-      const response = await httpClient.post(
-        "/contracts/upload-contract",
-        formData,
-        {
-          headers: { "Content-Type": "multipart/form-data" },
-        }
-      );
+      const response = await contractService.uploadContract(formData);
 
       messageApi.destroy();
 
-      if (response.data && response.data.success) {
+      if (response && response.success) {
         messageApi.success("Đã xuất hợp đồng thành công!");
         setIsUploadModalOpen(false);
         uploadForm.resetFields();
@@ -344,7 +328,7 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
           window.location.reload();
         }, 1000);
       } else {
-        throw new Error(response.data?.message || "Upload failed");
+        throw new Error(response?.message || "Upload failed");
       }
     } catch (error: any) {
       messageApi.destroy();
@@ -536,7 +520,7 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
                 message="Thông tin thanh toán"
                 description={
                   <Row gutter={[16, 16]} className="mt-3">
-                    <Col xs={24} sm={12} md={6}>
+                    <Col xs={24} sm={24} md={hasAdjustedValue ? 6 : 8}>
                       <Statistic
                         title="Tổng giá trị đơn hàng"
                         value={contract.totalValue}
@@ -545,7 +529,7 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
                       />
                     </Col>
                     {hasAdjustedValue && (
-                      <Col xs={24} sm={12} md={6}>
+                      <Col xs={24} sm={24} md={6}>
                         <Statistic
                           title="Giá trị điều chỉnh"
                           value={contract.adjustedValue}
@@ -554,7 +538,7 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
                         />
                       </Col>
                     )}
-                    <Col xs={24} sm={12} md={6}>
+                    <Col xs={24} sm={24} md={hasAdjustedValue ? 6 : 8}>
                       <Statistic
                         title="Số tiền cọc cần thanh toán"
                         value={depositAmount.toLocaleString("vi-VN")}
@@ -563,7 +547,7 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
                         valueStyle={{ color: "#52c41a", fontWeight: "bold" }}
                       />
                     </Col>
-                    <Col xs={24} sm={12} md={6}>
+                    <Col xs={24} sm={24} md={hasAdjustedValue ? 6 : 8}>
                       <Statistic
                         title="Số tiền còn lại"
                         value={(() => {
@@ -1097,6 +1081,95 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
           backgroundColor: "#f5f5f5",
         }}
       >
+        {/* Customization Form */}
+        <Card
+          title="⚙️ Điều chỉnh thông tin hợp đồng"
+          className="mb-4"
+          size="small"
+        >
+          <Form
+            form={previewForm}
+            layout="vertical"
+            onValuesChange={handlePreviewFormChange}
+          >
+            <Row gutter={16}>
+              <Col span={12}>
+                <Form.Item
+                  label="Ngày hiệu lực"
+                  name="effectiveDate"
+                  rules={[
+                    { required: true, message: "Vui lòng chọn ngày hiệu lực" },
+                  ]}
+                >
+                  <DatePicker
+                    style={{ width: "100%" }}
+                    format="DD/MM/YYYY"
+                    placeholder="Chọn ngày hiệu lực"
+                  />
+                </Form.Item>
+              </Col>
+              <Col span={12}>
+                <Form.Item
+                  label="Ngày hết hạn"
+                  name="expirationDate"
+                  rules={[
+                    { required: true, message: "Vui lòng chọn ngày hết hạn" },
+                  ]}
+                >
+                  <DatePicker
+                    style={{ width: "100%" }}
+                    format="DD/MM/YYYY"
+                    placeholder="Chọn ngày hết hạn"
+                  />
+                </Form.Item>
+              </Col>
+            </Row>
+            <Row>
+              <Col span={24}>
+                <Form.Item name="hasSupportValue" valuePropName="checked">
+                  <Checkbox>
+                    <strong>Có trợ giá</strong>
+                  </Checkbox>
+                </Form.Item>
+              </Col>
+            </Row>
+            <Form.Item
+              noStyle
+              shouldUpdate={(prev, curr) =>
+                prev.hasSupportValue !== curr.hasSupportValue
+              }
+            >
+              {({ getFieldValue }) =>
+                getFieldValue("hasSupportValue") ? (
+                  <Form.Item
+                    label="Giá trị trợ giá"
+                    name="adjustedValue"
+                    rules={[
+                      {
+                        required: true,
+                        message: "Vui lòng nhập giá trị trợ giá",
+                      },
+                    ]}
+                  >
+                    <InputNumber
+                      style={{ width: "100%" }}
+                      placeholder="Nhập giá trị trợ giá"
+                      formatter={(value) =>
+                        `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ",")
+                      }
+                      parser={(value) =>
+                        Number(value!.replace(/\$\s?|(,*)/g, "")) as any
+                      }
+                      addonAfter="VND"
+                      min={0}
+                    />
+                  </Form.Item>
+                ) : null
+              }
+            </Form.Item>
+          </Form>
+        </Card>
+
         <div
           className="a4-container"
           style={{
@@ -1160,7 +1233,7 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
           initialValues={{
             contractName: "Hợp đồng vận chuyển",
             totalValue: 0,
-            supportedValue: 0,
+            adjustedValue: 0,
             description: "Hợp đồng vận chuyển hàng hóa",
             attachFileUrl: "",
           }}
@@ -1204,7 +1277,7 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
 
           <Form.Item
             label="Giá trị hỗ trợ"
-            name="supportedValue"
+            name="adjustedValue"
             rules={[
               { required: true, message: "Vui lòng nhập giá trị hỗ trợ" },
             ]}
@@ -1309,7 +1382,7 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
 
           <Form.Item
             label="Giá trị hỗ trợ"
-            name="supportedValue"
+            name="adjustedValue"
             rules={[
               { required: true, message: "Vui lòng nhập giá trị hỗ trợ" },
             ]}

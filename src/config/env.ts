@@ -13,12 +13,8 @@ export const AUTH_REFRESH_TOKEN_KEY = import.meta.env
   .VITE_AUTH_REFRESH_TOKEN_KEY;
 
 // Map Configuration
+// Note: VietMap API key is managed by backend, not exposed to client
 export const VIET_MAPS_API_KEY = import.meta.env.VITE_VIET_MAPS_API_KEY;
-export const OPEN_MAP_API_KEY = import.meta.env.VITE_OPEN_MAP_API_KEY;
-export const OPEN_MAP_API_BASE_URL = import.meta.env.VITE_OPEN_MAP_API_BASE_URL;
-export const TRACKASIA_MAP_API_KEY = import.meta.env.VITE_TRACKASIA_MAP_API_KEY;
-export const TRACKASIA_MAP_API_BASE_URL = import.meta.env
-  .VITE_TRACKASIA_MAP_API_BASE_URL;
 
 // App Configuration
 export const APP_NAME = import.meta.env.VITE_APP_NAME;

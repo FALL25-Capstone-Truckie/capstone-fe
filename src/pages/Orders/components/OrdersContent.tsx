@@ -629,7 +629,7 @@ const OrdersContent: React.FC<OrdersContentProps> = ({
                 </Title>
                 <Text type="secondary">
                   {searchTerm || statusFilter !== "ALL" || yearFilter || quarterFilter || addressFilter
-                    ? "Thử thay đổi điều kiện tìm kiếm hoặc bộ lọc"
+                    ? "Thử thay đổi điều kiện   tìm kiếm hoặc bộ lọc"
                     : "Chưa có đơn hàng nào được tạo"}
                 </Text>
               </div>

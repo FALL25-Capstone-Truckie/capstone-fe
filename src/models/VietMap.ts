@@ -94,4 +94,27 @@ export interface VietMapStyle {
         minzoom: number;
         maxzoom: number;
     }[];
-} 
+}
+
+// Search response type for VietMap API
+export interface VietMapSearchResponse {
+    type: string;
+    features: {
+        id: string;
+        type: string;
+        place_type: string[];
+        relevance: number;
+        properties: {
+            name: string;
+            mapbox_id: string;
+        };
+        text: string;
+        place_name: string;
+        center: [number, number]; // [longitude, latitude]
+        geometry: {
+            type: string;
+            coordinates: [number, number]; // [longitude, latitude]
+        };
+    }[];
+    attribution: string;
+}

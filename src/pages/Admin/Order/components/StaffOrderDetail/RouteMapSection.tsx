@@ -99,6 +99,18 @@ const RouteMapSection: React.FC<RouteMapSectionProps> = ({ journeySegments, vehi
                                 bounds.extend(coord);
                             });
 
+                            // Validate bounds before calling fitBounds
+                            if (!bounds._sw || !bounds._ne || 
+                                bounds._sw.lng === undefined || bounds._sw.lat === undefined ||
+                                bounds._ne.lng === undefined || bounds._ne.lat === undefined) {
+                                console.warn('[RouteMapSection] Invalid bounds object, using fallback');
+                                if (allCoordinates.length > 0) {
+                                    map.setCenter(allCoordinates[0]);
+                                    map.setZoom(12);
+                                }
+                                return;
+                            }
+
                             // Fit map to bounds with generous padding for full route overview
                             map.fitBounds(bounds, {
                                 padding: {
@@ -252,6 +264,18 @@ const RouteMapSection: React.FC<RouteMapSectionProps> = ({ journeySegments, vehi
                     allCoordinates.forEach(coord => {
                         bounds.extend(coord);
                     });
+
+                    // Validate bounds before calling fitBounds
+                    if (!bounds._sw || !bounds._ne || 
+                        bounds._sw.lng === undefined || bounds._sw.lat === undefined ||
+                        bounds._ne.lng === undefined || bounds._ne.lat === undefined) {
+                        console.warn('[RouteMapSection] Invalid bounds object in useEffect, using fallback');
+                        if (allCoordinates.length > 0) {
+                            mapRef.current.setCenter(allCoordinates[0]);
+                            mapRef.current.setZoom(12);
+                        }
+                        return;
+                    }
 
                     // Fit map to bounds with generous padding for full route overview
                     mapRef.current.fitBounds(bounds, {

@@ -458,7 +458,7 @@ const StaffContractPreview: React.FC<StaffContractPreviewProps> = ({
               <th>Ngày tạo</th>
               <th>Người nhận</th>
               <th>Số điện thoại</th>
-              <th>Tổng số lượng kiện hàng</th>
+              <th>Tổng số lượng kiện   hàng</th>
             </tr>
           </thead>
           <tbody>
@@ -703,7 +703,7 @@ const StaffContractPreview: React.FC<StaffContractPreviewProps> = ({
 
         <div style={{ marginTop: "20px" }}>
           <p>
-            <strong>Điều kiện thanh toán:</strong>
+            <strong>Điều kiện   thanh toán:</strong>
           </p>
           <p>
             - Đặt cọc: {contractData.contractSettings.depositPercent}% (

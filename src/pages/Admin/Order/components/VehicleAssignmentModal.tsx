@@ -7,6 +7,7 @@ import { RoutePlanningStep } from "../../../Admin/VehicleAssignment/components";
 import SealAssignmentStep from "./SealAssignmentStep";
 import type { RouteSegment } from "../../../../models/RoutePoint";
 import type { RouteInfo } from "../../../../models/VehicleAssignment";
+import { sortAndNormalizeRouteSegments } from "../../../../utils/routeUtils";
 
 const { TabPane } = Tabs;
 const { Option } = Select;
@@ -236,9 +237,12 @@ const VehicleAssignmentModal: React.FC<VehicleAssignmentModalProps> = ({
             // Format the request according to the required structure
             const groupAssignments: GroupAssignment[] = [];
 
+            // Sắp xếp và normalize segments trước khi gửi
+            const sortedSegments = sortAndNormalizeRouteSegments(routeInfoData.segments);
+
             // Ensure the route info has all required fields
             const completeRouteInfo: RouteInfo = {
-                segments: routeInfoData.segments.map(segment => ({
+                segments: sortedSegments.map(segment => ({
                     ...segment,
                     // Ensure each segment has tollDetails properly formatted
                     tollDetails: segment.tollDetails?.map(toll => ({
@@ -674,14 +678,8 @@ const VehicleAssignmentModal: React.FC<VehicleAssignmentModalProps> = ({
                         {group.orderDetails.map((detail, idx) => (
                             <div key={detail.id} className="text-xs mb-2 pl-2 border-l-2 border-blue-300">
                                 <span className="font-medium">{idx + 1}. {detail.trackingCode}</span>
-                                <div className="text-gray-500 text-xs">
-                                    <div>Từ: {detail.originAddress}</div>
-                                    <div>Đến: {detail.destinationAddress}</div>
-                                    <div>
-                                        {detail.totalWeight > 0 && <span className="mr-2">KL: {detail.totalWeight}kg</span>}
-                                        {detail.totalVolume > 0 && <span>TT: {detail.totalVolume}m³</span>}
-                                    </div>
-                                </div>
+                                <span className="font-medium">{idx + 1}. {detail.description}</span>
+
                             </div>
                         ))}
                     </div>

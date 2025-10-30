@@ -21,6 +21,7 @@ import {
   CalendarOutlined,
   UserOutlined,
   FileProtectOutlined,
+  InfoCircleOutlined,
 } from "@ant-design/icons";
 import orderService from "../../../../services/order/orderService";
 import { ContractStatusTag } from "../../../../components/common/tags";

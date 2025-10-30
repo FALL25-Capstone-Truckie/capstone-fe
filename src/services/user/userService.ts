@@ -105,7 +105,7 @@ const userService = {
             console.error(`Error updating user profile ${id}:`, error);
             throw handleApiError(error, 'Không thể cập nhật thông tin cá nhân');
         }
-    }
+    },
 };
 
-export default userService; 
+export default userService;

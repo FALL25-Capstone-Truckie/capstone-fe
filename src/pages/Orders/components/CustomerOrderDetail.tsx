@@ -29,6 +29,7 @@ import type {
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
+import type { ContractData } from "../../../services/contract/contractTypes";
 
 // Import components
 import BasicInfoTab from "./CustomerOrderDetail/BasicInfoTab";
@@ -37,8 +38,6 @@ import OrderLiveTrackingOnly from "./CustomerOrderDetail/OrderLiveTrackingOnly";
 import ContractSection from "./CustomerOrderDetail/ContractSection";
 import TransactionSection from "./CustomerOrderDetail/TransactionSection";
 import VehicleSuggestionsModal from "./CustomerOrderDetail/VehicleSuggestionsModal";
-import { contractService } from "@/services/contract";
-import type { ContractData } from "@/services/contract/contractTypes";
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -107,6 +106,12 @@ const CustomerOrderDetail: React.FC = () => {
     try {
       const data = await orderService.getOrderForCustomerByOrderId(orderId);
       setOrderData(data);
+      
+      // Load contract data nếu có contract
+      if (data.contract?.id) {
+        loadContractData(data.contract.id);
+      }
+      
       checkContractExists(orderId);
     } catch (error) {
       messageApi.error("Không thể tải thông tin đơn hàng");
@@ -238,25 +243,6 @@ const CustomerOrderDetail: React.FC = () => {
     }
   }, [orderData?.order?.status, previousOrderStatus]);
 
-  const fetchOrderDetails = async (orderId: string) => {
-    setLoading(true);
-    try {
-      const data = await orderService.getOrderForCustomerByOrderId(orderId);
-      setOrderData(data);
-
-      // Load contract data nếu có contract
-      if (data.contract?.id) {
-        loadContractData(data.contract.id);
-      }
-
-      checkContractExists(orderId);
-    } catch (error) {
-      messageApi.error("Không thể tải thông tin đơn hàng");
-      console.error("Error fetching order details:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
   // Auto-switch to live tracking tab when order status >= PICKING_UP
   const hasAutoSwitchedRef = useRef<boolean>(false);
   useEffect(() => {

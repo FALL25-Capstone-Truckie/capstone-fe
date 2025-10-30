@@ -1,18 +1,60 @@
 import React, { useState } from "react";
-import { Card, Empty, Button, App, Alert, Statistic } from "antd";
+import {
+  Card,
+  Descriptions,
+  Empty,
+  Button,
+  App,
+  Alert,
+  Divider,
+  Statistic,
+  Row,
+  Col,
+  Spin,
+} from "antd";
 import {
   FileTextOutlined,
   EditOutlined,
   CreditCardOutlined,
-  InfoCircleOutlined,
   DollarOutlined,
+  LoadingOutlined,
   CalendarOutlined,
   UserOutlined,
   FileProtectOutlined,
+  InfoCircleOutlined,
 } from "@ant-design/icons";
 import orderService from "../../../../services/order/orderService";
 import { ContractStatusTag } from "../../../../components/common/tags";
 import { ContractStatusEnum } from "../../../../constants/enums";
+
+// Utility function to safely parse contract values
+const parseContractValue = (value: string | number | undefined): number => {
+  if (!value) return 0;
+  if (typeof value === "number") return value;
+  const numericValue = parseFloat(value.replace(/[^0-9.-]+/g, ""));
+  return isNaN(numericValue) ? 0 : numericValue;
+};
+
+// Define types for price details from contract PDF API
+interface PriceStep {
+  vehicleRuleName: string;
+  numOfVehicles: number;
+  distanceRange: string;
+  unitPrice: number;
+  appliedKm: number;
+  subtotal: number;
+}
+
+interface PriceDetails {
+  totalPrice: number;
+  totalBeforeAdjustment: number;
+  categoryExtraFee: number;
+  categoryMultiplier: number;
+  promotionDiscount: number;
+  finalTotal: number;
+  steps: PriceStep[];
+  summary?: string;
+}
 
 interface ContractProps {
   contract?: {
@@ -29,12 +71,16 @@ interface ContractProps {
   };
   orderStatus?: string;
   depositAmount?: number;
+  priceDetails?: PriceDetails;
+  loadingPriceDetails?: boolean;
 }
 
 const ContractSection: React.FC<ContractProps> = ({
   contract,
   orderStatus,
   depositAmount,
+  priceDetails,
+  loadingPriceDetails = false,
 }) => {
   const messageApi = App.useApp().message;
   const hasAdjustedValue = Boolean(contract?.adjustedValue && contract.adjustedValue !== 0);
@@ -119,7 +165,8 @@ const ContractSection: React.FC<ContractProps> = ({
     try {
       await orderService.signContract(contract.id);
       messageApi.success({
-        content: "Ký hợp đồng thành công! Vui lòng thanh toán đặt cọc để tiếp tục.",
+        content:
+          "Ký hợp đồng thành công! Vui lòng thanh toán đặt cọc để tiếp tục.",
         duration: 5,
       });
       // Reload the page to reflect the updated contract status
@@ -209,7 +256,6 @@ const ContractSection: React.FC<ContractProps> = ({
       setPayingFullAmount(false);
     }
   };
-
 
   return (
     <Card
@@ -374,8 +420,230 @@ const ContractSection: React.FC<ContractProps> = ({
             </div>
           )}
 
+          {/* Chi tiết giá cả và thanh toán - Hiển thị khi hợp đồng đã ký */}
+          {(contract.status === "CONTRACT_SIGNED" ||
+            contract.status === "DEPOSITED" ||
+            contract.status === "PAID") && (
+            <>
+              <Divider className="mt-6" />
+
+              {loadingPriceDetails ? (
+                <div className="flex justify-center items-center py-8">
+                  <Spin
+                    indicator={
+                      <LoadingOutlined style={{ fontSize: 36 }} spin />
+                    }
+                    tip="Đang tải thông tin giá cả..."
+                  />
+                </div>
+              ) : priceDetails ? (
+                <div className="border-l-4 border-green-500 pl-6 pr-4 py-2">
+                  {/* Bảng tính tiền chi tiết theo từng loại xe */}
+                  {priceDetails.steps && priceDetails.steps.length > 0 && (
+                    <div className="mb-6">
+                      <table className="w-full text-sm border-collapse">
+                        <thead>
+                          <tr className="bg-gray-100">
+                            <th className="border border-gray-300 py-2 px-3 text-left">
+                              Loại xe
+                            </th>
+                            <th className="border border-gray-300 py-2 px-3 text-center">
+                              SL xe
+                            </th>
+                            <th className="border border-gray-300 py-2 px-3 text-center">
+                              Khoảng cách
+                            </th>
+                            <th className="border border-gray-300 py-2 px-3 text-right">
+                              Đơn giá (VNĐ/km)
+                            </th>
+                            <th className="border border-gray-300 py-2 px-3 text-center">
+                              Km áp dụng
+                            </th>
+                            <th className="border border-gray-300 py-2 px-3 text-right">
+                              Thành tiền (VNĐ)
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {(() => {
+                            // Nhóm các steps theo vehicleRuleName
+                            const groupedSteps: {
+                              [key: string]: typeof priceDetails.steps;
+                            } = {};
+                            priceDetails.steps.forEach((step) => {
+                              if (!groupedSteps[step.vehicleRuleName]) {
+                                groupedSteps[step.vehicleRuleName] = [];
+                              }
+                              groupedSteps[step.vehicleRuleName].push(step);
+                            });
+
+                            return Object.entries(groupedSteps).map(
+                              ([vehicleRuleName, steps]) =>
+                                steps.map((step, index) => (
+                                  <tr
+                                    key={`${vehicleRuleName}-${index}`}
+                                    className="hover:bg-gray-50"
+                                  >
+                                    {index === 0 && (
+                                      <td
+                                        className="border border-gray-300 py-2 px-3 font-semibold"
+                                        rowSpan={steps.length}
+                                      >
+                                        {vehicleRuleName}
+                                      </td>
+                                    )}
+                                    {index === 0 && (
+                                      <td
+                                        className="border border-gray-300 py-2 px-3 text-center"
+                                        rowSpan={steps.length}
+                                      >
+                                        {step.numOfVehicles}
+                                      </td>
+                                    )}
+                                    <td className="border border-gray-300 py-2 px-3 text-center">
+                                      {step.distanceRange}
+                                    </td>
+                                    <td className="border border-gray-300 py-2 px-3 text-right">
+                                      {step.unitPrice.toLocaleString("vi-VN")}
+                                    </td>
+                                    <td className="border border-gray-300 py-2 px-3 text-center">
+                                      {step.appliedKm.toFixed(2)}
+                                    </td>
+                                    <td className="border border-gray-300 py-2 px-3 text-right font-semibold">
+                                      {step.subtotal.toLocaleString("vi-VN")}
+                                    </td>
+                                  </tr>
+                                ))
+                            );
+                          })()}
+                        </tbody>
+                      </table>
+                      <div className="text-xs text-gray-500 mt-2 italic">
+                        * Thành tiền = Đơn giá × Km áp dụng × Số lượng xe
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Hiển thị summary từ backend nếu có */}
+                  {priceDetails.summary && (
+                    <div
+                      className="mb-6 whitespace-pre-line text-sm leading-relaxed p-4 bg-gray-50 rounded border border-gray-200"
+                      style={{ fontFamily: "monospace" }}
+                    >
+                      {priceDetails.summary}
+                    </div>
+                  )}
+
+                  {/* Bảng tổng kết chi tiết */}
+                  <div className="border-t border-gray-200 pt-4 mt-4">
+                    {hasAdjustedValue ? (
+                      <div>
+                        <table className="w-full text-sm">
+                          <tbody>
+                            <tr>
+                              <td className="py-2 px-4 text-sm text-gray-600">
+                                Giá niêm yết:
+                              </td>
+                              <td className="py-2 px-4 text-right text-gray-600 line-through">
+                                {priceDetails.finalTotal.toLocaleString(
+                                  "vi-VN"
+                                )}{" "}
+                                VNĐ
+                              </td>
+                            </tr>
+                            <tr>
+                              <td className="py-2 px-4 text-sm font-medium">
+                                Giá áp dụng (tổng):
+                              </td>
+                              <td className="py-2 px-4 text-right font-semibold">
+                                {parseContractValue(
+                                  contract.adjustedValue
+                                ).toLocaleString("vi-VN")}{" "}
+                                VNĐ
+                              </td>
+                            </tr>
+                          </tbody>
+                        </table>
+                        <div className="text-xs text-gray-500 mt-2">
+                          Lưu ý: Giá áp dụng là giá đã điều chỉnh cho hợp đồng
+                          này.
+                        </div>
+                      </div>
+                    ) : (
+                      <table className="w-full text-sm">
+                        <tbody>
+                          <tr className="border-b border-gray-200">
+                            <td className="py-2 px-4 font-semibold">
+                              Tổng tiền trước điều chỉnh:
+                            </td>
+                            <td className="py-2 px-4 text-right">
+                              {priceDetails.totalBeforeAdjustment.toLocaleString(
+                                "vi-VN"
+                              )}{" "}
+                              VNĐ
+                            </td>
+                          </tr>
+                          <tr className="border-b border-gray-200">
+                            <td className="py-2 px-4 font-semibold">
+                              Phí phụ thu loại hàng:
+                            </td>
+                            <td className="py-2 px-4 text-right">
+                              +
+                              {priceDetails.categoryExtraFee.toLocaleString(
+                                "vi-VN"
+                              )}{" "}
+                              VNĐ
+                            </td>
+                          </tr>
+                          <tr className="border-b border-gray-200">
+                            <td className="py-2 px-4 font-semibold">
+                              Hệ số nhân loại hàng:
+                            </td>
+                            <td className="py-2 px-4 text-right">
+                              x{priceDetails.categoryMultiplier}
+                            </td>
+                          </tr>
+                          {priceDetails.promotionDiscount > 0 && (
+                            <tr className="border-b border-gray-200">
+                              <td className="py-2 px-4 font-semibold">
+                                Giảm giá khuyến mãi:
+                              </td>
+                              <td className="py-2 px-4 text-right">
+                                -
+                                {priceDetails.promotionDiscount.toLocaleString(
+                                  "vi-VN"
+                                )}{" "}
+                                VNĐ
+                              </td>
+                            </tr>
+                          )}
+                          <tr className="border-t border-gray-200">
+                            <td className="py-3 px-4 font-bold text-base">
+                              TỔNG GIÁ TRỊ HỢP ĐỒNG:
+                            </td>
+                            <td className="py-3 px-4 text-right font-bold">
+                              {priceDetails.finalTotal.toLocaleString("vi-VN")}{" "}
+                              VNĐ
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <Alert
+                  message="Chưa có thông tin chi tiết giá cả"
+                  type="info"
+                  showIcon
+                />
+              )}
+            </>
+          )}
+
           {/* Action Guidance */}
-          {(contract.status === "CONTRACT_DRAFT" || contract.status === "PENDING") && (
+          {(contract.status === "CONTRACT_DRAFT" ||
+            contract.status === "PENDING") && (
             <Alert
               message="Hướng dẫn"
               description="Vui lòng xem và ký hợp đồng để tiếp tục quá trình vận chuyển."
@@ -384,24 +652,29 @@ const ContractSection: React.FC<ContractProps> = ({
               className="mt-4"
             />
           )}
-          {(contract.status === "CONTRACT_SIGNED" || contract.status === "UNPAID") && depositAmount && (
-            <Alert
-              message="Bước tiếp theo"
-              description={`Hợp đồng đã được ký thành công! Vui lòng thanh toán đặt cọc ${depositAmount.toLocaleString('vi-VN')} VNĐ để chúng tôi bắt đầu xử lý đơn hàng.`}
-              type="success"
-              showIcon
-              className="mt-4"
-            />
-          )}
-          {contract.status === "DEPOSITED" && orderStatus === "ASSIGNED_TO_DRIVER" && (
-            <Alert
-              message="Sẵn sàng vận chuyển"
-              description="Đơn hàng đã được phân công cho tài xế. Vui lòng thanh toán số tiền còn lại để hoàn tất."
-              type="info"
-              showIcon
-              className="mt-4"
-            />
-          )}
+          {(contract.status === "CONTRACT_SIGNED" ||
+            contract.status === "UNPAID") &&
+            depositAmount && (
+              <Alert
+                message="Bước tiếp theo"
+                description={`Hợp đồng đã được ký thành công! Vui lòng thanh toán đặt cọc ${depositAmount.toLocaleString(
+                  "vi-VN"
+                )} VNĐ để chúng tôi bắt đầu xử lý đơn hàng.`}
+                type="success"
+                showIcon
+                className="mt-4"
+              />
+            )}
+          {contract.status === "DEPOSITED" &&
+            orderStatus === "ASSIGNED_TO_DRIVER" && (
+              <Alert
+                message="Sẵn sàng vận chuyển"
+                description="Đơn hàng đã được phân công cho tài xế. Vui lòng thanh toán số tiền còn lại để hoàn tất."
+                type="info"
+                showIcon
+                className="mt-4"
+              />
+            )}
 
           {/* Các nút hành động cho customer */}
           <div className="mt-4 flex flex-wrap gap-3">
@@ -443,7 +716,11 @@ const ContractSection: React.FC<ContractProps> = ({
                     size="large"
                     className="bg-green-500 hover:bg-green-600 border-green-500"
                   >
-                    {depositAmount ? `Thanh Toán Đặt Cọc ${depositAmount.toLocaleString('vi-VN')} VNĐ` : 'Thanh Toán Đặt Cọc'}
+                    {depositAmount
+                      ? `Thanh Toán Đặt Cọc ${depositAmount.toLocaleString(
+                          "vi-VN"
+                        )} VNĐ`
+                      : "Thanh Toán Đặt Cọc"}
                   </Button>
                 )}
 

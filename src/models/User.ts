@@ -25,18 +25,12 @@ export interface UsersResponse {
     data: UserModel[];
 }
 
-// Sửa lại UserResponse để phù hợp với API thực tế
+// API response wrapper for single user
 export interface UserResponse {
-    id: string;
-    username: string;
-    fullName: string;
-    email: string;
-    phoneNumber: string;
-    gender: boolean;
-    dateOfBirth: string;
-    imageUrl: string;
-    status: string;
-    role: Role;
+    success: boolean;
+    message: string;
+    statusCode: number;
+    data: UserModel;
 }
 
 export interface UserStatusUpdateRequest {
@@ -151,7 +145,8 @@ export interface UserCredentials {
 }
 
 // Chuyển đổi từ API response sang model
-export const mapUserResponseToModel = (apiUser: UserResponse): User => {
+export const mapUserResponseToModel = (response: UserResponse): User => {
+    const apiUser = response.data;
     return {
         id: apiUser.id,
         username: apiUser.username,

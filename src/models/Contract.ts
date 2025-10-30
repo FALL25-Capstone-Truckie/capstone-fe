@@ -28,6 +28,13 @@ export interface CreateContractResponse {
   data?: Contract;
 }
 
+export interface ContractSettingsResponse {
+  id: string;
+  depositPercent: number;
+  expiredDepositDate: number;
+  insuranceRate: number;
+}
+
 // Vehicle assignment suggestion types
 export interface SuggestAssignVehicle {
   vehicleIndex: number;

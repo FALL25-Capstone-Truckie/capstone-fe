@@ -1,6 +1,15 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { App, Button, Typography, Skeleton, Empty, Tabs, Card, message } from "antd";
+import {
+  App,
+  Button,
+  Typography,
+  Skeleton,
+  Empty,
+  Tabs,
+  Card,
+  message,
+} from "antd";
 import {
   ArrowLeftOutlined,
   InfoCircleOutlined,
@@ -20,6 +29,7 @@ import type {
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
+import type { ContractData } from "../../../services/contract/contractTypes";
 
 // Import components
 import BasicInfoTab from "./CustomerOrderDetail/BasicInfoTab";
@@ -55,7 +65,12 @@ const CustomerOrderDetail: React.FC = () => {
   const [hasContract, setHasContract] = useState<boolean>(false);
   const [checkingContract, setCheckingContract] = useState<boolean>(false);
   const [creatingContract, setCreatingContract] = useState<boolean>(false);
-  const [previousOrderStatus, setPreviousOrderStatus] = useState<string | null>(null);
+  const [previousOrderStatus, setPreviousOrderStatus] = useState<string | null>(
+    null
+  );
+  const [contractData, setContractData] = useState<ContractData | null>(null);
+  const [loadingContractData, setLoadingContractData] =
+    useState<boolean>(false);
 
   // NOTE: Real-time tracking logic is now handled inside RouteMapWithRealTimeTracking
   // to prevent unnecessary re-renders of CustomerOrderDetail parent component
@@ -91,6 +106,12 @@ const CustomerOrderDetail: React.FC = () => {
     try {
       const data = await orderService.getOrderForCustomerByOrderId(orderId);
       setOrderData(data);
+      
+      // Load contract data nếu có contract
+      if (data.contract?.id) {
+        loadContractData(data.contract.id);
+      }
+      
       checkContractExists(orderId);
     } catch (error) {
       messageApi.error("Không thể tải thông tin đơn hàng");
@@ -199,8 +220,8 @@ const CustomerOrderDetail: React.FC = () => {
 
   useEffect(() => {
     // Scroll to top when entering order detail page
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-    
+    window.scrollTo({ top: 0, behavior: "smooth" });
+
     if (id) {
       fetchOrderDetails(id);
     }
@@ -209,10 +230,13 @@ const CustomerOrderDetail: React.FC = () => {
   // Track order status changes for logging
   useEffect(() => {
     if (orderData?.order?.status) {
-      if (previousOrderStatus && previousOrderStatus !== orderData.order.status) {
-        console.log('[CustomerOrderDetail] Order status changed:', {
+      if (
+        previousOrderStatus &&
+        previousOrderStatus !== orderData.order.status
+      ) {
+        console.log("[CustomerOrderDetail] Order status changed:", {
           from: previousOrderStatus,
-          to: orderData.order.status
+          to: orderData.order.status,
         });
       }
       setPreviousOrderStatus(orderData.order.status);
@@ -271,11 +295,26 @@ const CustomerOrderDetail: React.FC = () => {
     OrderStatusEnum.RETURNED
   ].includes(orderData.order.status as OrderStatusEnum);
 
+  const loadContractData = async (contractId: string) => {
+    setLoadingContractData(true);
+    try {
+      const response = await contractService.getContractPdfData(contractId);
+      if (response.success) {
+        setContractData(response.data);
+      }
+    } catch (error) {
+      console.error("Error loading contract data:", error);
+    } finally {
+      setLoadingContractData(false);
+    }
+  };
+
   const checkContractExists = async (orderId: string) => {
     setCheckingContract(true);
     try {
       const response = await orderService.checkContractByOrderId(orderId);
-      setHasContract(response.success && response.data !== null);
+      const contractExists = response.success && response.data !== null;
+      setHasContract(contractExists);
     } catch (error) {
       console.error("Error checking contract:", error);
       setHasContract(false);
@@ -319,7 +358,9 @@ const CustomerOrderDetail: React.FC = () => {
         orderId: id,
       };
 
-      const response = await contractService.createContract(contractData);
+      const response = await contractService.createContractBothRealistic(
+        contractData
+      );
 
       if (response.success) {
         messageApi.success(
@@ -494,10 +535,12 @@ const CustomerOrderDetail: React.FC = () => {
           >
             <div>
               {/* Contract Information */}
-              <ContractSection 
-                contract={contract} 
-                orderStatus={order.status} 
+              <ContractSection
+                contract={contract}
+                orderStatus={order.status}
                 depositAmount={order.depositAmount}
+                priceDetails={contractData?.priceDetails}
+                loadingPriceDetails={loadingContractData}
               />
 
               {/* Transaction Information */}

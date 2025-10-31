@@ -15,6 +15,7 @@ import {
   Alert,
   Divider,
   Statistic,
+  Checkbox,
 } from "antd";
 import {
   FileTextOutlined,
@@ -29,6 +30,7 @@ import { StaffContractPreview } from "../../../../components/features/order";
 import type { ContractData } from "../../../../services/contract/contractTypes";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
+import dayjs from "dayjs";
 import { ContractStatusTag } from "../../../../components/common/tags";
 import { ContractStatusEnum } from "../../../../constants/enums";
 
@@ -67,6 +69,7 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
   const [uploadingContract, setUploadingContract] = useState<boolean>(false);
   const [form] = Form.useForm();
   const [uploadForm] = Form.useForm();
+  const [previewForm] = Form.useForm();
 
   // Contract customization state
   const [contractCustomization, setContractCustomization] = useState({
@@ -351,6 +354,19 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
     }
   };
 
+  const handlePreviewFormChange = (_: any, allValues: any) => {
+    setContractCustomization({
+      effectiveDate: allValues.effectiveDate
+        ? allValues.effectiveDate.toISOString()
+        : contractCustomization.effectiveDate,
+      expirationDate: allValues.expirationDate
+        ? allValues.expirationDate.toISOString()
+        : contractCustomization.expirationDate,
+      hasAdjustedValue: allValues.hasSupportValue || false,
+      adjustedValue: allValues.adjustedValue || 0,
+    });
+  };
+
   const handleOpenModal = async () => {
     if (!contractData) {
       await handlePreviewContract();
@@ -365,6 +381,14 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
       effectiveDate: today.toISOString(),
       expirationDate: oneYearLater.toISOString(),
       hasAdjustedValue: false,
+      adjustedValue: 0,
+    });
+
+    // Set initial values for preview form
+    previewForm.setFieldsValue({
+      effectiveDate: dayjs(today),
+      expirationDate: dayjs(oneYearLater),
+      hasSupportValue: false,
       adjustedValue: 0,
     });
 
@@ -551,46 +575,11 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
                       <Statistic
                         title="Số tiền còn lại"
                         value={(() => {
-                          let finalValue = 0;
-
-                          // Sử dụng giá điều chỉnh nếu có và khác 0
-                          if (hasAdjustedValue) {
-                            const adjusted =
-                              typeof contract.adjustedValue === "string"
-                                ? parseFloat(
-                                    contract.adjustedValue.replace(
-                                      /[^0-9.-]+/g,
-                                      ""
-                                    )
-                                  )
-                                : Number(contract.adjustedValue) || 0;
-
-                            if (adjusted > 0) {
-                              finalValue = adjusted;
-                            } else {
-                              // Nếu giá điều chỉnh = 0, sử dụng giá gốc
-                              finalValue =
-                                typeof contract.totalValue === "string"
-                                  ? parseFloat(
-                                      contract.totalValue.replace(
-                                        /[^0-9.-]+/g,
-                                        ""
-                                      )
-                                    )
-                                  : Number(contract.totalValue) || 0;
-                            }
-                          } else {
-                            // Không có giá điều chỉnh, sử dụng giá gốc
-                            finalValue =
-                              typeof contract.totalValue === "string"
-                                ? parseFloat(
-                                    contract.totalValue.replace(
-                                      /[^0-9.-]+/g,
-                                      ""
-                                    )
-                                  )
-                                : Number(contract.totalValue) || 0;
-                          }
+                          // Sử dụng giá điều chỉnh nếu có và > 0, nếu không dùng giá gốc
+                          const finalValue =
+                            hasAdjustedValue && contract.adjustedValue > 0
+                              ? contract.adjustedValue
+                              : contract.totalValue;
 
                           return (finalValue - depositAmount).toLocaleString(
                             "vi-VN"
@@ -655,51 +644,13 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
                             <div className="font-semibold text-blue-600 text-lg">
                               {contract.status === "PAID"
                                 ? (() => {
-                                    let finalValue = 0;
+                                    // Sử dụng giá điều chỉnh nếu có và > 0, nếu không dùng giá gốc
+                                    const finalValue =
+                                      hasAdjustedValue && contract.adjustedValue > 0
+                                        ? contract.adjustedValue
+                                        : contract.totalValue;
 
-                                    // Sử dụng giá điều chỉnh nếu có và khác 0
-                                    if (hasAdjustedValue) {
-                                      const adjusted =
-                                        typeof contract.adjustedValue ===
-                                        "string"
-                                          ? parseFloat(
-                                              contract.adjustedValue.replace(
-                                                /[^0-9.-]+/g,
-                                                ""
-                                              )
-                                            )
-                                          : Number(contract.adjustedValue) || 0;
-
-                                      if (adjusted > 0) {
-                                        finalValue = adjusted;
-                                      } else {
-                                        finalValue =
-                                          typeof contract.totalValue ===
-                                          "string"
-                                            ? parseFloat(
-                                                contract.totalValue.replace(
-                                                  /[^0-9.-]+/g,
-                                                  ""
-                                                )
-                                              )
-                                            : Number(contract.totalValue) || 0;
-                                      }
-                                    } else {
-                                      finalValue =
-                                        typeof contract.totalValue === "string"
-                                          ? parseFloat(
-                                              contract.totalValue.replace(
-                                                /[^0-9.-]+/g,
-                                                ""
-                                              )
-                                            )
-                                          : Number(contract.totalValue) || 0;
-                                    }
-
-                                    return (
-                                      finalValue.toLocaleString("vi-VN") +
-                                      " VNĐ"
-                                    );
+                                    return finalValue.toLocaleString("vi-VN") + " VNĐ";
                                   })()
                                 : depositAmount.toLocaleString("vi-VN") +
                                   " VNĐ"}
@@ -715,44 +666,11 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
                             </div>
                             <div className="font-semibold text-orange-600 text-lg">
                               {(() => {
-                                let finalValue = 0;
-
-                                // Sử dụng giá điều chỉnh nếu có và khác 0
-                                if (hasAdjustedValue) {
-                                  const adjusted =
-                                    typeof contract.adjustedValue === "string"
-                                      ? parseFloat(
-                                          contract.adjustedValue.replace(
-                                            /[^0-9.-]+/g,
-                                            ""
-                                          )
-                                        )
-                                      : Number(contract.adjustedValue) || 0;
-
-                                  if (adjusted > 0) {
-                                    finalValue = adjusted;
-                                  } else {
-                                    finalValue =
-                                      typeof contract.totalValue === "string"
-                                        ? parseFloat(
-                                            contract.totalValue.replace(
-                                              /[^0-9.-]+/g,
-                                              ""
-                                            )
-                                          )
-                                        : Number(contract.totalValue) || 0;
-                                  }
-                                } else {
-                                  finalValue =
-                                    typeof contract.totalValue === "string"
-                                      ? parseFloat(
-                                          contract.totalValue.replace(
-                                            /[^0-9.-]+/g,
-                                            ""
-                                          )
-                                        )
-                                      : Number(contract.totalValue) || 0;
-                                }
+                                // Sử dụng giá điều chỉnh nếu có và > 0, nếu không dùng giá gốc
+                                const finalValue =
+                                  hasAdjustedValue && contract.adjustedValue > 0
+                                    ? contract.adjustedValue
+                                    : contract.totalValue;
 
                                 return (
                                   (finalValue - depositAmount).toLocaleString(

@@ -156,74 +156,130 @@ const StaffContractPreview: React.FC<StaffContractPreviewProps> = ({
     100;
 
   return (
-    <div className="contract-preview bg-white p-8 max-w-4xl mx-auto">
+    <div className="contract-preview">
       <style>{`
         .contract-preview {
           font-family: 'Times New Roman', serif !important;
-          line-height: 1.6;
+          line-height: 1.8;
           color: #000;
+          background: white;
+          width: 100%;
+          box-sizing: border-box;
+        }
+        .contract-preview * {
+          box-sizing: border-box;
         }
         .contract-preview .header {
           text-align: center;
-          margin-bottom: 30px;
+          margin-bottom: 25px;
         }
         .contract-preview .title {
-          font-size: 18px;
+          font-size: 16px;
           font-weight: bold;
           text-transform: uppercase;
-          margin-bottom: 10px;
+          margin: 8px 0;
+          line-height: 1.4;
         }
         .contract-preview .subtitle {
-          font-size: 14px;
-          margin-bottom: 5px;
+          font-size: 13px;
+          margin: 4px 0;
+          line-height: 1.4;
         }
         .contract-preview .contract-info {
-          margin-bottom: 30px;
+          margin-bottom: 20px;
+        }
+        .contract-preview .contract-info p {
+          margin: 4px 0;
+          font-size: 13px;
         }
         .contract-preview .party-info {
           margin-bottom: 20px;
         }
+        .contract-preview .party-info p {
+          margin: 4px 0;
+          font-size: 13px;
+        }
         .contract-preview .party-title {
           font-weight: bold;
           text-transform: uppercase;
-          margin-bottom: 10px;
+          margin-bottom: 8px;
+          font-size: 13px;
         }
         .contract-preview .terms-section {
           margin-bottom: 20px;
+        }
+        .contract-preview .terms-section p {
+          margin: 4px 0;
+          font-size: 13px;
         }
         .contract-preview .terms-title {
           font-weight: bold;
           margin-bottom: 10px;
           text-transform: uppercase;
+          font-size: 13px;
         }
         .contract-preview .signature-section {
-          margin-top: 40px;
+          margin-top: 30px;
           display: flex;
           justify-content: space-between;
         }
         .contract-preview .signature-box {
           text-align: center;
-          width: 200px;
+          width: 45%;
+        }
+        .contract-preview .signature-box p {
+          margin: 4px 0;
+          font-size: 13px;
         }
         .contract-preview .table {
           width: 100%;
           border-collapse: collapse;
-          margin: 20px 0;
+          margin: 15px 0;
         }
         .contract-preview .table th,
         .contract-preview .table td {
           border: 1px solid #000;
-          padding: 8px;
+          padding: 6px 8px;
           text-align: left;
-          font-size: 12px;
+          font-size: 11px;
+          line-height: 1.4;
         }
         .contract-preview .table th {
           background-color: #f5f5f5;
           font-weight: bold;
         }
         .contract-preview .highlight {
-          background-color: #fff2cc;
+          background-color: #fff9e6;
           font-weight: bold;
+        }
+        .contract-preview .editable-field {
+          background-color: #fafafa;
+          border: 1px solid #d9d9d9;
+          border-radius: 2px;
+          padding: 6px 8px;
+          margin: 8px 0;
+          font-size: 13px;
+        }
+        .contract-preview .editable-field label {
+          color: #666;
+          font-size: 12px;
+          margin-right: 6px;
+        }
+        .contract-preview .ant-checkbox-wrapper {
+          font-size: 13px;
+        }
+        .contract-preview .ant-input-number {
+          font-size: 11px;
+        }
+        .contract-preview .ant-picker {
+          font-size: 11px;
+          height: 26px;
+        }
+        .contract-preview .ant-picker-input > input {
+          font-size: 11px;
+        }
+        .contract-preview .ant-picker-suffix {
+          font-size: 10px;
         }
       `}</style>
 
@@ -243,131 +299,6 @@ const StaffContractPreview: React.FC<StaffContractPreviewProps> = ({
         </div>
         <div className="subtitle">Số: {contractData.orderInfo.orderCode}</div>
         <div className="subtitle">Mã hợp đồng: {contractData.contractId}</div>
-      </div>
-
-      {/* Inline Editing Section */}
-      <div
-        style={{
-          backgroundColor: "#f0f9ff",
-          border: "2px solid #3b82f6",
-          borderRadius: "8px",
-          padding: "20px",
-          marginBottom: "30px",
-        }}
-      >
-        <h3
-          style={{
-            color: "#1e40af",
-            marginTop: 0,
-            marginBottom: "16px",
-            fontSize: "16px",
-            fontWeight: "bold",
-          }}
-        >
-          📝 Tùy chỉnh thông tin hợp đồng
-        </h3>
-
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "1fr 1fr",
-            gap: "16px",
-            marginBottom: "16px",
-          }}
-        >
-          <div>
-            <label
-              style={{
-                display: "block",
-                marginBottom: "8px",
-                fontWeight: "600",
-                color: "#1f2937",
-              }}
-            >
-              Ngày bắt đầu hiệu lực:
-            </label>
-            <DatePicker
-              value={dayjs(localCustomization.effectiveDate)}
-              onChange={handleEffectiveDateChange}
-              format="DD/MM/YYYY"
-              placeholder="Chọn ngày bắt đầu"
-              style={{ width: "100%" }}
-            />
-          </div>
-
-          <div>
-            <label
-              style={{
-                display: "block",
-                marginBottom: "8px",
-                fontWeight: "600",
-                color: "#1f2937",
-              }}
-            >
-              Ngày hết hạn:
-            </label>
-            <DatePicker
-              value={dayjs(localCustomization.expirationDate)}
-              onChange={handleExpirationDateChange}
-              format="DD/MM/YYYY"
-              placeholder="Chọn ngày hết hạn"
-              style={{ width: "100%" }}
-              disabledDate={(current) => {
-                return (
-                  current && current <= dayjs(localCustomization.effectiveDate)
-                );
-              }}
-            />
-          </div>
-        </div>
-
-        <div
-          style={{
-            borderTop: "1px solid #bfdbfe",
-            paddingTop: "16px",
-          }}
-        >
-          <div style={{ marginBottom: "8px" }}>
-            <Checkbox
-              checked={localCustomization.hasAdjustedValue}
-              onChange={(e) => handleHasAdjustedValueChange(e.target.checked)}
-              style={{ fontWeight: "600", color: "#1f2937" }}
-            >
-              Áp dụng giá trị điều chỉnh (trợ giá)
-            </Checkbox>
-          </div>
-
-          {localCustomization.hasAdjustedValue && (
-            <div style={{ marginLeft: "24px" }}>
-              <label
-                style={{
-                  display: "block",
-                  marginBottom: "8px",
-                  color: "#1f2937",
-                }}
-              >
-                Giá trị điều chỉnh (VNĐ):
-              </label>
-              <InputNumber
-                value={localCustomization.adjustedValue}
-                onChange={handleAdjustedValueChange}
-                min={0}
-                max={contractData.priceDetails.finalTotal}
-                formatter={(value) =>
-                  `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ",")
-                }
-                parser={(value) => Number(value!.replace(/\$\s?|(,*)/g, ""))}
-                style={{ width: "100%" }}
-                placeholder="Nhập giá trị điều chỉnh"
-              />
-              <small
-                style={{ color: "#6b7280", display: "block", marginTop: "4px" }}
-              >
-                Tối đa: {formatCurrency(contractData.priceDetails.finalTotal)}
-              </small>
-            </div>
-          )}
-        </div>
       </div>
 
       {/* Contract Basic Info */}
@@ -458,7 +389,7 @@ const StaffContractPreview: React.FC<StaffContractPreviewProps> = ({
               <th>Ngày tạo</th>
               <th>Người nhận</th>
               <th>Số điện thoại</th>
-              <th>Tổng số lượng kiện   hàng</th>
+              <th>Tổng số lượng kiện hàng</th>
             </tr>
           </thead>
           <tbody>
@@ -703,7 +634,7 @@ const StaffContractPreview: React.FC<StaffContractPreviewProps> = ({
 
         <div style={{ marginTop: "20px" }}>
           <p>
-            <strong>Điều kiện   thanh toán:</strong>
+            <strong>Điều kiện thanh toán:</strong>
           </p>
           <p>
             - Đặt cọc: {contractData.contractSettings.depositPercent}% (
@@ -722,10 +653,41 @@ const StaffContractPreview: React.FC<StaffContractPreviewProps> = ({
             - Phí bảo hiểm: {contractData.contractSettings.insuranceRate}% giá
             trị hàng hóa
           </p>
+          <div className="editable-field" style={{ marginTop: "12px" }}>
+            <Checkbox
+              checked={localCustomization.hasAdjustedValue}
+              onChange={(e) => handleHasAdjustedValueChange(e.target.checked)}
+              style={{ marginRight: "8px" }}
+            >
+              <span style={{ fontWeight: "500" }}>
+                Có giá trị điều chỉnh (trợ giá)
+              </span>
+            </Checkbox>
+            {localCustomization.hasAdjustedValue && (
+              <div style={{ marginTop: "8px", paddingLeft: "24px" }}>
+                <label>Giá trị:</label>
+                <InputNumber
+                  value={localCustomization.adjustedValue}
+                  onChange={handleAdjustedValueChange}
+                  min={0}
+                  max={contractData.priceDetails.finalTotal}
+                  formatter={(value) =>
+                    `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ",")
+                  }
+                  parser={(value) => Number(value!.replace(/\$\s?|(,*)/g, ""))}
+                  style={{ width: "180px" }}
+                  placeholder="0"
+                  addonAfter="VNĐ"
+                  size="small"
+                />
+              </div>
+            )}
+          </div>
           {adjustedValue > 0 && (
-            <p style={{ color: "#059669", fontWeight: "bold" }}>
-              - Giá trị điều chỉnh: {formatCurrency(adjustedValue)} (đã bao gồm
-              trong tổng giá trị hợp đồng)
+            <p style={{ marginTop: "8px", fontStyle: "italic" }}>
+              <strong>* Giá trị điều chỉnh:</strong>{" "}
+              {formatCurrency(adjustedValue)} (đã bao gồm trong tổng giá trị hợp
+              đồng)
             </p>
           )}
         </div>
@@ -794,10 +756,59 @@ const StaffContractPreview: React.FC<StaffContractPreviewProps> = ({
           được giải quyết tại Tòa án có thẩm quyền.
         </p>
         <p>6.4. {generalTerms}</p>
-        <div>
-          <p style={{ marginBottom: "5px" }}>
-            <strong>Thời gian hiệu lực:</strong> Từ ngày {effectiveDate} đến
-            ngày {expirationDate}
+        <div className="editable-field" style={{ marginTop: "16px" }}>
+          <p
+            style={{
+              margin: "0 0 10px 0",
+              fontWeight: "600",
+              fontSize: "13px",
+            }}
+          >
+            Thời gian hiệu lực hợp đồng:
+          </p>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              flexWrap: "wrap",
+            }}
+          >
+            <label style={{ fontSize: "12px" }}>Từ ngày:</label>
+            <DatePicker
+              value={dayjs(localCustomization.effectiveDate)}
+              onChange={handleEffectiveDateChange}
+              format="DD/MM/YYYY"
+              placeholder="Chọn ngày"
+              size="small"
+              style={{ width: "110px", fontSize: "11px" }}
+            />
+            <label style={{ marginLeft: "4px", fontSize: "12px" }}>
+              đến ngày:
+            </label>
+            <DatePicker
+              value={dayjs(localCustomization.expirationDate)}
+              onChange={handleExpirationDateChange}
+              format="DD/MM/YYYY"
+              placeholder="Chọn ngày"
+              size="small"
+              style={{ width: "110px", fontSize: "11px" }}
+              disabledDate={(current) => {
+                return (
+                  current && current <= dayjs(localCustomization.effectiveDate)
+                );
+              }}
+            />
+          </div>
+          <p
+            style={{
+              margin: "8px 0 0 0",
+              fontSize: "12px",
+              color: "#666",
+              fontStyle: "italic",
+            }}
+          >
+            Hiển thị: Từ ngày {effectiveDate} đến ngày {expirationDate}
           </p>
         </div>
       </div>

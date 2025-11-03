@@ -15,7 +15,6 @@ import {
   Alert,
   Divider,
   Statistic,
-  Checkbox,
 } from "antd";
 import {
   FileTextOutlined,
@@ -30,7 +29,6 @@ import { StaffContractPreview } from "../../../../components/features/order";
 import type { ContractData } from "../../../../services/contract/contractTypes";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
-import dayjs from "dayjs";
 import { ContractStatusTag } from "../../../../components/common/tags";
 import { ContractStatusEnum } from "../../../../constants/enums";
 
@@ -65,11 +63,12 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
     useState<boolean>(false);
   const [creatingContract, setCreatingContract] = useState<boolean>(false);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState<boolean>(false);
-  const hasAdjustedValue = Boolean(contract?.adjustedValue && contract.adjustedValue !== 0);
+  const hasAdjustedValue = Boolean(
+    contract?.adjustedValue && contract.adjustedValue !== 0
+  );
   const [uploadingContract, setUploadingContract] = useState<boolean>(false);
   const [form] = Form.useForm();
   const [uploadForm] = Form.useForm();
-  const [previewForm] = Form.useForm();
 
   // Contract customization state
   const [contractCustomization, setContractCustomization] = useState({
@@ -121,7 +120,9 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
       };
 
       console.log("Creating contract with data:", contractData);
-      const response = await contractService.createContractForCustomer(contractData);
+      const response = await contractService.createContractForCustomer(
+        contractData
+      );
 
       if (response.success) {
         messageApi.success("Hợp đồng đã được tạo thành công!");
@@ -187,6 +188,7 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
       ) as HTMLElement;
 
       if (containerElement) {
+        // Render canvas - không cần resize vì đã tối ưu sẵn
         const canvas = await html2canvas(containerElement, {
           useCORS: true,
           allowTaint: true,
@@ -200,6 +202,7 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
           orientation: "portrait",
           unit: "mm",
           format: "a4",
+          compress: true,
         });
 
         const pageWidth = 210;
@@ -213,26 +216,9 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
         const ratio = (contentWidth * 3.779527559) / imgWidth;
         const scaledHeight = (imgHeight * ratio) / 3.779527559;
 
-        const scaleFactor = 0.5;
-        const scaledCanvas = document.createElement("canvas");
-        const scaledCtx = scaledCanvas.getContext("2d");
-
-        scaledCanvas.width = canvas.width * scaleFactor;
-        scaledCanvas.height = canvas.height * scaleFactor;
-
-        if (scaledCtx) {
-          scaledCtx.drawImage(
-            canvas,
-            0,
-            0,
-            scaledCanvas.width,
-            scaledCanvas.height
-          );
-        }
-
-        const imgData = scaledCanvas.toDataURL("image/jpeg", 0.5);
-
+        // Sử dụng JPEG quality 0.85 để cân bằng giữa chất lượng và dung lượng
         if (scaledHeight <= contentHeight) {
+          const imgData = canvas.toDataURL("image/jpeg", 0.85);
           pdf.addImage(
             imgData,
             "JPEG",
@@ -242,8 +228,9 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
             scaledHeight
           );
         } else {
+          // Chia thành nhiều trang nếu nội dung dài
           const totalPages = Math.ceil(scaledHeight / contentHeight);
-          const pixelsPerPage = scaledCanvas.height / totalPages;
+          const pixelsPerPage = imgHeight / totalPages;
 
           for (let page = 0; page < totalPages; page++) {
             if (page > 0) pdf.addPage();
@@ -252,30 +239,28 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
             const pageCtx = pageCanvas.getContext("2d");
 
             if (pageCtx) {
-              pageCanvas.width = scaledCanvas.width;
+              pageCanvas.width = imgWidth;
               const startY = page * pixelsPerPage;
-              const endY = Math.min(
-                startY + pixelsPerPage,
-                scaledCanvas.height
-              );
+              const endY = Math.min(startY + pixelsPerPage, imgHeight);
               const currentPageHeight = endY - startY;
               pageCanvas.height = currentPageHeight;
 
+              pageCtx.imageSmoothingEnabled = true;
+              pageCtx.imageSmoothingQuality = "high";
               pageCtx.drawImage(
-                scaledCanvas,
+                canvas,
                 0,
                 startY,
-                scaledCanvas.width,
+                imgWidth,
                 currentPageHeight,
                 0,
                 0,
-                scaledCanvas.width,
+                imgWidth,
                 currentPageHeight
               );
 
-              const pageImgData = pageCanvas.toDataURL("image/jpeg", 0.5);
-              const pageHeightMM =
-                (currentPageHeight * ratio * scaleFactor) / 3.779527559;
+              const pageImgData = pageCanvas.toDataURL("image/jpeg", 0.85);
+              const pageHeightMM = (currentPageHeight * ratio) / 3.779527559;
 
               pdf.addImage(
                 pageImgData,
@@ -354,19 +339,6 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
     }
   };
 
-  const handlePreviewFormChange = (_: any, allValues: any) => {
-    setContractCustomization({
-      effectiveDate: allValues.effectiveDate
-        ? allValues.effectiveDate.toISOString()
-        : contractCustomization.effectiveDate,
-      expirationDate: allValues.expirationDate
-        ? allValues.expirationDate.toISOString()
-        : contractCustomization.expirationDate,
-      hasAdjustedValue: allValues.hasSupportValue || false,
-      adjustedValue: allValues.adjustedValue || 0,
-    });
-  };
-
   const handleOpenModal = async () => {
     if (!contractData) {
       await handlePreviewContract();
@@ -381,14 +353,6 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
       effectiveDate: today.toISOString(),
       expirationDate: oneYearLater.toISOString(),
       hasAdjustedValue: false,
-      adjustedValue: 0,
-    });
-
-    // Set initial values for preview form
-    previewForm.setFieldsValue({
-      effectiveDate: dayjs(today),
-      expirationDate: dayjs(oneYearLater),
-      hasSupportValue: false,
       adjustedValue: 0,
     });
 
@@ -418,18 +382,21 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
     try {
       messageApi.loading("Đang tạo file PDF với nhiều trang...", 0);
 
+      // Render canvas với scale giảm để giảm dung lượng
       const canvas = await html2canvas(containerElement, {
         useCORS: true,
         allowTaint: true,
         background: "#ffffff",
         width: containerElement.scrollWidth,
         height: containerElement.scrollHeight,
+        logging: false,
       });
 
       const pdf = new jsPDF({
         orientation: "portrait",
         unit: "mm",
         format: "a4",
+        compress: true, // Bật compression
       });
 
       const pageWidth = 210;
@@ -444,10 +411,11 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
       const scaledHeight = (imgHeight * ratio) / 3.779527559;
 
       if (scaledHeight <= contentHeight) {
-        const imgData = canvas.toDataURL("image/png", 1.0);
+        // Dùng JPEG thay vì PNG và giảm quality để giảm dung lượng
+        const imgData = canvas.toDataURL("image/jpeg", 0.85);
         pdf.addImage(
           imgData,
-          "PNG",
+          "JPEG",
           margin,
           margin,
           contentWidth,
@@ -485,12 +453,13 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
               currentPageHeight
             );
 
-            const pageImgData = pageCanvas.toDataURL("image/png", 1.0);
+            // Dùng JPEG với quality 0.85 thay vì PNG 1.0
+            const pageImgData = pageCanvas.toDataURL("image/jpeg", 0.85);
             const pageHeightMM = (currentPageHeight * ratio) / 3.779527559;
 
             pdf.addImage(
               pageImgData,
-              "PNG",
+              "JPEG",
               margin,
               margin,
               contentWidth,
@@ -646,11 +615,15 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
                                 ? (() => {
                                     // Sử dụng giá điều chỉnh nếu có và > 0, nếu không dùng giá gốc
                                     const finalValue =
-                                      hasAdjustedValue && contract.adjustedValue > 0
+                                      hasAdjustedValue &&
+                                      contract.adjustedValue > 0
                                         ? contract.adjustedValue
                                         : contract.totalValue;
 
-                                    return finalValue.toLocaleString("vi-VN") + " VNĐ";
+                                    return (
+                                      finalValue.toLocaleString("vi-VN") +
+                                      " VNĐ"
+                                    );
                                   })()
                                 : depositAmount.toLocaleString("vi-VN") +
                                   " VNĐ"}
@@ -989,128 +962,35 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
             </Button>
           </div>
         }
-        width="95vw"
-        style={{ maxWidth: "1000px", top: 20 }}
+        width="auto"
+        style={{ maxWidth: "calc(210mm + 80px)", top: 20 }}
         className="a4-modal"
         bodyStyle={{
-          padding: "20px",
-          height: "calc(100vh - 200px)",
+          padding: "40px 40px 20px",
+          maxHeight: "calc(100vh - 120px)",
           overflow: "auto",
-          backgroundColor: "#f5f5f5",
+          backgroundColor: "#e5e7eb",
         }}
       >
-        {/* Customization Form */}
-        <Card
-          title="⚙️ Điều chỉnh thông tin hợp đồng"
-          className="mb-4"
-          size="small"
-        >
-          <Form
-            form={previewForm}
-            layout="vertical"
-            onValuesChange={handlePreviewFormChange}
-          >
-            <Row gutter={16}>
-              <Col span={12}>
-                <Form.Item
-                  label="Ngày hiệu lực"
-                  name="effectiveDate"
-                  rules={[
-                    { required: true, message: "Vui lòng chọn ngày hiệu lực" },
-                  ]}
-                >
-                  <DatePicker
-                    style={{ width: "100%" }}
-                    format="DD/MM/YYYY"
-                    placeholder="Chọn ngày hiệu lực"
-                  />
-                </Form.Item>
-              </Col>
-              <Col span={12}>
-                <Form.Item
-                  label="Ngày hết hạn"
-                  name="expirationDate"
-                  rules={[
-                    { required: true, message: "Vui lòng chọn ngày hết hạn" },
-                  ]}
-                >
-                  <DatePicker
-                    style={{ width: "100%" }}
-                    format="DD/MM/YYYY"
-                    placeholder="Chọn ngày hết hạn"
-                  />
-                </Form.Item>
-              </Col>
-            </Row>
-            <Row>
-              <Col span={24}>
-                <Form.Item name="hasSupportValue" valuePropName="checked">
-                  <Checkbox>
-                    <strong>Có trợ giá</strong>
-                  </Checkbox>
-                </Form.Item>
-              </Col>
-            </Row>
-            <Form.Item
-              noStyle
-              shouldUpdate={(prev, curr) =>
-                prev.hasSupportValue !== curr.hasSupportValue
-              }
-            >
-              {({ getFieldValue }) =>
-                getFieldValue("hasSupportValue") ? (
-                  <Form.Item
-                    label="Giá trị trợ giá"
-                    name="adjustedValue"
-                    rules={[
-                      {
-                        required: true,
-                        message: "Vui lòng nhập giá trị trợ giá",
-                      },
-                    ]}
-                  >
-                    <InputNumber
-                      style={{ width: "100%" }}
-                      placeholder="Nhập giá trị trợ giá"
-                      formatter={(value) =>
-                        `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ",")
-                      }
-                      parser={(value) =>
-                        Number(value!.replace(/\$\s?|(,*)/g, "")) as any
-                      }
-                      addonAfter="VND"
-                      min={0}
-                    />
-                  </Form.Item>
-                ) : null
-              }
-            </Form.Item>
-          </Form>
-        </Card>
-
         <div
           className="a4-container"
           style={{
-            width: "794px",
-            minHeight: "1123px",
+            width: "210mm",
+            minHeight: "297mm",
+            maxWidth: "210mm",
             margin: "0 auto",
             backgroundColor: "white",
-            padding: "60px 85px",
-            boxShadow: "0 8px 24px rgba(0, 0, 0, 0.12)",
-            borderRadius: "8px",
-            transform: "scale(0.85)",
-            transformOrigin: "top center",
-            marginBottom: "40px",
+            padding: "20mm 25mm",
+            boxShadow: "0 4px 12px rgba(0, 0, 0, 0.08)",
+            position: "relative",
           }}
         >
           {contractData ? (
-            <div style={{ fontSize: "14px", lineHeight: "1.6" }}>
-              <StaffContractPreview
-                contractData={contractData}
-                customization={contractCustomization}
-                onCustomizationChange={setContractCustomization}
-              />
-            </div>
+            <StaffContractPreview
+              contractData={contractData}
+              customization={contractCustomization}
+              onCustomizationChange={setContractCustomization}
+            />
           ) : (
             <div
               className="flex justify-center items-center"

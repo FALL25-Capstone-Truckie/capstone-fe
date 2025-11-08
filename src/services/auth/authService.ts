@@ -48,10 +48,28 @@ const authService = {
                     return;
                 }
 
-                // Check if we have user data in sessionStorage, which indicates
-                // the user was previously logged in
-                const userRole = sessionStorage.getItem('user_role');
-                const userId = sessionStorage.getItem('userId');
+                // Check if we have user data in sessionStorage first (current session)
+                let userRole = sessionStorage.getItem('user_role');
+                let userId = sessionStorage.getItem('userId');
+                
+                // If not in sessionStorage, check localStorage (persistent across server restarts)
+                if (!userRole || !userId) {
+                    userRole = localStorage.getItem('user_role');
+                    userId = localStorage.getItem('userId');
+                    
+                    // If found in localStorage, restore to sessionStorage
+                    if (userRole && userId) {
+                        const username = localStorage.getItem('username');
+                        const email = localStorage.getItem('email');
+                        
+                        sessionStorage.setItem('user_role', userRole);
+                        sessionStorage.setItem('userId', userId);
+                        if (username) sessionStorage.setItem('username', username);
+                        if (email) sessionStorage.setItem('email', email);
+                        
+                        console.log('[authService] Restored user data from localStorage after server restart');
+                    }
+                }
 
                 // If we have user data but no token, try to refresh the token
                 if (userRole && userId) {
@@ -103,6 +121,13 @@ const authService = {
             sessionStorage.setItem('userId', user.id);
             sessionStorage.setItem('username', user.username);
             sessionStorage.setItem('email', user.email);
+
+            // Also store in localStorage for persistence across server restarts
+            localStorage.setItem('user_role', roleName.toLowerCase());
+            localStorage.setItem('userId', user.id);
+            localStorage.setItem('username', user.username);
+            localStorage.setItem('email', user.email);
+            localStorage.setItem('remember_login', 'true');
 
             // Thêm dòng hello username
             response.data.message = `Đăng nhập thành công`;
@@ -218,6 +243,13 @@ const authService = {
             sessionStorage.removeItem('userId');
             sessionStorage.removeItem('username');
             sessionStorage.removeItem('email');
+            
+            // Also clear from localStorage
+            localStorage.removeItem('user_role');
+            localStorage.removeItem('userId');
+            localStorage.removeItem('username');
+            localStorage.removeItem('email');
+            localStorage.removeItem('remember_login');
 
             // Reset biến đếm refresh token
             try {

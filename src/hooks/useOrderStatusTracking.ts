@@ -52,6 +52,7 @@ export const useOrderStatusTracking = (
   const clientRef = useRef<Client | null>(null);
   const subscriptionRef = useRef<any>(null);
   const reconnectAttemptRef = useRef(0);
+  const lastMessageRef = useRef<OrderStatusChangeMessage | null>(null);
   const maxReconnectAttempts = 5;
 
   // Store callbacks in refs to avoid dependency issues
@@ -72,6 +73,20 @@ export const useOrderStatusTracking = (
       console.log('[OrderStatusTracking] orderId type:', typeof statusChange.orderId, 'value:', statusChange.orderId);
       console.log('[OrderStatusTracking] Full message body:', message.body);
       
+      // Check for duplicate message
+      if (lastMessageRef.current) {
+        const isDuplicate = 
+          lastMessageRef.current.orderId === statusChange.orderId &&
+          lastMessageRef.current.newStatus === statusChange.newStatus &&
+          lastMessageRef.current.timestamp === statusChange.timestamp;
+        
+        if (isDuplicate) {
+          console.log('[OrderStatusTracking] 🔄 Duplicate message detected, ignoring...');
+          return;
+        }
+      }
+      
+      lastMessageRef.current = statusChange;
       setLatestStatusChange(statusChange);
       
       // Call onStatusChange callback if provided
@@ -100,6 +115,21 @@ export const useOrderStatusTracking = (
     if (clientRef.current?.connected || isConnecting) {
       console.log('[OrderStatusTracking] Already connected or connecting');
       return;
+    }
+
+    // Clean up any existing connection before creating new one
+    if (clientRef.current) {
+      console.log('[OrderStatusTracking] Cleaning up existing connection...');
+      try {
+        if (subscriptionRef.current) {
+          subscriptionRef.current.unsubscribe();
+          subscriptionRef.current = null;
+        }
+        clientRef.current.deactivate();
+        clientRef.current = null;
+      } catch (err) {
+        console.error('[OrderStatusTracking] Error cleaning up connection:', err);
+      }
     }
 
     const token = authService.getAuthToken();
@@ -207,7 +237,7 @@ export const useOrderStatusTracking = (
 
     clientRef.current = client;
     client.activate();
-  }, [config.orderId, handleStatusChangeMessage, isConnecting]);
+  }, [config.orderId, isConnecting]);
 
   // Disconnect from WebSocket
   const disconnect = useCallback(() => {
@@ -229,9 +259,11 @@ export const useOrderStatusTracking = (
       clientRef.current = null;
     }
     
+    // Reset state
     setIsConnected(false);
     setIsConnecting(false);
     setError(null);
+    lastMessageRef.current = null;
   }, []);
 
   // Auto-connect on mount if enabled
@@ -244,7 +276,7 @@ export const useOrderStatusTracking = (
     return () => {
       disconnect();
     };
-  }, [config.autoConnect, config.orderId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [config.orderId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return {
     isConnected,

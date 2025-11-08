@@ -21,6 +21,7 @@ import { enumToSelectOptions } from '@/utils/enumUtils';
 import SealReplacementDetail from '../../../Admin/Issues/components/SealReplacementDetail';
 import VehicleDriverInfo from './VehicleDriverInfo';
 import IssueInfoCard from './IssueInfoCard';
+import RefundProcessingDetail from './RefundProcessingDetail';
 
 const IssueDetail: React.FC = () => {
     const { id } = useParams<{ id: string }>();
@@ -39,9 +40,17 @@ const IssueDetail: React.FC = () => {
 
     // Hàm lấy thông tin chi tiết sự cố từ API
     const fetchIssueDetails = async (issueId: string) => {
+        console.log(`🔄 [IssueDetail] Fetching issue details for ${issueId} at ${new Date().toLocaleTimeString()}`);
         setLoading(true);
         try {
             const data = await issueService.getIssueById(issueId);
+            console.log('✅ [IssueDetail] Fetched issue data:', {
+                id: data.id,
+                issueCategory: data.issueCategory,
+                orderDetail: data.orderDetail,
+                issueImages: data.issueImages,
+                timestamp: new Date().toLocaleTimeString()
+            });
             setIssue(data);
         } catch (error) {
             message.error('Không thể tải thông tin sự cố');
@@ -133,7 +142,14 @@ const IssueDetail: React.FC = () => {
     console.log('[IssueDetail] Issue data:', {
         issueCategory: issue.issueCategory,
         issueTypeEntityCategory: issue.issueTypeEntity?.issueCategory,
-        shouldShowSealReplacement: issue.issueCategory === 'SEAL_REPLACEMENT' || issue.issueTypeEntity?.issueCategory === 'SEAL_REPLACEMENT'
+        status: issue.status,
+        orderDetail: issue.orderDetail,
+        orderDetailEntity: issue.orderDetailEntity,
+        issueImages: issue.issueImages,
+        shouldShowSealReplacement: issue.issueCategory === 'SEAL_REPLACEMENT' || issue.issueTypeEntity?.issueCategory === 'SEAL_REPLACEMENT',
+        shouldShowRefund: (issue.issueCategory === 'DAMAGE' || issue.issueTypeEntity?.issueCategory === 'DAMAGE') && 
+                         issue.status === 'OPEN' && 
+                         (issue.orderDetailEntity || issue.orderDetail)
     });
 
     return (
@@ -175,6 +191,18 @@ const IssueDetail: React.FC = () => {
                                 onUpdate={handleIssueUpdate} 
                             />
                         </Card>
+                    </Col>
+                )}
+
+                {/* Refund Processing Detail - Hiển thị khi issue là loại damage và status là OPEN */}
+                {(issue.issueCategory === 'DAMAGE' || issue.issueTypeEntity?.issueCategory === 'DAMAGE') && 
+                 (issue.orderDetailEntity || issue.orderDetail) && (
+                    <Col span={24}>
+                        <RefundProcessingDetail 
+                            issue={issue}
+                            orderDetailId={issue.orderDetailEntity?.id || ''}
+                            onUpdate={handleIssueUpdate} 
+                        />
                     </Col>
                 )}
             </Row>

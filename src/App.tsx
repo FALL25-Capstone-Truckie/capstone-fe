@@ -28,16 +28,31 @@ function App() {
     >
       <MessageProvider>
         <AuthProvider>
-          <AppContent />
+          <AppContentWrapper />
         </AuthProvider>
       </MessageProvider>
     </ConfigProvider>
   );
 }
 
-// Component để chọn đúng ChatWidget dựa trên vai trò
-const AppContent: React.FC = () => {
-  const { user } = useAuth();
+// Component wrapper to handle context providers in correct order
+const AppContentWrapper: React.FC = () => {
+  const { user, isLoading } = useAuth();
+
+  // Show loading while auth is initializing
+  if (isLoading) {
+    return (
+      <div style={{ 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        height: '100vh',
+        fontFamily: "'Be Vietnam Pro', sans-serif"
+      }}>
+        <div>Đang tải...</div>
+      </div>
+    );
+  }
 
   // Determine if this is a staff user
   const isStaff = user?.role === 'staff';

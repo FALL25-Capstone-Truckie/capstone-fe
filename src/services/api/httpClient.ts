@@ -224,6 +224,21 @@ httpClient.interceptors.response.use(
           console.log('[httpClient] ✅ Token refresh successful');
         } catch (refreshTokenError: any) {
           console.error('[httpClient] ❌ Token refresh failed:', refreshTokenError.message);
+          
+          // Check if this might be a server restart scenario
+          if (refreshTokenError.response?.status === 0 || !refreshTokenError.response) {
+            console.warn('[httpClient] 🔄 Possible server restart - checking localStorage for user data');
+            const hasStoredUserData = localStorage.getItem('remember_login') === 'true' && 
+                                     localStorage.getItem('user_role') && 
+                                     localStorage.getItem('userId');
+            
+            if (hasStoredUserData) {
+              console.log('[httpClient] ✅ User data found in localStorage, keeping session alive');
+              // Don't logout immediately - give user a chance to reconnect
+              throw new Error('Mất kết nối đến server. Vui lòng thử lại sau.');
+            }
+          }
+          
           // Nếu là lỗi khác, ném lại lỗi
           throw refreshTokenError;
         }

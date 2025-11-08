@@ -90,6 +90,20 @@ export interface IssueApiResponse {
     sealRemovalImage?: string;
     newSealAttachedImage?: string;
     newSealConfirmedAt?: string;
+    // Damage issue specific fields (only for DAMAGE category)
+    orderDetailEntity?: {
+        id: string;
+        trackingCode?: string;
+        packageName?: string;
+        status?: string;
+    };
+    issueImages?: string[]; // URLs of damage images
+    orderDetail?: {
+        trackingCode: string;
+        description: string;
+        weightBaseUnit: number;
+        unit: string;
+    };
 }
 
 export interface IssueCreateDto {

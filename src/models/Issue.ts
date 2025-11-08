@@ -8,7 +8,8 @@ export interface Issue {
     issueCategory: IssueCategory; // NEW: Category to determine issue type
     reportedAt?: string;
     resolvedAt?: string;
-    vehicleAssignment?: VehicleAssignment;
+    vehicleAssignment?: VehicleAssignment; // For compatibility with old code
+    vehicleAssignmentEntity?: VehicleAssignment; // Backend returns this field name
     staff?: IssueUser;
     issueTypeEntity?: IssueTypeEntity;
     
@@ -18,6 +19,19 @@ export interface Issue {
     sealRemovalImage?: string;
     newSealAttachedImage?: string;
     newSealConfirmedAt?: string;
+
+    // Damage issue specific fields (only for DAMAGE category)
+    orderDetailEntity?: OrderDetailInfo; // The specific package that is damaged
+    issueImages?: string[]; // URLs of damage images
+    orderDetail?: OrderDetailForIssue; // Order detail info (tracking code, description, weight, unit)
+}
+
+// Order detail information for issue
+export interface OrderDetailForIssue {
+    trackingCode: string;
+    description: string;
+    weightBaseUnit: number;
+    unit: string;
 }
 
 export type IssueStatus = 'OPEN' | 'IN_PROGRESS' | 'RESOLVED';
@@ -28,7 +42,11 @@ export type IssueCategory =
     | 'ACCIDENT' 
     | 'VEHICLE_BREAKDOWN' 
     | 'WEATHER' 
-    | 'CARGO_ISSUE';
+    | 'CARGO_ISSUE'
+    | 'DAMAGE'
+    | 'MISSING_ITEMS'
+    | 'WRONG_ITEMS'
+    | 'ORDER_REJECTION';
 
 export interface Seal {
     id: string;
@@ -138,6 +156,13 @@ export interface IssueUser {
     imageUrl?: string;
     status: string;
     role?: Role;
+}
+
+export interface OrderDetailInfo {
+    id: string;
+    trackingCode?: string;
+    packageName?: string;
+    status?: string;
 }
 
 export interface Role {

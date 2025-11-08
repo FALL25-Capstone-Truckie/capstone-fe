@@ -37,14 +37,19 @@ const mapApiResponseToIssue = (apiData: IssueApiResponse): Issue => {
             driver1: apiData.vehicleAssignmentEntity.driver1,
             driver2: apiData.vehicleAssignmentEntity.driver2
         } : undefined,
+        vehicleAssignmentEntity: apiData.vehicleAssignmentEntity,
         staff: apiData.staff,
         issueTypeEntity: apiData.issueTypeEntity,
+        orderDetailEntity: apiData.orderDetailEntity,
         // Seal replacement fields
         oldSeal: apiData.oldSeal,
         newSeal: apiData.newSeal,
         sealRemovalImage: apiData.sealRemovalImage,
         newSealAttachedImage: apiData.newSealAttachedImage,
-        newSealConfirmedAt: apiData.newSealConfirmedAt
+        newSealConfirmedAt: apiData.newSealConfirmedAt,
+        // Damage issue fields
+        issueImages: apiData.issueImages,
+        orderDetail: apiData.orderDetail
     };
 };
 
@@ -91,7 +96,10 @@ const issueService = {
     getIssueById: async (id: string): Promise<Issue> => {
         try {
             const response = await httpClient.get<IssueResponse>(`/issues/${id}`);
-            return mapApiResponseToIssue(response.data.data);
+            console.log('🔍 [issueService] Raw API response:', response.data.data);
+            const mappedIssue = mapApiResponseToIssue(response.data.data);
+            console.log('🔍 [issueService] Mapped issue:', mappedIssue);
+            return mappedIssue;
         } catch (error: any) {
             console.error(`Error fetching issue ${id}:`, error);
             throw new Error(error.response?.data?.message || 'Không thể tải thông tin sự cố');

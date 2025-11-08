@@ -137,7 +137,7 @@ export const IssuesProvider: React.FC<IssuesProviderProps> = ({ children }) => {
         return new SockJS(sockJsUrl);
       },
       reconnectDelay: 5000,
-      debug: (str) => console.log('STOMP Debug:', str),
+      // debug: (str) => console.log('STOMP Debug:', str),
     });
 
     client.onConnect = () => {

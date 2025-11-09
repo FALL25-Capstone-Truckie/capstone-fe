@@ -13,6 +13,7 @@ import {
 import orderService from "../../../../services/order/orderService";
 import type { StaffOrderDetailResponse } from "../../../../services/order/types";
 import VehicleAssignmentModal from "./VehicleAssignmentModalContainer";
+import { areAllOrderDetailsInFinalStatus } from "../../../../utils/statusHelpers";
 import { OrderStatusEnum } from "../../../../constants/enums";
 import dayjs from "dayjs";
 import timezone from "dayjs/plugin/timezone";
@@ -68,11 +69,20 @@ const StaffOrderDetail: React.FC = () => {
     if (id && statusChange.orderId === id) {
       console.log('[StaffOrderDetail] ✅ Order ID matched!');
       
-      // CRITICAL: Only refetch for important status transitions BEFORE PICKING_UP
+      // CRITICAL: Refetch for important status transitions BEFORE and including PICKING_UP
       // For status changes after PICKING_UP, just update locally to avoid disrupting real-time tracking
-      const shouldRefetch = 
-        (statusChange.newStatus === 'PICKING_UP' && statusChange.previousStatus === 'FULLY_PAID') ||
-        statusChange.newStatus === 'ASSIGNED_TO_DRIVER';
+      const statusesRequiringRefetch = [
+        'PROCESSING',
+        'CONTRACT_DRAFT',
+        'CONTRACT_SIGNED',
+        'ON_PLANNING',
+        'ASSIGNED_TO_DRIVER',
+        'FULLY_PAID',
+        'PICKING_UP',
+        'REJECT_ORDER'
+      ];
+      
+      const shouldRefetch = statusesRequiringRefetch.includes(statusChange.newStatus);
       
       // Statuses that are AFTER PICKING_UP - don't refetch to preserve real-time tracking
       const statusesAfterPickup = [
@@ -173,23 +183,24 @@ const StaffOrderDetail: React.FC = () => {
   });
 
   // Validate and adjust active tab based on order status
-  const validateActiveTab = useCallback((tabKey: string, orderStatus?: string) => {
+  const validateActiveTab = useCallback((tabKey: string, orderStatus?: string, orderDetails?: Array<{ status: string }>) => {
     // If order is not loaded yet, return the tab as-is
     if (!orderStatus) return tabKey;
     
     // Check if live tracking tab should be available
-    const shouldShowLiveTracking = [
+    // Note: COMPENSATION, SUCCESSFUL, RETURNED are final statuses - no tracking needed
+    const isDeliveryStatus = [
       OrderStatusEnum.PICKING_UP,
       OrderStatusEnum.ON_DELIVERED,
       OrderStatusEnum.ONGOING_DELIVERED,
       OrderStatusEnum.IN_TROUBLES,
       OrderStatusEnum.RESOLVED,
-      OrderStatusEnum.COMPENSATION,
       OrderStatusEnum.DELIVERED,
-      OrderStatusEnum.SUCCESSFUL,
-      OrderStatusEnum.RETURNING,
-      OrderStatusEnum.RETURNED
+      OrderStatusEnum.RETURNING
     ].includes(orderStatus as OrderStatusEnum);
+    
+    const allDetailsInFinalStatus = areAllOrderDetailsInFinalStatus(orderDetails);
+    const shouldShowLiveTracking = isDeliveryStatus && !allDetailsInFinalStatus;
     
     // If saved tab is liveTracking but it's not available, fallback to basic
     if (tabKey === 'liveTracking' && !shouldShowLiveTracking) {
@@ -203,12 +214,12 @@ const StaffOrderDetail: React.FC = () => {
   // Update active tab when order data changes (for validation)
   useEffect(() => {
     if (orderData?.order?.status) {
-      const validatedTab = validateActiveTab(activeMainTab, orderData.order.status);
+      const validatedTab = validateActiveTab(activeMainTab, orderData.order.status, orderData.order.orderDetails);
       if (validatedTab !== activeMainTab) {
         setActiveMainTab(validatedTab);
       }
     }
-  }, [orderData?.order?.status, activeMainTab, validateActiveTab]);
+  }, [orderData?.order?.status, orderData?.order?.orderDetails, activeMainTab, validateActiveTab]);
 
   useEffect(() => {
     // Scroll to top when entering order detail page
@@ -237,25 +248,25 @@ const StaffOrderDetail: React.FC = () => {
   useEffect(() => {
     const currentStatus = orderData?.order?.status;
     // Auto-switch if status >= PICKING_UP and we haven't switched yet
+    // Note: COMPENSATION, SUCCESSFUL, RETURNED are final statuses - no tracking needed
     const isDeliveryStatus = [
       OrderStatusEnum.PICKING_UP,
       OrderStatusEnum.ON_DELIVERED,
       OrderStatusEnum.ONGOING_DELIVERED,
       OrderStatusEnum.IN_TROUBLES,
       OrderStatusEnum.RESOLVED,
-      OrderStatusEnum.COMPENSATION,
       OrderStatusEnum.DELIVERED,
-      OrderStatusEnum.SUCCESSFUL,
-      OrderStatusEnum.RETURNING,
-      OrderStatusEnum.RETURNED
+      OrderStatusEnum.RETURNING
     ].includes(currentStatus as OrderStatusEnum);
     
-    if (isDeliveryStatus && !hasAutoSwitchedRef.current) {
+    const allDetailsInFinalStatus = areAllOrderDetailsInFinalStatus(orderData?.order?.orderDetails);
+    
+    if (isDeliveryStatus && !allDetailsInFinalStatus && !hasAutoSwitchedRef.current) {
       console.log('[StaffOrderDetail] 🎯 Order status >= PICKING_UP - switching to live tracking tab');
       setActiveMainTab('liveTracking');
       hasAutoSwitchedRef.current = true;
     }
-  }, [orderData?.order?.status]);
+  }, [orderData?.order?.status, orderData?.order?.orderDetails]);
 
   // Auto scroll to live tracking tab when it becomes active
   useEffect(() => {
@@ -320,19 +331,19 @@ const StaffOrderDetail: React.FC = () => {
     }
   };
 
-  // Check if should show Live Tracking tab (status >= PICKING_UP)
+  // Check if should show Live Tracking tab
+  // Only show if: 1) Order status is in delivery range AND 2) NOT all order details are in final status
+  // Final statuses: COMPENSATION, SUCCESSFUL, RETURNED
   const shouldShowLiveTracking = orderData?.order && [
     OrderStatusEnum.PICKING_UP,
     OrderStatusEnum.ON_DELIVERED,
     OrderStatusEnum.ONGOING_DELIVERED,
     OrderStatusEnum.IN_TROUBLES,
     OrderStatusEnum.RESOLVED,
-    OrderStatusEnum.COMPENSATION,
     OrderStatusEnum.DELIVERED,
-    OrderStatusEnum.SUCCESSFUL,
-    OrderStatusEnum.RETURNING,
-    OrderStatusEnum.RETURNED
-  ].includes(orderData.order.status as OrderStatusEnum);
+    OrderStatusEnum.RETURNING
+  ].includes(orderData.order.status as OrderStatusEnum) && 
+  !areAllOrderDetailsInFinalStatus(orderData.order.orderDetails);
 
   // Check if order status is ASSIGNED_TO_DRIVER or later
   const canPrintBillOfLading = () => {
@@ -521,6 +532,15 @@ const StaffOrderDetail: React.FC = () => {
               transactions={transactions}
               orderId={id}
               depositAmount={order.depositAmount}
+              onRefetch={() => {
+                if (id) {
+                  fetchOrderDetails(id);
+                  // Auto-switch to contract tab after successful export
+                  setTimeout(() => {
+                    setActiveMainTab('contract');
+                  }, 500);
+                }
+              }}
             />
           </TabPane>
         </Tabs>

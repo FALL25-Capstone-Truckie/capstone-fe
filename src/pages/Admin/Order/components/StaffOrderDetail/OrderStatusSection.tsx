@@ -33,8 +33,8 @@ const OrderStatusSection: React.FC<OrderStatusSectionProps> = ({
     };
 
     const formatCurrency = (amount: number | null) => {
-        if (amount === null || amount === undefined) {
-            return "0 VND";
+        if (amount === null || amount === undefined || amount === 0) {
+            return "Chưa có thông tin";
         }
         return amount.toLocaleString("vi-VN", { style: "currency", currency: "VND" });
     };

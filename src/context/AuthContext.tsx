@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import type { User } from "@/models/User";
 import authService from "@/services/auth";
 import type { LoginResponse } from "@/services/auth/types";
+import { onLogout as onHttpClientLogout } from "@/services/api/httpClient";
 
 interface AuthContextType {
     user: User | null;
@@ -23,6 +24,16 @@ interface AuthProviderProps {
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     const [user, setUser] = useState<User | null>(null);
     const [isLoading, setIsLoading] = useState(true);
+
+    useEffect(() => {
+        // Listen for logout events from httpClient
+        const unsubscribe = onHttpClientLogout(() => {
+            console.log('[AuthContext] Received logout event from httpClient');
+            setUser(null);
+        });
+
+        return unsubscribe;
+    }, []);
 
     useEffect(() => {
         // Check if user is logged in

@@ -11,16 +11,10 @@ import {
   InputNumber,
   Row,
   Col,
-  Alert,
-  Statistic,
 } from "antd";
 import {
   FileTextOutlined,
   DownloadOutlined,
-  PlusOutlined,
-  InfoCircleOutlined,
-  DollarOutlined,
-  CreditCardOutlined,
 } from "@ant-design/icons";
 import { StaffContractPreview } from "../../../../components/features/order";
 import ContractExportContent from "../../../../components/features/order/ContractExportContent";
@@ -63,7 +57,6 @@ interface StaffContractProps {
 const StaffContractSection: React.FC<StaffContractProps> = ({
   contract,
   orderId,
-  depositAmount,
   onRefetch,
 }) => {
   const messageApi = App.useApp().message;
@@ -73,9 +66,6 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
   const [isCreationModalOpen, setIsCreationModalOpen] =
     useState<boolean>(false);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState<boolean>(false);
-  const hasAdjustedValue = Boolean(
-    contract?.adjustedValue && contract.adjustedValue !== 0
-  );
   const [form] = Form.useForm();
   const [uploadForm] = Form.useForm();
 
@@ -407,6 +397,13 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
               console.error("Error refreshing contract data:", error);
             }
           }, 500);
+          
+          // Refetch parent order data to reflect contract status change
+          if (onRefetch) {
+            setTimeout(() => {
+              onRefetch();
+            }, 1000);
+          }
         } else {
           throw new Error(response?.message || "Upload failed");
         }
@@ -649,6 +646,16 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
                       <div className="flex justify-between items-center">
                         <span className="text-sm text-gray-600">Nhân viên phụ trách:</span>
                         <span className="font-medium text-gray-900">{contract.staffName || "Chưa có thông tin"}</span>
+                      </div>
+                      <div className="flex justify-between items-center pt-2 border-t border-blue-200">
+                        <span className="text-sm text-gray-600">Giá trị hợp đồng:</span>
+                        <span className="font-semibold text-lg text-blue-600">
+                          {(contract.adjustedValue && contract.adjustedValue > 0) 
+                            ? `${contract.adjustedValue.toLocaleString('vi-VN')} VNĐ`
+                            : (contract.totalValue && contract.totalValue > 0)
+                            ? `${contract.totalValue.toLocaleString('vi-VN')} VNĐ`
+                            : "Chưa có thông tin"}
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -1067,9 +1074,9 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
                 `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ",")
               }
               parser={(value) => {
-                if (!value) return 0;
+                if (!value) return 0 as any;
                 const parsed = Number(value.replace(/\$\s?|(,*)/g, ""));
-                return isNaN(parsed) ? 0 : parsed;
+                return (isNaN(parsed) ? 0 : parsed) as any;
               }}
               addonAfter="VND"
               min={0}

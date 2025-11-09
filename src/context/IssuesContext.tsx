@@ -6,6 +6,7 @@ import SockJS from 'sockjs-client';
 import type { Issue } from '@/models/Issue';
 import issueService from '@/services/issue/issueService';
 import { message as antdMessage } from 'antd';
+import { useAuth } from '@/context';
 
 interface IssuesContextType {
   issues: Issue[];
@@ -47,6 +48,7 @@ export const IssuesProvider: React.FC<IssuesProviderProps> = ({ children }) => {
   const [error, setError] = useState<string | null>(null);
   const [newIssueForModal, setNewIssueForModal] = useState<Issue | null>(null);
 
+  const { user, isAuthenticated } = useAuth();
   const clientRef = useRef<Client | null>(null);
   const subscriptionNewRef = useRef<any>(null);
   const subscriptionStatusRef = useRef<any>(null);
@@ -121,12 +123,19 @@ export const IssuesProvider: React.FC<IssuesProviderProps> = ({ children }) => {
 
   // Connect to WebSocket
   const connectWebSocket = useCallback(() => {
-    if (clientRef.current?.connected) {
-      console.log('✅ WebSocket already connected');
+    // Only allow STAFF role to connect to issue WebSocket
+    if (!isAuthenticated || !user || user.role !== 'staff') {
+      console.log('❌ Issue WebSocket connection denied - User is not staff:', user?.role);
+      setError('Chỉ nhân viên mới có thể kết nối đến Issue WebSocket');
       return;
     }
 
-    console.log('🔌 Connecting to Issues WebSocket...');
+    if (clientRef.current?.connected) {
+      console.log('✅ Issue WebSocket already connected for staff user');
+      return;
+    }
+
+    console.log('🔌 Connecting to Issues WebSocket for staff user...');
     setIsConnected(false);
 
     const host = window.location.hostname;
@@ -141,7 +150,7 @@ export const IssuesProvider: React.FC<IssuesProviderProps> = ({ children }) => {
     });
 
     client.onConnect = () => {
-      console.log('✅ Issues WebSocket connected');
+      console.log('✅ Issues WebSocket connected for staff user');
       setIsConnected(true);
       setError(null);
 
@@ -171,25 +180,31 @@ export const IssuesProvider: React.FC<IssuesProviderProps> = ({ children }) => {
         }
       );
 
-      console.log('✅ Subscribed to issues topics');
+      console.log('✅ Staff user subscribed to issues topics');
     };
 
     client.onWebSocketError = (event) => {
-      console.error('❌ WebSocket error:', event);
+      console.error('❌ Issue WebSocket error:', event);
       setIsConnected(false);
-      setError('Lỗi kết nối WebSocket');
+      setError('Lỗi kết nối Issue WebSocket');
     };
 
     client.onStompError = (frame) => {
-      console.error('❌ STOMP error:', frame.headers['message']);
+      console.error('❌ Issue STOMP error:', frame.headers['message']);
       console.error('Details:', frame.body);
       setIsConnected(false);
-      setError('Lỗi kết nối STOMP');
+      setError('Lỗi kết nối Issue STOMP');
+      
+      // Check if error is related to authorization
+      if (frame.body?.includes('Only STAFF role')) {
+        console.warn('❌ Authorization failed - User is not staff');
+        setError('Chỉ nhân viên mới có thể truy cập Issue WebSocket');
+      }
     };
 
     client.activate();
     clientRef.current = client;
-  }, [handleNewIssue, handleIssueStatusChange]);
+  }, [isAuthenticated, user, handleNewIssue, handleIssueStatusChange]);
 
   // Disconnect WebSocket
   const disconnectWebSocket = useCallback(() => {
@@ -233,14 +248,20 @@ export const IssuesProvider: React.FC<IssuesProviderProps> = ({ children }) => {
     setNewIssueForModal(null);
   }, []);
 
-  // Auto-connect WebSocket on mount
+  // Auto-connect WebSocket on mount for staff users only
   useEffect(() => {
-    connectWebSocket();
+    // Only connect if user is authenticated and has staff role
+    if (isAuthenticated && user && user.role === 'staff') {
+      console.log('🔑 Staff user detected, connecting to Issue WebSocket...');
+      connectWebSocket();
+    } else {
+      console.log('🚫 Non-staff user detected, skipping Issue WebSocket connection:', user?.role);
+    }
     
     return () => {
       disconnectWebSocket();
     };
-  }, [connectWebSocket, disconnectWebSocket]);
+  }, [isAuthenticated, user, connectWebSocket, disconnectWebSocket]);
 
   const value: IssuesContextType = {
     issues,

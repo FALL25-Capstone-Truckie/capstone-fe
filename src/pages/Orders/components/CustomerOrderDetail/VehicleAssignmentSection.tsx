@@ -86,7 +86,7 @@ const VehicleAssignmentSection: React.FC<VehicleAssignmentSectionProps> = ({
             <div className="mb-4">
                 <div className="text-sm font-semibold text-blue-700 mb-3 flex items-center">
                     <CarOutlined className="mr-2" />
-                    Chọn chuyến xe
+                    Chuyến xe
                 </div>
                 <Tabs
                     activeKey={selectedVehicleAssignmentIndex.toString()}

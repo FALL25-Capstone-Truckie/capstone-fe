@@ -28,10 +28,11 @@ export const useOrderCreation = () => {
         setError(null);
 
         // Fetch all data in parallel
-        const [addressesData, orderSizesData, categoriesData] = await Promise.all([
+        const [addressesData, orderSizesData, categoriesData, unitsData] = await Promise.all([
           addressService.getMyAddresses(),
           orderSizeService.getAllOrderSizes(),
           categoryService.getCategories(),
+          orderService.getUnitsList(),
         ]);
 
         setAddresses(addressesData);
@@ -43,8 +44,8 @@ export const useOrderCreation = () => {
           : (categoriesData as any)?.data || [];
         setCategories(categoriesArray);
 
-        // Set default units (kg, tấn, etc.)
-        setUnits(['kg', 'tấn', 'tạ', 'yến']);
+        // Set units from API
+        setUnits(unitsData);
       } catch (err: any) {
         console.error('[useOrderCreation] Error fetching initial data:', err);
         setError(err?.message || 'Không thể tải dữ liệu');

@@ -1,4 +1,4 @@
-import { createBrowserRouter, RouterProvider, Outlet } from "react-router-dom";
+import { createBrowserRouter, Outlet } from "react-router-dom";
 import HomePage from "../pages/Home";
 import { LoginPage, RegisterPage } from "../pages/Auth";
 import { PaymentReturn } from "../pages/Payment";
@@ -12,16 +12,14 @@ import { OrderList as StaffOrderList } from "../pages/Staff/Order";
 import { IssueList, IssueDetail } from "../pages/Staff/Issue";
 import {
   OrderPage as AdminOrderList,
-  OrderDetailPage as AdminOrderDetailPage,
   OrderEdit as AdminOrderEdit,
 } from "../pages/Admin/Order";
 import StaffOrderDetailPage from "../pages/Admin/Order/StaffOrderDetailPage";
 import OrdersPage from "../pages/Orders";
-import OrderDetailPage from "../pages/Orders/OrderDetail";
 import CustomerOrderDetailPage from "../pages/Orders/CustomerOrderDetailPage";
 import CreateOrder from "../pages/Orders/CreateOrder";
 import { PermissionRoute } from "../components/auth";
-import { MainLayout, AdminLayout } from "../components/layout";
+import { MainLayout, AdminLayout, RootLayout } from "../components/layout";
 import DriverPage from "../pages/Admin/Driver";
 import DriverDetail from "../pages/Admin/Driver/DriverDetail";
 import RegisterDriver from "../pages/Admin/Driver/RegisterDriver";
@@ -46,6 +44,9 @@ import VehicleRulePage from "../pages/Admin/VehicleRule";
 
 // Định nghĩa các route với bảo vệ dựa trên vai trò và trạng thái xác thực
 const router = createBrowserRouter([
+  {
+    element: <RootLayout />,
+    children: [
   // Các trang xác thực - chỉ dành cho người chưa đăng nhập
   {
     path: "/auth/login",
@@ -431,6 +432,8 @@ const router = createBrowserRouter([
         path: "profile",
         element: <ProfilePage />,
       },
+    ],
+  },
     ],
   },
 ]);

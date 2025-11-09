@@ -659,6 +659,24 @@ const orderService = {
       throw handleApiError(error, "Không thể thanh toán toàn bộ");
     }
   },
+
+  /**
+   * Cancel an order
+   * Only allowed for orders with status PENDING, PROCESSING, or CONTRACT_DRAFT
+   * @param orderId Order ID to cancel
+   * @returns Promise with response data
+   */
+  cancelOrder: async (orderId: string): Promise<any> => {
+    try {
+      const response = await httpClient.put(
+        `/orders/${orderId}/cancel`
+      );
+      return response.data;
+    } catch (error) {
+      console.error(`Error cancelling order ${orderId}:`, error);
+      throw handleApiError(error, "Không thể hủy đơn hàng");
+    }
+  },
 };
 
 export default orderService;

@@ -2,6 +2,19 @@ import axios, { AxiosError } from 'axios';
 import type { AxiosRequestConfig } from 'axios';
 import { handleApiError } from './errorHandler';
 
+// Event emitter for logout events
+const logoutEventTarget = new EventTarget();
+export const LOGOUT_EVENT = 'auth:logout';
+
+export const onLogout = (callback: () => void) => {
+  logoutEventTarget.addEventListener(LOGOUT_EVENT, callback);
+  return () => logoutEventTarget.removeEventListener(LOGOUT_EVENT, callback);
+};
+
+const emitLogout = () => {
+  logoutEventTarget.dispatchEvent(new Event(LOGOUT_EVENT));
+};
+
 // Create an axios instance with default config
 const httpClient = axios.create({
   baseURL: 'http://localhost:8080/api/v1', // Make sure this matches your backend URL
@@ -75,13 +88,13 @@ httpClient.interceptors.request.use(
     // Import authService here to avoid circular dependency
     const authService = await import('../auth/authService').then(module => module.default);
 
-    // Get auth token from in-memory storage
-    const authToken = authService.getAuthToken();
-
     // PROACTIVE TOKEN REFRESH: Check and refresh token before request
     // Skip refresh for the refresh endpoint itself to avoid infinite loop
-    if (authToken && !config.url?.includes('/token/refresh')) {
-      if (isTokenExpiringSoon(authToken)) {
+    if (!config.url?.includes('/token/refresh')) {
+      // Get current token to check expiry
+      const currentToken = authService.getAuthToken();
+      
+      if (currentToken && isTokenExpiringSoon(currentToken)) {
         console.log('[httpClient] 🔄 Token expiring soon, proactively refreshing...');
         try {
           await authService.refreshToken();
@@ -93,12 +106,19 @@ httpClient.interceptors.request.use(
       }
     }
 
-    // Get fresh token after potential refresh
+    // CRITICAL: Always get the LATEST token right before setting header
+    // This ensures we use the refreshed token if refresh just happened
     const freshToken = authService.getAuthToken();
 
     // Add auth token to headers if available
     if (freshToken && config.headers) {
-      config.headers['Authorization'] = `Bearer ${freshToken}`;
+      // Use set method to ensure header is properly updated in AxiosHeaders
+      if (typeof config.headers.set === 'function') {
+        config.headers.set('Authorization', `Bearer ${freshToken}`);
+      } else {
+        config.headers['Authorization'] = `Bearer ${freshToken}`;
+      }
+      console.log('[httpClient] 🔑 Token set in header:', freshToken.substring(0, 20) + '...');
     }
 
     return config;
@@ -141,10 +161,9 @@ httpClient.interceptors.response.use(
         console.error('[httpClient] ❌ Refresh token revoked, logging out');
         const authService = await import('../auth/authService').then(module => module.default);
         authService.logout();
-
-        if (!window.location.pathname.includes('/auth/login')) {
-          window.location.href = '/auth/login';
-        }
+        
+        // Emit logout event to notify AuthContext
+        emitLogout();
 
         return Promise.reject(handleApiError(error, 'Phiên đăng nhập hết hạn'));
       } else {
@@ -174,10 +193,9 @@ httpClient.interceptors.response.use(
         console.error('[httpClient] ❌ Max refresh attempts reached, logging out');
         const authService = await import('../auth/authService').then(module => module.default);
         authService.logout();
-
-        if (!window.location.pathname.includes('/auth/login')) {
-          window.location.href = '/auth/login';
-        }
+        
+        // Emit logout event to notify AuthContext
+        emitLogout();
 
         return Promise.reject(handleApiError(error, 'Phiên đăng nhập hết hạn sau nhiều lần thử'));
       }
@@ -189,6 +207,11 @@ httpClient.interceptors.response.use(
           failedQueue.push({ resolve, reject });
         }).then(() => {
           console.log('[httpClient] ✅ Token refreshed, retrying queued request');
+          // IMPORTANT: Delete old Authorization header before retry
+          // This forces the request interceptor to add the new token
+          if (originalRequest.headers) {
+            delete originalRequest.headers.Authorization;
+          }
           return httpClient(originalRequest);
         }).catch(err => {
           console.error('[httpClient] ❌ Queued request failed:', err);
@@ -254,13 +277,18 @@ httpClient.interceptors.response.use(
         // Xử lý hàng đợi các request
         processQueue(null);
 
-        // Đảm bảo header Authorization được cập nhật với token mới
+        // IMPORTANT: Delete old Authorization header and reset retry flag
+        // This forces the request interceptor to add the new token
         if (originalRequest.headers) {
-          originalRequest.headers['Authorization'] = `Bearer ${newToken}`;
+          delete originalRequest.headers.Authorization;
         }
+        delete originalRequest._retry;
 
         console.log('[httpClient] 🔄 Retrying original request with new token');
+        console.log('[httpClient] 🔑 New token available:', newToken.substring(0, 20) + '...');
+        
         // Thực hiện lại request ban đầu với token mới
+        // The request interceptor will automatically add the new token
         return httpClient(originalRequest);
       } catch (refreshError) {
         console.error('[httpClient] ❌ Refresh failed, logging out:', refreshError);
@@ -272,11 +300,9 @@ httpClient.interceptors.response.use(
 
         // Đăng xuất người dùng
         authService.logout();
-
-        // Chuyển hướng đến trang đăng nhập chỉ khi không phải đang ở trang đăng nhập
-        if (!window.location.pathname.includes('/auth/login')) {
-          window.location.href = '/auth/login';
-        }
+        
+        // Emit logout event to notify AuthContext
+        emitLogout();
 
         return Promise.reject(handleApiError(refreshError, 'Phiên đăng nhập hết hạn'));
       } finally {

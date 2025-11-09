@@ -113,6 +113,8 @@ const authService = {
             // Store token in window for external access
             window.__AUTH_TOKEN__ = authToken;
 
+            console.log('[authService] ✅ Login successful, token stored:', authToken ? authToken.substring(0, 20) + '...' : 'NULL');
+
             // Lưu thông tin người dùng vào sessionStorage
             const user = response.data.data.user;
             const roleName = user.role?.roleName;
@@ -173,8 +175,18 @@ const authService = {
             // Backend returns only access token in response body
             const response = await httpClient.post<ApiResponse<{ authToken: string }>>('/auths/token/refresh');
 
+            console.log('[authService] 🔍 Refresh token response:', {
+                success: response.data.success,
+                hasData: !!response.data.data,
+                hasAuthToken: !!response.data.data?.authToken
+            });
+
             if (!response.data.success) {
                 throw new Error(response.data.message || 'Làm mới token thất bại');
+            }
+
+            if (!response.data.data?.authToken) {
+                throw new Error('Backend không trả về authToken sau khi refresh');
             }
 
             // Update access token in memory
@@ -186,6 +198,7 @@ const authService = {
             // SECURITY: Refresh token is stored in HttpOnly cookie by backend
             // Never exposed in JSON response (prevents XSS attacks)
             console.log('[authService] ✅ Token refreshed successfully');
+            console.log('[authService] 🔑 New token stored:', authToken ? authToken.substring(0, 20) + '...' : 'NULL/UNDEFINED');
             console.log('[authService] 🔐 Refresh token stored in HttpOnly cookie (secure)');
             return;
         } catch (error: any) {
@@ -315,6 +328,15 @@ const authService = {
 
             throw handleApiError(error, 'Đổi mật khẩu thất bại');
         }
+    },
+
+    /**
+     * Debug function to check current token in memory
+     * @returns Current token or null
+     */
+    debugGetToken: (): string | null => {
+        console.log('[authService] 🔍 Current token in memory:', authToken ? authToken.substring(0, 20) + '...' : 'NULL');
+        return authToken;
     }
 };
 

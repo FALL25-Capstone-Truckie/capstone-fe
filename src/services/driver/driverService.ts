@@ -76,7 +76,24 @@ const driverService = {
             console.error('Error registering driver:', error);
             throw handleApiError(error, 'Không thể đăng ký tài xế');
         }
+    },
+
+    /**
+     * Validate driver eligibility by phone number for assignment
+     * @param phoneNumber Driver phone number
+     * @returns Promise with driver eligibility data
+     */
+    validateDriverByPhone: async (phoneNumber: string): Promise<DriverModel> => {
+        try {
+            const response = await httpClient.get<DriverResponse>(
+                `/drivers/validate-by-phone/${phoneNumber}`
+            );
+            return response.data.data;
+        } catch (error) {
+            console.error(`Error validating driver with phone ${phoneNumber}:`, error);
+            throw handleApiError(error, 'Không thể xác thực tài xế');
+        }
     }
 };
 
-export default driverService; 
+export default driverService;

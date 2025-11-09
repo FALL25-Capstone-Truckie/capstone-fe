@@ -1,2 +1,1 @@
-export { transactionService, default } from './transactionService';
-export type * from './types';
+export { default as transactionService } from "./transactionService";

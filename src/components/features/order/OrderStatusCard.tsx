@@ -51,7 +51,9 @@ const OrderStatusCard: React.FC<OrderStatusCardProps> = ({ order, contract }) =>
                         <div className="text-center px-4 border-l border-gray-200">
                             <p className="text-gray-500 text-sm">Tổng tiền</p>
                             <p className="font-semibold text-lg text-blue-600">
-                                {(getDisplayPrice() !== null && getDisplayPrice() !== undefined) ? getDisplayPrice()!.toLocaleString('vi-VN') : '0'} VNĐ
+                                {(getDisplayPrice() !== null && getDisplayPrice() !== undefined && getDisplayPrice() !== 0) 
+                                    ? `${getDisplayPrice()!.toLocaleString('vi-VN')} VNĐ`
+                                    : 'Chưa có thông tin'}
                             </p>
                         </div>
                     </div>

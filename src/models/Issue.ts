@@ -5,14 +5,64 @@ export interface Issue {
     locationLatitude: number | null;
     locationLongitude: number | null;
     status: IssueStatus;
-    vehicleAssignment?: VehicleAssignment;
+    issueCategory: IssueCategory; // NEW: Category to determine issue type
+    reportedAt?: string;
+    resolvedAt?: string;
+    vehicleAssignment?: VehicleAssignment; // For compatibility with old code
+    vehicleAssignmentEntity?: VehicleAssignment; // Backend returns this field name
     staff?: IssueUser;
-    issueType?: IssueType;
+    issueTypeEntity?: IssueTypeEntity;
+    
+    // Seal replacement specific fields (only for SEAL_REPLACEMENT category)
+    oldSeal?: Seal;
+    newSeal?: Seal;
+    sealRemovalImage?: string;
+    newSealAttachedImage?: string;
+    newSealConfirmedAt?: string;
+
+    // Damage issue specific fields (only for DAMAGE category)
+    orderDetailEntity?: OrderDetailInfo; // The specific package that is damaged
+    issueImages?: string[]; // URLs of damage images
+    orderDetail?: OrderDetailForIssue; // Order detail info (tracking code, description, weight, unit)
+}
+
+// Order detail information for issue
+export interface OrderDetailForIssue {
+    trackingCode: string;
+    description: string;
+    weightBaseUnit: number;
+    unit: string;
 }
 
 export type IssueStatus = 'OPEN' | 'IN_PROGRESS' | 'RESOLVED';
 
-export interface IssueType {
+export type IssueCategory = 
+    | 'GENERAL' 
+    | 'SEAL_REPLACEMENT' 
+    | 'ACCIDENT' 
+    | 'VEHICLE_BREAKDOWN' 
+    | 'WEATHER' 
+    | 'CARGO_ISSUE'
+    | 'DAMAGE'
+    | 'MISSING_ITEMS'
+    | 'WRONG_ITEMS'
+    | 'ORDER_REJECTION';
+
+export interface Seal {
+    id: string;
+    sealCode: string;
+    status: string;
+    sealDate?: string;
+    description?: string;
+    sealAttachedImage?: string;
+    sealRemovalTime?: string;
+    sealRemovalReason?: string;
+    vehicleAssignment?: {
+        id: string;
+    };
+}
+
+export interface IssueTypeEntity {
     id: string;
     createdAt?: string;
     modifiedAt?: string;
@@ -20,6 +70,7 @@ export interface IssueType {
     modifiedBy?: string;
     issueTypeName: string;
     description?: string;
+    issueCategory: string; // GENERAL, SEAL_REPLACEMENT, ACCIDENT, PENALTY, etc.
     isActive: boolean;
 }
 
@@ -30,10 +81,34 @@ export interface VehicleAssignment {
     createdBy?: string;
     modifiedBy?: string;
     description?: string;
-    status: string;
-    vehicle?: Vehicle;
-    driver1?: Driver;
-    driver2?: Driver;
+    status?: string;
+    trackingCode?: string;
+    vehicle?: VehicleInfo;
+    driver1?: DriverInfo;
+    driver2?: DriverInfo;
+}
+
+export interface VehicleInfo {
+    id: string;
+    licensePlateNumber: string;
+    model?: string;
+    manufacturer?: string;
+    year?: number;
+    vehicleType?: VehicleTypeInfo;
+}
+
+export interface VehicleTypeInfo {
+    id: string;
+    vehicleTypeName: string;
+}
+
+export interface DriverInfo {
+    id: string;
+    fullName: string;
+    phoneNumber?: string;
+    driverLicenseNumber?: string;
+    licenseClass?: string;
+    experienceYears?: string;
 }
 
 export interface Vehicle {
@@ -83,6 +158,13 @@ export interface IssueUser {
     role?: Role;
 }
 
+export interface OrderDetailInfo {
+    id: string;
+    trackingCode?: string;
+    packageName?: string;
+    status?: string;
+}
+
 export interface Role {
     id: string;
     roleName: string;
@@ -126,94 +208,40 @@ export const getVehicleInfo = (vehicle?: Vehicle): string => {
     return `${vehicle.licensePlateNumber} (${vehicle.model || 'Không rõ'})`;
 };
 
-// DTOs for Issue operations
-export interface IssueCreateDto {
-    description: string;
-    locationLatitude?: number;
-    locationLongitude?: number;
-    vehicleAssignmentId?: string;
-    issueTypeId: string;
-}
+export const getIssueCategoryLabel = (category: IssueCategory): string => {
+    switch (category) {
+        case 'GENERAL':
+            return 'Sự cố chung';
+        case 'SEAL_REPLACEMENT':
+            return 'Thay thế seal';
+        case 'ACCIDENT':
+            return 'Tai nạn';
+        case 'VEHICLE_BREAKDOWN':
+            return 'Hỏng xe';
+        case 'WEATHER':
+            return 'Thời tiết xấu';
+        case 'CARGO_ISSUE':
+            return 'Vấn đề hàng hóa';
+        default:
+            return category;
+    }
+};
 
-export interface IssueUpdateDto {
-    description?: string;
-    status?: string;
-    staffId?: string;
-}
-
-// API Response type for Issue with nested entities
-export interface IssueApiResponse {
-    id: string;
-    description: string;
-    locationLatitude: number | null;
-    locationLongitude: number | null;
-    status: string;
-    vehicleAssignmentEntity?: {
-        id: string;
-        createdAt: string;
-        modifiedAt: string;
-        createdBy: string;
-        modifiedBy: string;
-        description: string;
-        status: string;
-        vehicleEntity?: {
-            id: string;
-            licensePlateNumber: string;
-            model?: string;
-            manufacturer?: string;
-            year?: number;
-            capacity?: number;
-            status: string;
-            currentLatitude?: number;
-            currentLongitude?: number;
-            lastUpdated?: string;
-            vehicleTypeEntity?: {
-                id: string;
-                vehicleTypeName: string;
-                description?: string;
-            }
-        };
-        driver1?: {
-            id: string;
-            identityNumber?: string;
-            driverLicenseNumber?: string;
-            status: string;
-            user?: {
-                id: string;
-                username: string;
-                fullName: string;
-                email?: string;
-                phoneNumber?: string;
-                status: string;
-            }
-        };
-        driver2?: {
-            id: string;
-            identityNumber?: string;
-            driverLicenseNumber?: string;
-            status: string;
-            user?: {
-                id: string;
-                username: string;
-                fullName: string;
-                email?: string;
-                phoneNumber?: string;
-                status: string;
-            }
-        }
-    };
-    staff?: {
-        id: string;
-        username: string;
-        fullName: string;
-        email?: string;
-        phoneNumber?: string;
-        status: string;
-    };
-    issueTypeEntity?: {
-        id: string;
-        issueTypeName: string;
-        description?: string;
-        isActive: boolean;
-    };
-}
+export const getIssueCategoryColor = (category: IssueCategory): string => {
+    switch (category) {
+        case 'GENERAL':
+            return 'default';
+        case 'SEAL_REPLACEMENT':
+            return 'purple';
+        case 'ACCIDENT':
+            return 'red';
+        case 'VEHICLE_BREAKDOWN':
+            return 'orange';
+        case 'WEATHER':
+            return 'cyan';
+        case 'CARGO_ISSUE':
+            return 'gold';
+        default:
+            return 'default';
+    }
+}; 

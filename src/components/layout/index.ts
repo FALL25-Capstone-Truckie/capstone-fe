@@ -5,6 +5,7 @@ import AdminLayout from './AdminLayout';
 import AdminHeader from './AdminHeader';
 import AdminSidebar from './AdminSidebar';
 import AdminFooter from './AdminFooter';
+import RootLayout from './RootLayout';
 
 export {
     MainLayout,
@@ -13,5 +14,6 @@ export {
     AdminLayout,
     AdminHeader,
     AdminSidebar,
-    AdminFooter
-}; 
+    AdminFooter,
+    RootLayout
+};

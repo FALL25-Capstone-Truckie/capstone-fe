@@ -48,10 +48,28 @@ const authService = {
                     return;
                 }
 
-                // Check if we have user data in sessionStorage, which indicates
-                // the user was previously logged in
-                const userRole = sessionStorage.getItem('user_role');
-                const userId = sessionStorage.getItem('userId');
+                // Check if we have user data in sessionStorage first (current session)
+                let userRole = sessionStorage.getItem('user_role');
+                let userId = sessionStorage.getItem('userId');
+                
+                // If not in sessionStorage, check localStorage (persistent across server restarts)
+                if (!userRole || !userId) {
+                    userRole = localStorage.getItem('user_role');
+                    userId = localStorage.getItem('userId');
+                    
+                    // If found in localStorage, restore to sessionStorage
+                    if (userRole && userId) {
+                        const username = localStorage.getItem('username');
+                        const email = localStorage.getItem('email');
+                        
+                        sessionStorage.setItem('user_role', userRole);
+                        sessionStorage.setItem('userId', userId);
+                        if (username) sessionStorage.setItem('username', username);
+                        if (email) sessionStorage.setItem('email', email);
+                        
+                        console.log('[authService] Restored user data from localStorage after server restart');
+                    }
+                }
 
                 // If we have user data but no token, try to refresh the token
                 if (userRole && userId) {
@@ -95,6 +113,8 @@ const authService = {
             // Store token in window for external access
             window.__AUTH_TOKEN__ = authToken;
 
+            console.log('[authService] ✅ Login successful, token stored:', authToken ? authToken.substring(0, 20) + '...' : 'NULL');
+
             // Lưu thông tin người dùng vào sessionStorage
             const user = response.data.data.user;
             const roleName = user.role?.roleName;
@@ -103,6 +123,13 @@ const authService = {
             sessionStorage.setItem('userId', user.id);
             sessionStorage.setItem('username', user.username);
             sessionStorage.setItem('email', user.email);
+
+            // Also store in localStorage for persistence across server restarts
+            localStorage.setItem('user_role', roleName.toLowerCase());
+            localStorage.setItem('userId', user.id);
+            localStorage.setItem('username', user.username);
+            localStorage.setItem('email', user.email);
+            localStorage.setItem('remember_login', 'true');
 
             // Thêm dòng hello username
             response.data.message = `Đăng nhập thành công`;
@@ -148,8 +175,18 @@ const authService = {
             // Backend returns only access token in response body
             const response = await httpClient.post<ApiResponse<{ authToken: string }>>('/auths/token/refresh');
 
+            console.log('[authService] 🔍 Refresh token response:', {
+                success: response.data.success,
+                hasData: !!response.data.data,
+                hasAuthToken: !!response.data.data?.authToken
+            });
+
             if (!response.data.success) {
                 throw new Error(response.data.message || 'Làm mới token thất bại');
+            }
+
+            if (!response.data.data?.authToken) {
+                throw new Error('Backend không trả về authToken sau khi refresh');
             }
 
             // Update access token in memory
@@ -161,6 +198,7 @@ const authService = {
             // SECURITY: Refresh token is stored in HttpOnly cookie by backend
             // Never exposed in JSON response (prevents XSS attacks)
             console.log('[authService] ✅ Token refreshed successfully');
+            console.log('[authService] 🔑 New token stored:', authToken ? authToken.substring(0, 20) + '...' : 'NULL/UNDEFINED');
             console.log('[authService] 🔐 Refresh token stored in HttpOnly cookie (secure)');
             return;
         } catch (error: any) {
@@ -218,6 +256,13 @@ const authService = {
             sessionStorage.removeItem('userId');
             sessionStorage.removeItem('username');
             sessionStorage.removeItem('email');
+            
+            // Also clear from localStorage
+            localStorage.removeItem('user_role');
+            localStorage.removeItem('userId');
+            localStorage.removeItem('username');
+            localStorage.removeItem('email');
+            localStorage.removeItem('remember_login');
 
             // Reset biến đếm refresh token
             try {
@@ -283,6 +328,15 @@ const authService = {
 
             throw handleApiError(error, 'Đổi mật khẩu thất bại');
         }
+    },
+
+    /**
+     * Debug function to check current token in memory
+     * @returns Current token or null
+     */
+    debugGetToken: (): string | null => {
+        console.log('[authService] 🔍 Current token in memory:', authToken ? authToken.substring(0, 20) + '...' : 'NULL');
+        return authToken;
     }
 };
 

@@ -1,47 +1,45 @@
-/* Vehicle Assignment Section Styling */
+/* Vehicle Assignment Section Styles */
 .vehicle-assignment-section {
+    animation: fadeIn 0.3s ease-in;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Vehicle tabs styling */
+.vehicle-tabs .ant-tabs-tab {
+    background: white !important;
+    border: 1px solid #d9d9d9 !important;
     transition: all 0.3s ease;
 }
 
-.vehicle-assignment-section:hover {
-    box-shadow: 0 8px 24px rgba(59, 130, 246, 0.15);
+.vehicle-tabs .ant-tabs-tab:hover {
+    background: #f0f7ff !important;
+    border-color: #1890ff !important;
 }
 
-/* Tab styling */
-.vehicle-assignment-section .vehicle-tabs .ant-tabs-tab {
-    border-radius: 6px 6px 0 0;
-    margin-right: 4px;
-    background: white;
-    border: 1px solid #e5e7eb;
-    color: #374151;
+.vehicle-tabs .ant-tabs-tab-active {
+    background: #1890ff !important;
+    border-color: #1890ff !important;
 }
 
-.vehicle-assignment-section .vehicle-tabs .ant-tabs-tab-active {
-    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-    color: white !important;
-    border-color: #2563eb;
-}
-
-.vehicle-assignment-section .vehicle-tabs .ant-tabs-tab-active .anticon {
-    color: white;
-}
-
-.vehicle-assignment-section .vehicle-tabs .ant-tabs-tab-active span {
+.vehicle-tabs .ant-tabs-tab-active .ant-tabs-tab-btn {
     color: white !important;
 }
 
-/* Divider styling */
-.vehicle-assignment-section .border-t-2 {
-    opacity: 0.5;
+/* Detail tabs styling */
+.order-detail-tabs .ant-tabs-tab {
+    transition: all 0.3s ease;
 }
 
-/* Info card styling */
-.vehicle-assignment-section .ant-card {
-    border: 1px solid #e5e7eb;
-    background: white;
-}
-
-.vehicle-assignment-section .ant-card:hover {
-    border-color: #d1d5db;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+.order-detail-tabs .ant-tabs-tab:hover {
+    background: #f0f7ff;
 }

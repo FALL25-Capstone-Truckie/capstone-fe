@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from "react";
 import { 
-    Modal, Button, App, Result, Form, Card, Input, Row, Col, Divider, Select
+    Modal, Button, App, Result, Form, Card, Input, Row, Col, Divider, Select, Space, Tooltip
 } from "antd";
 import { 
-    CarOutlined, ArrowRightOutlined, UserOutlined, FileTextOutlined
+    CarOutlined, ArrowRightOutlined, UserOutlined, FileTextOutlined, PhoneOutlined, SearchOutlined
 } from "@ant-design/icons";
+import driverService from "../../../../services/driver/driverService";
 import type { 
     OrderDetailGroup, GroupAssignment, Seal, 
-    VehicleSuggestion
+    VehicleSuggestion, SuggestedDriver
 } from "../../../../models/VehicleAssignment";
 import { vehicleAssignmentService } from "../../../../services/vehicle-assignment/vehicleAssignmentService";
 import type { RouteInfo } from "../../../../models/VehicleAssignment";
@@ -23,6 +24,8 @@ import {
 import {
     TripInfoHeader
 } from "./VehicleAssignmentModalContainer/index";
+import TripConfirmationModal from "./VehicleAssignmentModal/TripConfirmationModal";
+import type { TripAssignment } from "./VehicleAssignmentModal/types";
 
 const { TextArea } = Input;
 const { Option } = Select;
@@ -32,18 +35,6 @@ interface VehicleAssignmentModalProps {
     orderId: string;
     onClose: () => void;
     onSuccess: () => void;
-}
-
-interface TripAssignment {
-    groupIndex: number;
-    group: OrderDetailGroup;
-    vehicleId?: string;
-    driverId_1?: string;
-    driverId_2?: string;
-    description?: string;
-    routeInfo?: RouteInfo;
-    seals?: Seal[];
-    completed: boolean;
 }
 
 const VehicleAssignmentModal: React.FC<VehicleAssignmentModalProps> = ({
@@ -65,10 +56,15 @@ const VehicleAssignmentModal: React.FC<VehicleAssignmentModalProps> = ({
     const [tripAssignments, setTripAssignments] = useState<TripAssignment[]>([]);
     const [currentTripIndex, setCurrentTripIndex] = useState(0);
     const [currentSubStep, setCurrentSubStep] = useState(1);
+    const [showConfirmation, setShowConfirmation] = useState(false);
     
     // Form state for current trip
     const [selectedVehicleId, setSelectedVehicleId] = useState<string | undefined>();
-    const [selectedDriver1Id, setSelectedDriver1Id] = useState<string | undefined>();
+    const [manualDriver1Phone, setManualDriver1Phone] = useState<string>("");
+    const [manualDriver2Phone, setManualDriver2Phone] = useState<string>("");
+    const [searchingDriver, setSearchingDriver] = useState(false);
+    const [selectedDriver1, setSelectedDriver1] = useState<string | undefined>();
+    const [selectedDriver2, setSelectedDriver2] = useState<string | undefined>();
 
     // Fetch suggestions when modal opens
     useEffect(() => {
@@ -91,7 +87,6 @@ const VehicleAssignmentModal: React.FC<VehicleAssignmentModalProps> = ({
                     description: currentTrip.description
                 });
                 setSelectedVehicleId(currentTrip.vehicleId);
-                setSelectedDriver1Id(currentTrip.driverId_1);
             }
         }
     }, [currentTripIndex, currentStep, currentSubStep, tripAssignments, form]);
@@ -102,7 +97,6 @@ const VehicleAssignmentModal: React.FC<VehicleAssignmentModalProps> = ({
         setCurrentTripIndex(0);
         setCurrentSubStep(1);
         setSelectedVehicleId(undefined);
-        setSelectedDriver1Id(undefined);
         form.resetFields();
     };
 
@@ -112,7 +106,7 @@ const VehicleAssignmentModal: React.FC<VehicleAssignmentModalProps> = ({
             const response = await vehicleAssignmentService.getGroupedSuggestionsForOrderDetails(orderId);
             
             if (!response || !response.data) {
-                messageApi.error("Không thể tải gợi ý phân công xe");
+                messageApi.error("❌ Không thể tải gợi ý phân công xe");
                 return;
             }
 
@@ -126,7 +120,7 @@ const VehicleAssignmentModal: React.FC<VehicleAssignmentModalProps> = ({
             setSuggestionsMap(newSuggestionsMap);
         } catch (error) {
             console.error("Error fetching suggestions:", error);
-            messageApi.error("Không thể tải gợi ý phân công xe");
+            messageApi.error("❌ Không thể tải gợi ý phân công xe");
         } finally {
             setLoading(false);
         }
@@ -134,7 +128,7 @@ const VehicleAssignmentModal: React.FC<VehicleAssignmentModalProps> = ({
 
     const handleSelectTrips = (indices: number[]) => {
         if (indices.length !== detailGroups.length) {
-            messageApi.error(`Bắt buộc phải phân công tất cả ${detailGroups.length} chuyến`);
+            messageApi.error(`⚠️ Bắt buộc phải chọn tất cả ${detailGroups.length} chuyến trước khi tiếp tục`);
             return;
         }
 
@@ -202,6 +196,110 @@ const VehicleAssignmentModal: React.FC<VehicleAssignmentModalProps> = ({
         }
     };
 
+    const handleSearchDriverByPhone = async (phoneNumber: string, driverField: 'driverId_1' | 'driverId_2') => {
+        if (!phoneNumber || phoneNumber.trim() === "") {
+            messageApi.warning("⚠️ Vui lòng nhập số điện thoại");
+            return;
+        }
+
+        setSearchingDriver(true);
+        try {
+            const driver = await driverService.validateDriverByPhone(phoneNumber);
+            
+            if (!driver || !driver.id) {
+                messageApi.error("❌ Không tìm thấy tài xế với số điện thoại này");
+                return;
+            }
+
+            // Check if driver is already assigned to another trip
+            const { driverIds } = getAssignedResourceIds();
+            if (driverIds.has(driver.id)) {
+                messageApi.warning(`⚠️ ${driver.userResponse?.fullName || 'Tài xế này'} đã được phân công cho chuyến khác`);
+                return;
+            }
+
+            // Check if driver is already selected in current trip
+            const currentDriver1 = form.getFieldValue('driverId_1');
+            const currentDriver2 = form.getFieldValue('driverId_2');
+            
+            if (driverField === 'driverId_1' && driver.id === currentDriver2) {
+                messageApi.warning(`⚠️ ${driver.userResponse?.fullName || 'Tài xế này'} đã được chọn làm tài xế phụ`);
+                return;
+            }
+            
+            if (driverField === 'driverId_2' && driver.id === currentDriver1) {
+                messageApi.warning(`⚠️ ${driver.userResponse?.fullName || 'Tài xế này'} đã được chọn làm tài xế chính`);
+                return;
+            }
+
+            // Add driver to suggestionsMap for current vehicle so it can be displayed
+            const currentVehicleId = form.getFieldValue('vehicleId');
+            if (currentVehicleId) {
+                const updatedSuggestionsMap = { ...suggestionsMap };
+                const currentGroupSuggestions = updatedSuggestionsMap[currentTripIndex] || [];
+                
+                const vehicleIndex = currentGroupSuggestions.findIndex(v => v.id === currentVehicleId);
+                if (vehicleIndex !== -1) {
+                    // Transform driver data to match SuggestedDriver interface
+                    const driverSuggestion: SuggestedDriver = {
+                        id: driver.id,
+                        fullName: driver.userResponse?.fullName || 'N/A',
+                        licenseClass: driver.licenseClass || 'N/A',
+                        driverLicenseNumber: driver.driverLicenseNumber || 'N/A',
+                        experienceYears: '0',  // Default to 0 years as string
+                        violationCount: driver.penaltyHistories?.length || 0,
+                        completedTripsCount: 0,  // Unknown for manually added drivers
+                        lastActiveTime: new Date().toISOString(),  // Current time
+                        isRecommended: false  // Manually added drivers are not auto-recommended
+                    };
+                    
+                    // Check if driver already exists in suggestions
+                    const driverExists = currentGroupSuggestions[vehicleIndex].suggestedDrivers.some(
+                        d => d.id === driver.id
+                    );
+                    
+                    if (!driverExists) {
+                        // Add driver to vehicle's suggested drivers
+                        currentGroupSuggestions[vehicleIndex] = {
+                            ...currentGroupSuggestions[vehicleIndex],
+                            suggestedDrivers: [
+                                ...currentGroupSuggestions[vehicleIndex].suggestedDrivers,
+                                driverSuggestion
+                            ]
+                        };
+                        updatedSuggestionsMap[currentTripIndex] = currentGroupSuggestions;
+                        setSuggestionsMap(updatedSuggestionsMap);
+                    }
+                }
+            }
+            
+            form.setFieldValue(driverField, driver.id);
+            const roleText = driverField === 'driverId_1' ? 'tài xế chính' : 'tài xế phụ';
+            messageApi.success(`✅ Đã thêm ${roleText}: ${driver.userResponse?.fullName || 'N/A'}`);
+            
+            // Clear phone input after successful assignment
+            if (driverField === 'driverId_1') {
+                setManualDriver1Phone("");
+            } else {
+                setManualDriver2Phone("");
+            }
+        } catch (error: any) {
+            console.error("Error searching driver:", error);
+            
+            // Show backend message directly (backend already formats user-friendly messages)
+            const backendMessage = error.response?.data?.message || "❌ Không thể xác thực tài xế. Vui lòng kiểm tra số điện thoại.";
+            
+            // Use warning for business logic errors, error for technical failures
+            if (error.response?.status === 400 || error.response?.status === 404) {
+                messageApi.warning(backendMessage);
+            } else {
+                messageApi.error(backendMessage);
+            }
+        } finally {
+            setSearchingDriver(false);
+        }
+    };
+
     const handleRouteComplete = (_segments: RouteSegment[], routeInfo: RouteInfo) => {
         updateCurrentTrip({ routeInfo });
         setCurrentSubStep(3);
@@ -219,17 +317,42 @@ const VehicleAssignmentModal: React.FC<VehicleAssignmentModalProps> = ({
         );
         
         if (currentTripIndex < tripAssignments.length - 1) {
-            messageApi.success(`Hoàn thành chuyến ${currentTripIndex + 1}/${tripAssignments.length}`);
+            messageApi.success(`✅ Hoàn thành chuyến ${currentTripIndex + 1}/${tripAssignments.length}`);
             setTripAssignments(updatedAssignments);
             setCurrentTripIndex(currentTripIndex + 1);
             setCurrentSubStep(1);
             setSelectedVehicleId(undefined);
-            setSelectedDriver1Id(undefined);
             form.resetFields();
         } else {
-            messageApi.success("Hoàn thành tất cả các chuyến. Đang lưu...");
-            handleSubmitAll(updatedAssignments);
+            messageApi.success("✅ Hoàn thành tất cả các chuyến! Vui lòng xác nhận thông tin...");
+            setTripAssignments(updatedAssignments);
+            setShowConfirmation(true);
         }
+    };
+
+    const handleConfirmAssignments = async (updatedAssignments: TripAssignment[]) => {
+        setShowConfirmation(false);
+        await handleSubmitAll(updatedAssignments);
+    };
+
+    const handleBackFromConfirmation = () => {
+        setShowConfirmation(false);
+    };
+
+    // Get all assigned driver and vehicle IDs across trips (excluding current trip)
+    const getAssignedResourceIds = () => {
+        const driverIds = new Set<string>();
+        const vehicleIds = new Set<string>();
+
+        tripAssignments.forEach((trip, index) => {
+            if (index === currentTripIndex) return; // Skip current trip
+            
+            if (trip.vehicleId) vehicleIds.add(trip.vehicleId);
+            if (trip.driverId_1) driverIds.add(trip.driverId_1);
+            if (trip.driverId_2) driverIds.add(trip.driverId_2);
+        });
+
+        return { driverIds, vehicleIds };
     };
 
     const handleSealBack = () => {
@@ -242,7 +365,7 @@ const VehicleAssignmentModal: React.FC<VehicleAssignmentModalProps> = ({
 
             const incompleteTrips = finalAssignments.filter(t => !t.completed);
             if (incompleteTrips.length > 0) {
-                messageApi.error("Có chuyến chưa hoàn thành. Vui lòng hoàn thành tất cả các chuyến.");
+                messageApi.error(`⚠️ Có ${incompleteTrips.length} chuyến chưa hoàn thành. Vui lòng hoàn thành tất cả các chuyến trước khi xác nhận.`);
                 return;
             }
 
@@ -268,12 +391,12 @@ const VehicleAssignmentModal: React.FC<VehicleAssignmentModalProps> = ({
                 groupAssignments
             });
 
-            messageApi.success("Phân công xe thành công");
+            messageApi.success("✅ Phân công xe thành công!");
             onSuccess();
             onClose();
         } catch (error) {
             console.error("Error submitting assignments:", error);
-            messageApi.error("Không thể tạo phân công xe");
+            messageApi.error("❌ Không thể tạo phân công xe. Vui lòng thử lại.");
         }
     };
 
@@ -289,20 +412,24 @@ const VehicleAssignmentModal: React.FC<VehicleAssignmentModalProps> = ({
     };
 
     const renderVehicleOptions = () => {
+        const { vehicleIds } = getAssignedResourceIds();
         const groupSuggestions = suggestionsMap[currentTripIndex] || [];
-        return groupSuggestions.map(vehicle => (
-            <Option key={vehicle.id} value={vehicle.id}>
-                <div className="flex items-center">
-                    <CarOutlined className="mr-2" />
-                    <span className="font-medium">{vehicle.licensePlateNumber}</span>
-                    <span className="text-gray-500 mx-2">-</span>
-                    <span>{vehicle.manufacturer} {vehicle.model}</span>
-                    {vehicle.vehicleTypeName && (
-                        <span className="text-gray-500 mx-2">({vehicle.vehicleTypeName})</span>
-                    )}
-                </div>
-            </Option>
-        ));
+        
+        return groupSuggestions
+            .filter(vehicle => !vehicleIds.has(vehicle.id))
+            .map(vehicle => (
+                <Option key={vehicle.id} value={vehicle.id}>
+                    <div className="flex items-center">
+                        <CarOutlined className="mr-2" />
+                        <span className="font-medium">{vehicle.licensePlateNumber}</span>
+                        <span className="text-gray-500 mx-2">-</span>
+                        <span>{vehicle.manufacturer} {vehicle.model}</span>
+                        {vehicle.vehicleTypeName && (
+                            <span className="text-gray-500 mx-2">({vehicle.vehicleTypeName})</span>
+                        )}
+                    </div>
+                </Option>
+            ));
     };
 
     const getVehicleInfo = (vehicleId: string) => {
@@ -345,20 +472,26 @@ const VehicleAssignmentModal: React.FC<VehicleAssignmentModalProps> = ({
     };
 
     const renderDriverOptions = (vehicleId: string) => {
+        const { driverIds } = getAssignedResourceIds();
         const groupSuggestions = suggestionsMap[currentTripIndex] || [];
         const selectedVehicle = groupSuggestions.find(v => v.id === vehicleId);
         if (!selectedVehicle) return [];
 
-        return selectedVehicle.suggestedDrivers.map(driver => (
-            <Option key={driver.id} value={driver.id}>
-                <div className="flex items-center">
-                    <UserOutlined className="mr-2" />
-                    <span className="font-medium">{driver.fullName}</span>
-                    <span className="text-gray-500 mx-2">-</span>
-                    <span>Bằng {driver.licenseClass}</span>
-                </div>
-            </Option>
-        ));
+        return selectedVehicle.suggestedDrivers
+            .filter(driver => 
+                !driverIds.has(driver.id) &&           // Not in other trips
+                driver.id !== selectedDriver2           // Not selected as driver 2
+            )
+            .map(driver => (
+                <Option key={driver.id} value={driver.id}>
+                    <div className="flex items-center">
+                        <UserOutlined className="mr-2" />
+                        <span className="font-medium">{driver.fullName}</span>
+                        <span className="text-gray-500 mx-2">-</span>
+                        <span>Bằng {driver.licenseClass}</span>
+                    </div>
+                </Option>
+            ));
     };
 
     const getDriverDetails = (vehicleId: string, driverId: string) => {
@@ -406,12 +539,17 @@ const VehicleAssignmentModal: React.FC<VehicleAssignmentModalProps> = ({
     };
 
     const getFilteredDriverOptions = (vehicleId: string, currentDriverId: string) => {
+        const { driverIds } = getAssignedResourceIds();
         const groupSuggestions = suggestionsMap[currentTripIndex] || [];
         const selectedVehicle = groupSuggestions.find(v => v.id === vehicleId);
         if (!selectedVehicle) return [];
 
         return selectedVehicle.suggestedDrivers
-            .filter(driver => driver.id !== currentDriverId)
+            .filter(driver => 
+                driver.id !== currentDriverId &&        // Not the current driver (driver 1)
+                driver.id !== selectedDriver1 &&        // Not selected as driver 1
+                !driverIds.has(driver.id)               // Not in other trips
+            )
             .map(driver => (
                 <Option key={driver.id} value={driver.id}>
                     <div className="flex items-center">
@@ -425,7 +563,6 @@ const VehicleAssignmentModal: React.FC<VehicleAssignmentModalProps> = ({
     };
 
     const renderVehicleAssignmentForm = (trip: TripAssignment) => {
-        const suggestions = suggestionsMap[trip.groupIndex] || [];
         const currentVehicleId = selectedVehicleId || trip.vehicleId;
         const currentDrivers = {
             driver1: form.getFieldValue('driverId_1'),
@@ -473,7 +610,6 @@ const VehicleAssignmentModal: React.FC<VehicleAssignmentModalProps> = ({
                                             optionFilterProp="children"
                                             onChange={(value: string) => {
                                                 setSelectedVehicleId(value);
-                                                setSelectedDriver1Id("");
                                                 form.setFieldsValue({ driverId_1: undefined, driverId_2: undefined });
                                             }}
                                             size="small"
@@ -523,8 +659,9 @@ const VehicleAssignmentModal: React.FC<VehicleAssignmentModalProps> = ({
                                     </h4>
                                     <Form.Item
                                         name="driverId_1"
+                                        dependencies={['driverId_2']}
                                         rules={[{ required: true, message: "Vui lòng chọn tài xế chính" }]}
-                                        className="mb-0"
+                                        className="mb-2"
                                     >
                                         <Select
                                             placeholder="Chọn tài xế chính"
@@ -532,12 +669,50 @@ const VehicleAssignmentModal: React.FC<VehicleAssignmentModalProps> = ({
                                             showSearch
                                             optionFilterProp="children"
                                             disabled={!currentVehicleId}
-                                            onChange={(value: string) => setSelectedDriver1Id(value)}
                                             size="small"
+                                            onChange={(value: string) => {
+                                                setSelectedDriver1(value);
+                                                // If driver 2 is same as new driver 1, clear it
+                                                if (selectedDriver2 === value) {
+                                                    form.setFieldValue('driverId_2', undefined);
+                                                    setSelectedDriver2(undefined);
+                                                }
+                                            }}
+                                            notFoundContent={
+                                                <div className="p-2 text-gray-400 text-center">
+                                                    Không có tài xế phù hợp
+                                                </div>
+                                            }
                                         >
                                             {currentVehicleId && renderDriverOptions(currentVehicleId)}
                                         </Select>
                                     </Form.Item>
+                                    
+                                    <div className="mt-2">
+                                        <Tooltip title="Nhập số điện thoại để chỉ định tài xế cụ thể">
+                                            <Space.Compact className="w-full" size="small">
+                                                <Input
+                                                    placeholder="Nhập SĐT tài xế (nếu muốn chỉ định)"
+                                                    value={manualDriver1Phone}
+                                                    onChange={(e) => setManualDriver1Phone(e.target.value)}
+                                                    prefix={<PhoneOutlined />}
+                                                    disabled={!currentVehicleId || searchingDriver}
+                                                    size="small"
+                                                    onPressEnter={() => handleSearchDriverByPhone(manualDriver1Phone, 'driverId_1')}
+                                                />
+                                                <Button
+                                                    type="primary"
+                                                    icon={<SearchOutlined />}
+                                                    onClick={() => handleSearchDriverByPhone(manualDriver1Phone, 'driverId_1')}
+                                                    disabled={!currentVehicleId || searchingDriver}
+                                                    loading={searchingDriver}
+                                                    size="small"
+                                                >
+                                                    Tìm
+                                                </Button>
+                                            </Space.Compact>
+                                        </Tooltip>
+                                    </div>
                                 </div>
 
                                 {currentVehicleId && currentDrivers.driver1 &&
@@ -553,8 +728,9 @@ const VehicleAssignmentModal: React.FC<VehicleAssignmentModalProps> = ({
                                     </h4>
                                     <Form.Item
                                         name="driverId_2"
+                                        dependencies={['driverId_1']}
                                         rules={[{ required: true, message: "Vui lòng chọn tài xế phụ" }]}
-                                        className="mb-0"
+                                        className="mb-2"
                                     >
                                         <Select
                                             placeholder="Chọn tài xế phụ"
@@ -562,13 +738,48 @@ const VehicleAssignmentModal: React.FC<VehicleAssignmentModalProps> = ({
                                             showSearch
                                             optionFilterProp="children"
                                             disabled={!currentVehicleId || !currentDrivers.driver1}
-                                            onChange={(value: string) => {}}
                                             size="small"
+                                            onChange={(value: string) => {
+                                                setSelectedDriver2(value);
+                                            }}
+                                            notFoundContent={
+                                                <div className="p-2 text-gray-400 text-center">
+                                                    {!currentDrivers.driver1 
+                                                        ? "Vui lòng chọn tài xế chính trước"
+                                                        : "Không có tài xế phù hợp"}
+                                                </div>
+                                            }
                                         >
                                             {currentVehicleId && currentDrivers.driver1 &&
                                                 getFilteredDriverOptions(currentVehicleId, currentDrivers.driver1)}
                                         </Select>
                                     </Form.Item>
+                                    
+                                    <div className="mt-2">
+                                        <Tooltip title="Nhập số điện thoại để chỉ định tài xế cụ thể">
+                                            <Space.Compact className="w-full" size="small">
+                                                <Input
+                                                    placeholder="Nhập SĐT tài xế (nếu muốn chỉ định)"
+                                                    value={manualDriver2Phone}
+                                                    onChange={(e) => setManualDriver2Phone(e.target.value)}
+                                                    prefix={<PhoneOutlined />}
+                                                    disabled={!currentVehicleId || !currentDrivers.driver1 || searchingDriver}
+                                                    size="small"
+                                                    onPressEnter={() => handleSearchDriverByPhone(manualDriver2Phone, 'driverId_2')}
+                                                />
+                                                <Button
+                                                    type="primary"
+                                                    icon={<SearchOutlined />}
+                                                    onClick={() => handleSearchDriverByPhone(manualDriver2Phone, 'driverId_2')}
+                                                    disabled={!currentVehicleId || !currentDrivers.driver1 || searchingDriver}
+                                                    loading={searchingDriver}
+                                                    size="small"
+                                                >
+                                                    Tìm
+                                                </Button>
+                                            </Space.Compact>
+                                        </Tooltip>
+                                    </div>
                                 </div>
 
                                 {currentVehicleId && currentDrivers.driver1 && currentDrivers.driver2 &&
@@ -686,6 +897,14 @@ const VehicleAssignmentModal: React.FC<VehicleAssignmentModalProps> = ({
                     </div>
                     <p className="mt-4 text-gray-600 font-medium">Đang tải thông tin phân công...</p>
                 </div>
+            ) : showConfirmation ? (
+                <TripConfirmationModal
+                    visible={showConfirmation}
+                    tripAssignments={tripAssignments}
+                    suggestionsMap={suggestionsMap}
+                    onConfirm={handleConfirmAssignments}
+                    onBack={handleBackFromConfirmation}
+                />
             ) : (
                 renderStepContent()
             )}

@@ -574,7 +574,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
           return new SockJS(sockJsUrl);
         },
         reconnectDelay: 5000,
-        debug: (str) => console.log('STOMP Debug:', str),
+        // debug: (str) => console.log('STOMP Debug:', str),
       });
 
       stompClient.onConnect = (frame) => {

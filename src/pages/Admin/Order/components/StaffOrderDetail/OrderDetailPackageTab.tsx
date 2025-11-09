@@ -10,9 +10,9 @@ import {
     CarOutlined,
 } from "@ant-design/icons";
 import VehicleInfoSection from "./VehicleInfoSection";
-import OrderDetailStatusCard from "../../../../../components/common/OrderDetailStatusCard";
+import OrderDetailStatusTag from "../../../../../components/common/tags/OrderDetailStatusTag";
 import { OrderStatusEnum } from "../../../../../constants/enums";
-import type { StaffOrderDetailItem } from "../../../../../models/Order";
+import type { StaffOrderDetailItem, StaffVehicleAssignment } from "../../../../../models/Order";
 
 const { Text } = Typography;
 
@@ -21,6 +21,7 @@ interface OrderDetailPackageTabProps {
     formatDate: (dateString?: string) => string;
     setVehicleAssignmentModalVisible: (visible: boolean) => void;
     order: any;
+    vehicleAssignments?: StaffVehicleAssignment[];
 }
 
 const OrderDetailPackageTab: React.FC<OrderDetailPackageTabProps> = ({
@@ -28,7 +29,12 @@ const OrderDetailPackageTab: React.FC<OrderDetailPackageTabProps> = ({
     formatDate,
     setVehicleAssignmentModalVisible,
     order,
+    vehicleAssignments,
 }) => {
+    // Find the matching vehicle assignment for this order detail
+    const vehicleAssignment = vehicleAssignments?.find(
+        (va) => va.id === detail.vehicleAssignmentId
+    );
     return (
         <Card
             className="mb-6 shadow-md rounded-xl"
@@ -68,7 +74,7 @@ const OrderDetailPackageTab: React.FC<OrderDetailPackageTabProps> = ({
                                 <Text strong>Trạng thái:</Text>
                             </div>
                             <div className="ml-6">
-                                <OrderDetailStatusCard status={detail.status} />
+                                <OrderDetailStatusTag status={detail.status} />
                             </div>
                         </div>
                         <div className="mb-3">
@@ -189,6 +195,44 @@ const OrderDetailPackageTab: React.FC<OrderDetailPackageTabProps> = ({
                 </Col>
             </Row>
 
+            {/* Vehicle Assignment Information in a separate row */}
+            <Row>
+                <Col xs={24}>
+                    {vehicleAssignment ? (
+                        <Card
+                            className="mb-4"
+                            size="small"
+                        >
+                            <VehicleInfoSection
+                                vehicleAssignment={vehicleAssignment}
+                            />
+                        </Card>
+                    ) : (
+                        <Card
+                            className="mb-4"
+                            size="small"
+                        >
+                            <div className="text-center py-4">
+                                <p className="text-gray-500 mb-4">
+                                    Chưa có thông tin phân công xe
+                                </p>
+                                {order.status === OrderStatusEnum.ON_PLANNING && (
+                                    <Button
+                                        type="primary"
+                                        icon={<CarOutlined />}
+                                        onClick={() =>
+                                            setVehicleAssignmentModalVisible(true)
+                                        }
+                                        className="bg-blue-500 hover:bg-blue-600"
+                                    >
+                                        Phân công xe
+                                    </Button>
+                                )}
+                            </div>
+                        </Card>
+                    )}
+                </Col>
+            </Row>
         </Card>
     );
 };

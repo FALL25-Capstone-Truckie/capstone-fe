@@ -13,6 +13,7 @@ export enum OrderDetailStatusEnum {
   DELIVERED = 'DELIVERED',
   SUCCESSFUL = 'SUCCESSFUL',
   IN_TROUBLES = 'IN_TROUBLES',
+  COMPENSATION = 'COMPENSATION',
   RESOLVED = 'RESOLVED',
   REJECTED = 'REJECTED',
   RETURNING = 'RETURNING',
@@ -84,6 +85,12 @@ export const OrderDetailStatusMetadata: Record<
     color: 'bg-red-100 text-red-700',
     bgColor: 'bg-red-100',
     textColor: 'text-red-700',
+  },
+  [OrderDetailStatusEnum.COMPENSATION]: {
+    label: 'Đã đền bù',
+    color: 'bg-purple-100 text-purple-700',
+    bgColor: 'bg-purple-100',
+    textColor: 'text-purple-700',
   },
   [OrderDetailStatusEnum.RESOLVED]: {
     label: 'Đã giải quyết',

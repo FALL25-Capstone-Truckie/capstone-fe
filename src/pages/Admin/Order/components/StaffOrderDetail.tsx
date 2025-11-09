@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { App, Button, Typography, Skeleton, Empty, Tabs, Space } from "antd";
+import { App, Button, Typography, Skeleton, Empty, Tabs, Space, Card } from "antd";
 import {
   ArrowLeftOutlined,
   InfoCircleOutlined,
@@ -13,6 +13,7 @@ import {
 import orderService from "../../../../services/order/orderService";
 import type { StaffOrderDetailResponse } from "../../../../services/order/types";
 import VehicleAssignmentModal from "./VehicleAssignmentModalContainer";
+import { areAllOrderDetailsInFinalStatus } from "../../../../utils/statusHelpers";
 import { OrderStatusEnum } from "../../../../constants/enums";
 import dayjs from "dayjs";
 import timezone from "dayjs/plugin/timezone";
@@ -39,7 +40,14 @@ const StaffOrderDetail: React.FC = () => {
     StaffOrderDetailResponse["data"] | null
   >(null);
   const [loading, setLoading] = useState<boolean>(true);
-  const [activeMainTab, setActiveMainTab] = useState<string>("basic");
+  // Tab persistence with validation based on order status
+  const getInitialTab = () => {
+    if (!id) return "basic";
+    const savedTab = localStorage.getItem(`staffOrderDetail_${id}_activeTab`);
+    return savedTab || "basic";
+  };
+  
+  const [activeMainTab, setActiveMainTab] = useState<string>(getInitialTab());
   const [vehicleAssignmentModalVisible, setVehicleAssignmentModalVisible] =
     useState<boolean>(false);
   const [billOfLadingPreviewVisible, setBillOfLadingPreviewVisible] =
@@ -61,14 +69,35 @@ const StaffOrderDetail: React.FC = () => {
     if (id && statusChange.orderId === id) {
       console.log('[StaffOrderDetail] ✅ Order ID matched!');
       
-      // CRITICAL: Only refetch for important status transitions
-      // For other status changes, just update the status locally to avoid disrupting real-time tracking
-      const shouldRefetch = 
-        (statusChange.newStatus === 'PICKING_UP' && statusChange.previousStatus === 'FULLY_PAID') ||
-        statusChange.newStatus === 'DELIVERED' ||
-        statusChange.newStatus === 'SUCCESSFUL' ||
-        statusChange.newStatus === 'IN_TROUBLES' ||
-        statusChange.newStatus === 'ASSIGNED_TO_DRIVER';
+      // CRITICAL: Refetch for important status transitions BEFORE and including PICKING_UP
+      // For status changes after PICKING_UP, just update locally to avoid disrupting real-time tracking
+      const statusesRequiringRefetch = [
+        'PROCESSING',
+        'CONTRACT_DRAFT',
+        'CONTRACT_SIGNED',
+        'ON_PLANNING',
+        'ASSIGNED_TO_DRIVER',
+        'FULLY_PAID',
+        'PICKING_UP',
+        'REJECT_ORDER'
+      ];
+      
+      const shouldRefetch = statusesRequiringRefetch.includes(statusChange.newStatus);
+      
+      // Statuses that are AFTER PICKING_UP - don't refetch to preserve real-time tracking
+      const statusesAfterPickup = [
+        'ON_DELIVERED',
+        'ONGOING_DELIVERED', 
+        'IN_TROUBLES',
+        'RESOLVED',
+        'COMPENSATION',
+        'DELIVERED',
+        'SUCCESSFUL',
+        'RETURNING',
+        'RETURNED'
+      ];
+      
+      const isAfterPickupStatus = statusesAfterPickup.includes(statusChange.newStatus);
       
       if (shouldRefetch) {
         console.log('[StaffOrderDetail] 🔄 Important status change - refetching order details...');
@@ -77,7 +106,11 @@ const StaffOrderDetail: React.FC = () => {
           fetchOrderDetails(id);
         }, 500);
       } else {
-        console.log('[StaffOrderDetail] ℹ️ Minor status change - updating status locally only');
+        const logMessage = isAfterPickupStatus 
+          ? '[StaffOrderDetail] ℹ️ Status after PICKING_UP - updating locally to preserve real-time tracking'
+          : '[StaffOrderDetail] ℹ️ Minor status change - updating status locally only';
+        console.log(logMessage);
+        
         // Just update the status locally without full refetch
         if (orderData) {
           setOrderData({
@@ -149,6 +182,45 @@ const StaffOrderDetail: React.FC = () => {
     onStatusChange: handleOrderStatusChange,
   });
 
+  // Validate and adjust active tab based on order status
+  const validateActiveTab = useCallback((tabKey: string, orderStatus?: string, orderDetails?: Array<{ status: string }>) => {
+    // If order is not loaded yet, return the tab as-is
+    if (!orderStatus) return tabKey;
+    
+    // Check if live tracking tab should be available
+    // Note: COMPENSATION, SUCCESSFUL, RETURNED are final statuses - no tracking needed
+    const isDeliveryStatus = [
+      OrderStatusEnum.PICKING_UP,
+      OrderStatusEnum.ON_DELIVERED,
+      OrderStatusEnum.ONGOING_DELIVERED,
+      OrderStatusEnum.IN_TROUBLES,
+      OrderStatusEnum.RESOLVED,
+      OrderStatusEnum.DELIVERED,
+      OrderStatusEnum.RETURNING
+    ].includes(orderStatus as OrderStatusEnum);
+    
+    const allDetailsInFinalStatus = areAllOrderDetailsInFinalStatus(orderDetails);
+    const shouldShowLiveTracking = isDeliveryStatus && !allDetailsInFinalStatus;
+    
+    // If saved tab is liveTracking but it's not available, fallback to basic
+    if (tabKey === 'liveTracking' && !shouldShowLiveTracking) {
+      console.log('[StaffOrderDetail] 🔄 Tab validation: liveTracking not available, falling back to basic');
+      return 'basic';
+    }
+    
+    return tabKey;
+  }, []);
+
+  // Update active tab when order data changes (for validation)
+  useEffect(() => {
+    if (orderData?.order?.status) {
+      const validatedTab = validateActiveTab(activeMainTab, orderData.order.status, orderData.order.orderDetails);
+      if (validatedTab !== activeMainTab) {
+        setActiveMainTab(validatedTab);
+      }
+    }
+  }, [orderData?.order?.status, orderData?.order?.orderDetails, activeMainTab, validateActiveTab]);
+
   useEffect(() => {
     // Scroll to top when entering order detail page
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -176,25 +248,45 @@ const StaffOrderDetail: React.FC = () => {
   useEffect(() => {
     const currentStatus = orderData?.order?.status;
     // Auto-switch if status >= PICKING_UP and we haven't switched yet
+    // Note: COMPENSATION, SUCCESSFUL, RETURNED are final statuses - no tracking needed
     const isDeliveryStatus = [
       OrderStatusEnum.PICKING_UP,
       OrderStatusEnum.ON_DELIVERED,
       OrderStatusEnum.ONGOING_DELIVERED,
       OrderStatusEnum.IN_TROUBLES,
       OrderStatusEnum.RESOLVED,
-      OrderStatusEnum.COMPENSATION,
       OrderStatusEnum.DELIVERED,
-      OrderStatusEnum.SUCCESSFUL,
-      OrderStatusEnum.RETURNING,
-      OrderStatusEnum.RETURNED
+      OrderStatusEnum.RETURNING
     ].includes(currentStatus as OrderStatusEnum);
     
-    if (isDeliveryStatus && !hasAutoSwitchedRef.current) {
+    const allDetailsInFinalStatus = areAllOrderDetailsInFinalStatus(orderData?.order?.orderDetails);
+    
+    if (isDeliveryStatus && !allDetailsInFinalStatus && !hasAutoSwitchedRef.current) {
       console.log('[StaffOrderDetail] 🎯 Order status >= PICKING_UP - switching to live tracking tab');
       setActiveMainTab('liveTracking');
       hasAutoSwitchedRef.current = true;
     }
-  }, [orderData?.order?.status]);
+  }, [orderData?.order?.status, orderData?.order?.orderDetails]);
+
+  // Auto scroll to live tracking tab when it becomes active
+  useEffect(() => {
+    if (activeMainTab === 'liveTracking') {
+      setTimeout(() => {
+        const mapContainer = document.getElementById('staff-live-tracking-map');
+        if (mapContainer) {
+          console.log('[StaffOrderDetail] 📍 Scrolling to map');
+          mapContainer.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 300);
+    }
+  }, [activeMainTab]);
+
+  // Save active tab to localStorage whenever it changes
+  useEffect(() => {
+    if (id) {
+      localStorage.setItem(`staffOrderDetail_${id}_activeTab`, activeMainTab);
+    }
+  }, [activeMainTab, id]);
 
   const fetchOrderDetails = async (orderId: string) => {
     setLoading(true);
@@ -239,19 +331,19 @@ const StaffOrderDetail: React.FC = () => {
     }
   };
 
-  // Check if should show Live Tracking tab (status >= PICKING_UP)
+  // Check if should show Live Tracking tab
+  // Only show if: 1) Order status is in delivery range AND 2) NOT all order details are in final status
+  // Final statuses: COMPENSATION, SUCCESSFUL, RETURNED
   const shouldShowLiveTracking = orderData?.order && [
     OrderStatusEnum.PICKING_UP,
     OrderStatusEnum.ON_DELIVERED,
     OrderStatusEnum.ONGOING_DELIVERED,
     OrderStatusEnum.IN_TROUBLES,
     OrderStatusEnum.RESOLVED,
-    OrderStatusEnum.COMPENSATION,
     OrderStatusEnum.DELIVERED,
-    OrderStatusEnum.SUCCESSFUL,
-    OrderStatusEnum.RETURNING,
-    OrderStatusEnum.RETURNED
-  ].includes(orderData.order.status as OrderStatusEnum);
+    OrderStatusEnum.RETURNING
+  ].includes(orderData.order.status as OrderStatusEnum) && 
+  !areAllOrderDetailsInFinalStatus(orderData.order.orderDetails);
 
   // Check if order status is ASSIGNED_TO_DRIVER or later
   const canPrintBillOfLading = () => {
@@ -366,69 +458,93 @@ const StaffOrderDetail: React.FC = () => {
         </Space>
       </div>
 
-      <Tabs
-        activeKey={activeMainTab}
-        onChange={setActiveMainTab}
-        type="card"
-        className="order-main-tabs"
-      >
-        <TabPane
-          tab={
-            <span>
-              <InfoCircleOutlined /> Thông tin cơ bản
-            </span>
-          }
-          key="basic"
+      <Card className="mb-6 shadow-md rounded-xl">
+        <Tabs
+          activeKey={activeMainTab}
+          onChange={(key) => {
+            setActiveMainTab(key);
+            // Scroll map to view when live tracking tab is clicked
+            if (key === 'liveTracking') {
+              setTimeout(() => {
+                const mapContainer = document.getElementById('staff-live-tracking-map');
+                if (mapContainer) {
+                  console.log('[StaffOrderDetail] 📍 Scrolling to map on tab click');
+                  mapContainer.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+              }, 200);
+            }
+          }}
+          type="card"
+          size="large"
+          className="order-main-tabs"
         >
-          <BasicInfoTab order={order} contract={contract} />
-        </TabPane>
-        <TabPane
-          tab={
-            <span>
-              <CarOutlined /> Chi tiết vận chuyển
-            </span>
-          }
-          key="detail"
-        >
-          <OrderDetailTabs
-            order={order}
-            formatDate={formatDate}
-            setVehicleAssignmentModalVisible={setVehicleAssignmentModalVisible}
-          />
-        </TabPane>
-        {/* Live Tracking Tab - Only show when status >= PICKING_UP */}
-        {shouldShowLiveTracking && (
           <TabPane
             tab={
               <span className="px-2 py-1">
-                <EnvironmentOutlined className="mr-2" /> Theo dõi trực tiếp
+                <InfoCircleOutlined className="mr-2" /> Thông tin cơ bản
               </span>
             }
-            key="liveTracking"
+            key="basic"
           >
-            <OrderLiveTrackingOnly
-              orderId={order.id}
-              shouldShowRealTimeTracking={true}
-              vehicleAssignments={order.vehicleAssignments || []}
+            <BasicInfoTab order={order} contract={contract} />
+          </TabPane>
+          <TabPane
+            tab={
+              <span className="px-2 py-1">
+                <CarOutlined className="mr-2" /> Chi tiết vận chuyển
+              </span>
+            }
+            key="detail"
+          >
+            <OrderDetailTabs
+              order={order}
+              formatDate={formatDate}
+              setVehicleAssignmentModalVisible={setVehicleAssignmentModalVisible}
             />
           </TabPane>
-        )}
-        <TabPane
-          tab={
-            <span>
-              <CreditCardOutlined /> Hợp đồng & Thanh toán
-            </span>
-          }
-          key="contract"
-        >
-          <ContractAndPaymentTab
-            contract={contract}
-            transactions={transactions}
-            orderId={id}
-            depositAmount={order.depositAmount}
-          />
-        </TabPane>
-      </Tabs>
+          {/* Live Tracking Tab - Only show when status >= PICKING_UP */}
+          {shouldShowLiveTracking && (
+            <TabPane
+              tab={
+                <span className="px-2 py-1">
+                  <EnvironmentOutlined className="mr-2" /> Theo dõi trực tiếp
+                </span>
+              }
+              key="liveTracking"
+            >
+              <OrderLiveTrackingOnly
+                orderId={order.id}
+                shouldShowRealTimeTracking={true}
+                vehicleAssignments={order.vehicleAssignments || []}
+              />
+            </TabPane>
+          )}
+          <TabPane
+            tab={
+              <span className="px-2 py-1">
+                <CreditCardOutlined className="mr-2" /> Hợp đồng & Thanh toán
+              </span>
+            }
+            key="contract"
+          >
+            <ContractAndPaymentTab
+              contract={contract}
+              transactions={transactions}
+              orderId={id}
+              depositAmount={order.depositAmount}
+              onRefetch={() => {
+                if (id) {
+                  fetchOrderDetails(id);
+                  // Auto-switch to contract tab after successful export
+                  setTimeout(() => {
+                    setActiveMainTab('contract');
+                  }, 500);
+                }
+              }}
+            />
+          </TabPane>
+        </Tabs>
+      </Card>
 
       {/* Vehicle Assignment Modal */}
       {id && (

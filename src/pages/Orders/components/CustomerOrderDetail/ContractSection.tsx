@@ -1,7 +1,6 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Card,
-  Descriptions,
   Empty,
   Button,
   App,
@@ -18,14 +17,14 @@ import {
   CreditCardOutlined,
   DollarOutlined,
   LoadingOutlined,
-  CalendarOutlined,
-  UserOutlined,
-  FileProtectOutlined,
   InfoCircleOutlined,
 } from "@ant-design/icons";
-import orderService from "../../../../services/order/orderService";
 import { ContractStatusTag } from "../../../../components/common/tags";
-import { ContractStatusEnum } from "../../../../constants/enums";
+import { ContractStatusEnum, OrderStatusEnum } from "../../../../constants/enums";
+import { useRefreshOrderDetail, useContractOperations } from "../../../../hooks";
+import type { PriceDetails } from "../../../../services/contract/contractTypes";
+import contractSettingService from "../../../../services/contract/contractSettingService";
+import type { ContractSettings } from "../../../../models/Contract";
 
 // Utility function to safely parse contract values
 const parseContractValue = (value: string | number | undefined): number => {
@@ -35,26 +34,6 @@ const parseContractValue = (value: string | number | undefined): number => {
   return isNaN(numericValue) ? 0 : numericValue;
 };
 
-// Define types for price details from contract PDF API
-interface PriceStep {
-  vehicleRuleName: string;
-  numOfVehicles: number;
-  distanceRange: string;
-  unitPrice: number;
-  appliedKm: number;
-  subtotal: number;
-}
-
-interface PriceDetails {
-  totalPrice: number;
-  totalBeforeAdjustment: number;
-  categoryExtraFee: number;
-  categoryMultiplier: number;
-  promotionDiscount: number;
-  finalTotal: number;
-  steps: PriceStep[];
-  summary?: string;
-}
 
 interface ContractProps {
   contract?: {
@@ -73,6 +52,7 @@ interface ContractProps {
   depositAmount?: number;
   priceDetails?: PriceDetails;
   loadingPriceDetails?: boolean;
+  onContractSigned?: () => void;
 }
 
 const ContractSection: React.FC<ContractProps> = ({
@@ -81,79 +61,48 @@ const ContractSection: React.FC<ContractProps> = ({
   depositAmount,
   priceDetails,
   loadingPriceDetails = false,
+  onContractSigned,
 }) => {
   const messageApi = App.useApp().message;
-  const hasAdjustedValue = Boolean(contract?.adjustedValue && contract.adjustedValue !== 0);
-  const [signingContract, setSigningContract] = useState<boolean>(false);
-  const [payingDeposit, setPayingDeposit] = useState<boolean>(false);
-  const [payingFullAmount, setPayingFullAmount] = useState<boolean>(false);
-
-  const parseCurrencyValue = (value?: string | number | null) => {
-    if (value === undefined || value === null) {
-      return 0;
-    }
-
-    if (typeof value === "number") {
-      return value;
-    }
-
-    const numericValue = parseFloat(value.replace(/[^0-9.-]+/g, ""));
-    return Number.isNaN(numericValue) ? 0 : numericValue;
-  };
-
-  const formatCurrency = (amount: number) => amount.toLocaleString("vi-VN");
-
-  const totalValue = parseCurrencyValue(contract?.totalValue);
-  const adjustedValue = parseCurrencyValue(contract?.adjustedValue);
-  const depositAmountValue = depositAmount ?? 0;
-  const baseContractValue = hasAdjustedValue ? adjustedValue : totalValue;
-  const remainingAmount = Math.max(baseContractValue - depositAmountValue, 0);
-
-  const paymentStats = [
-    {
-      key: "totalValue",
-      title: "Tổng giá trị đơn hàng",
-      value: formatCurrency(totalValue),
-      prefix: <DollarOutlined />,
-      valueStyle: { color: "#1890ff" },
-      suffix: undefined,
-    },
-    hasAdjustedValue
-      ? {
-          key: "adjustedValue",
-          title: "Giá trị điều chỉnh",
-          value: formatCurrency(adjustedValue),
-          prefix: <DollarOutlined />,
-          valueStyle: { color: "#722ed1" },
-          suffix: undefined,
+  const [contractSettings, setContractSettings] = useState<ContractSettings | null>(null);
+  
+  // Fetch contract settings on component mount
+  useEffect(() => {
+    const fetchContractSettings = async () => {
+      try {
+        const response = await contractSettingService().getContractSettings();
+        console.log("Contract settings response:", response);
+        // API returns array, take first element as it's always unique
+        if (response.data && response.data.length > 0) {
+          console.log("Setting contract settings:", response.data[0]);
+          setContractSettings(response.data[0]);
         }
-      : null,
-    {
-      key: "depositAmount",
-      title: "Số tiền cọc cần thanh toán",
-      value: formatCurrency(depositAmountValue),
-      prefix: <CreditCardOutlined />,
-      valueStyle: { color: "#52c41a", fontWeight: "bold" },
-      suffix: "VNĐ",
-    },
-    {
-      key: "remainingAmount",
-      title: "Số tiền còn lại",
-      value: formatCurrency(remainingAmount),
-      prefix: <DollarOutlined />,
-      valueStyle: { color: "#faad14" },
-      suffix: "VNĐ",
-    },
-  ].filter(Boolean) as {
-    key: string;
-    title: string;
-    value: string;
-    prefix: React.ReactNode;
-    valueStyle?: React.CSSProperties;
-    suffix?: string;
-  }[];
+      } catch (error) {
+        console.error("Error fetching contract settings:", error);
+      }
+    };
+    
+    fetchContractSettings();
+  }, []);
+  
+  const { refetch: refetchOrderDetail } = useRefreshOrderDetail('customer');
+  const {
+    signingContract,
+    payingDeposit,
+    payingFullAmount,
+    signContract: signContractFn,
+    payDeposit: payDepositFn,
+    payFullAmount: payFullAmountFn,
+  } = useContractOperations();
 
-  const gridColsClass = paymentStats.length >= 4 ? "lg:grid-cols-4" : "lg:grid-cols-3";
+  const hasAdjustedValue = Boolean(
+    contract?.adjustedValue && contract.adjustedValue !== 0
+  );
+
+  // Hide contract information when order status is "processing"
+  if (orderStatus?.toUpperCase() === OrderStatusEnum.PROCESSING) {
+    return null;
+  }
 
   const handleSignContract = async () => {
     if (!contract?.id) {
@@ -161,23 +110,22 @@ const ContractSection: React.FC<ContractProps> = ({
       return;
     }
 
-    setSigningContract(true);
     try {
-      await orderService.signContract(contract.id);
+      await signContractFn(contract.id);
       messageApi.success({
         content:
           "Ký hợp đồng thành công! Vui lòng thanh toán đặt cọc để tiếp tục.",
         duration: 5,
       });
-      // Reload the page to reflect the updated contract status
+      // Refetch order detail to reflect the updated contract status
       setTimeout(() => {
-        window.location.reload();
+        refetchOrderDetail();
+        // Call onContractSigned callback to switch tab
+        onContractSigned?.();
       }, 1500);
     } catch (error) {
       console.error("Error signing contract:", error);
       messageApi.error("Có lỗi xảy ra khi ký hợp đồng");
-    } finally {
-      setSigningContract(false);
     }
   };
 
@@ -187,9 +135,8 @@ const ContractSection: React.FC<ContractProps> = ({
       return;
     }
 
-    setPayingDeposit(true);
     try {
-      const response = await orderService.payDeposit(contract.id);
+      const response = await payDepositFn(contract.id);
       messageApi.success("Khởi tạo thanh toán đặt cọc thành công!");
 
       // Parse the gatewayResponse to get the checkoutUrl
@@ -207,15 +154,13 @@ const ContractSection: React.FC<ContractProps> = ({
       if (checkoutUrl) {
         window.open(checkoutUrl, "_blank");
       } else {
-        messageApi.info("Đang chuyển hướng đến trang thanh toán...");
-        // Reload the page to reflect any status changes
-        window.location.reload();
+        messageApi.info("Đang cập nhật dữ liệu...");
+        // Refetch order detail to reflect any status changes
+        refetchOrderDetail();
       }
     } catch (error) {
       console.error("Error paying deposit:", error);
       messageApi.error("Có lỗi xảy ra khi thanh toán đặt cọc");
-    } finally {
-      setPayingDeposit(false);
     }
   };
 
@@ -225,9 +170,8 @@ const ContractSection: React.FC<ContractProps> = ({
       return;
     }
 
-    setPayingFullAmount(true);
     try {
-      const response = await orderService.payFullAmount(contract.id);
+      const response = await payFullAmountFn(contract.id);
       messageApi.success("Khởi tạo thanh toán toàn bộ thành công!");
 
       // Parse the gatewayResponse to get the checkoutUrl
@@ -245,17 +189,16 @@ const ContractSection: React.FC<ContractProps> = ({
       if (checkoutUrl) {
         window.open(checkoutUrl, "_blank");
       } else {
-        messageApi.info("Đang chuyển hướng đến trang thanh toán...");
-        // Reload the page to reflect any status changes
-        window.location.reload();
+        messageApi.info("Đang cập nhật dữ liệu...");
+        // Refetch order detail to reflect any status changes
+        refetchOrderDetail();
       }
     } catch (error) {
       console.error("Error paying full amount:", error);
       messageApi.error("Có lỗi xảy ra khi thanh toán toàn bộ");
-    } finally {
-      setPayingFullAmount(false);
     }
   };
+
 
   return (
     <Card
@@ -269,377 +212,340 @@ const ContractSection: React.FC<ContractProps> = ({
     >
       {contract ? (
         <>
-        
-          {contract.status === "PAID" && (
-            <Alert
-              message="Thanh toán hoàn tất"
-              description="Cảm ơn bạn! Đơn hàng của bạn đã được thanh toán đầy đủ. Tài xế sẽ bắt đầu vận chuyển ngay."
-              type="success"
-              showIcon
-              className="mt-4"
-              style={{ 
-                backgroundColor: "#f6ffed",
-                borderColor: "#b7eb8f",
-                borderRadius: "8px",
-                marginBottom: "16px"
-              }}
-            />
-          )}
           {/* Payment Summary */}
-          {depositAmount !== undefined && (
+          {depositAmount && (
             <div className="mb-6">
               <Alert
                 message="Thông tin thanh toán"
                 description={
-                  <div
-                    className={`mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2 ${gridColsClass}`}
-                  >
-                    {paymentStats.map((stat) => (
-                      <div
-                        key={stat.key}
-                        className="rounded-lg bg-white/70 p-4 shadow-sm"
-                      >
+                  <Row gutter={[16, 16]} className="mt-3">
+                    {!hasAdjustedValue && (
+                      <Col xs={24} sm={12} md={6}>
                         <Statistic
-                          title={stat.title}
-                          value={stat.value}
-                          prefix={stat.prefix}
-                          suffix={stat.suffix}
-                          valueStyle={stat.valueStyle}
+                          title="Tổng giá trị đơn hàng"
+                          value={parseContractValue(
+                            contract.totalValue
+                          ).toLocaleString("vi-VN")}
+                          suffix="VNĐ"
+                          prefix={<DollarOutlined />}
+                          valueStyle={{ color: "#1890ff", fontSize: "18px", fontWeight: "600" }}
                         />
-                      </div>
-                    ))}
-                  </div>
+                      </Col>
+                    )}
+
+                    {hasAdjustedValue && (
+                      <>
+                        <Col xs={24} sm={12} md={6}>
+                          <Statistic
+                            title="Giá niêm yết"
+                            value={parseContractValue(contract.totalValue).toLocaleString(
+                              "vi-VN"
+                            )}
+                            suffix="VNĐ"
+                            prefix={<DollarOutlined />}
+                            valueStyle={{ color: "#8c8c8c", textDecoration: "line-through" }}
+                          />
+                        </Col>
+                        <Col xs={24} sm={12} md={6}>
+                          <Statistic
+                            title="Giá thực tế"
+                            value={parseContractValue(
+                              contract.adjustedValue
+                            ).toLocaleString("vi-VN")}
+                            suffix="VNĐ"
+                            prefix={<DollarOutlined />}
+                            valueStyle={{ color: "#722ed1", fontSize: "18px", fontWeight: "600" }}
+                          />
+                          <div className="text-xs text-gray-500 mt-1">
+                            Giá ưu đãi áp dụng cho hợp đồng này
+                          </div>
+                        </Col>
+                      </>
+                    )}
+
+                    <Col xs={24} sm={12} md={6}>
+                      <Statistic
+                        title="Số tiền cọc cần thanh toán"
+                        value={depositAmount.toLocaleString("vi-VN")}
+                        suffix="VNĐ"
+                        prefix={<CreditCardOutlined />}
+                        valueStyle={{ color: "#52c41a", fontSize: "18px", fontWeight: "bold" }}
+                      />
+                    </Col>
+
+                    <Col xs={24} sm={12} md={6}>
+                      <Statistic
+                        title="Số tiền còn lại"
+                        value={(() => {
+                          const baseValue = hasAdjustedValue
+                            ? parseContractValue(contract.adjustedValue)
+                            : parseContractValue(contract.totalValue);
+                          return (baseValue - depositAmount).toLocaleString(
+                            "vi-VN"
+                          );
+                        })()}
+                        suffix="VNĐ"
+                        prefix={<DollarOutlined />}
+                        valueStyle={{ color: "#faad14", fontSize: "18px", fontWeight: "600" }}
+                      />
+                    </Col>
+                  </Row>
                 }
                 type="info"
                 icon={<InfoCircleOutlined />}
                 showIcon
+                className="payment-summary-alert"
               />
             </div>
           )}
 
-          <div className="mb-6 flex items-center gap-3">
-            <FileProtectOutlined className="text-2xl text-blue-500" />
-            <h3 className="text-lg font-semibold text-gray-800">Chi tiết hợp đồng</h3>
-          </div>
-
-          <div className="grid grid-cols-1 gap-4 rounded-lg bg-gradient-to-br from-gray-50 to-gray-100 p-6 sm:grid-cols-2 lg:grid-cols-3">
-            {/* Tên hợp đồng */}
-            <div className="rounded-lg bg-white p-4 shadow-sm hover:shadow-md transition-shadow">
-              <div className="mb-2 flex items-center gap-2">
-                <FileTextOutlined className="text-blue-500" />
-                <label className="text-sm font-medium text-gray-600">Tên hợp đồng</label>
-              </div>
-              <p className="text-base font-semibold text-gray-900">
-                {contract.contractName || <span className="text-gray-400">Chưa có thông tin</span>}
-              </p>
-            </div>
-
-            {/* Ngày hiệu lực */}
-            <div className="rounded-lg bg-white p-4 shadow-sm hover:shadow-md transition-shadow">
-              <div className="mb-2 flex items-center gap-2">
-                <CalendarOutlined className="text-green-500" />
-                <label className="text-sm font-medium text-gray-600">Ngày hiệu lực</label>
-              </div>
-              <p className="text-base font-semibold text-gray-900">
-                {contract.effectiveDate || <span className="text-gray-400">Chưa có thông tin</span>}
-              </p>
-            </div>
-
-            {/* Ngày hết hạn */}
-            <div className="rounded-lg bg-white p-4 shadow-sm hover:shadow-md transition-shadow">
-              <div className="mb-2 flex items-center gap-2">
-                <CalendarOutlined className="text-red-500" />
-                <label className="text-sm font-medium text-gray-600">Ngày hết hạn</label>
-              </div>
-              <p className="text-base font-semibold text-gray-900">
-                {contract.expirationDate || <span className="text-gray-400">Chưa có thông tin</span>}
-              </p>
-            </div>
-
-            {/* Giá trị hợp đồng */}
-            <div className="rounded-lg bg-white p-4 shadow-sm hover:shadow-md transition-shadow">
-              <div className="mb-2 flex items-center gap-2">
-                <DollarOutlined className="text-blue-600" />
-                <label className="text-sm font-medium text-gray-600">Giá trị hợp đồng</label>
-              </div>
-              <p className="text-base font-semibold text-blue-600">
-                {contract.totalValue || <span className="text-gray-400">Chưa có thông tin</span>}
-              </p>
-            </div>
-
-            {/* Giá trị điều chỉnh */}
-            {hasAdjustedValue && (
-              <div className="rounded-lg bg-white p-4 shadow-sm hover:shadow-md transition-shadow">
-                <div className="mb-2 flex items-center gap-2">
-                  <DollarOutlined className="text-purple-600" />
-                  <label className="text-sm font-medium text-gray-600">Giá trị điều chỉnh</label>
-                </div>
-                <p className="text-base font-semibold text-purple-600">
-                  {contract.adjustedValue}
-                </p>
-              </div>
-            )}
-
-            {/* Trạng thái */}
-            <div className="rounded-lg bg-white p-4 shadow-sm hover:shadow-md transition-shadow">
-              <div className="mb-2 flex items-center gap-2">
-                <InfoCircleOutlined className="text-orange-500" />
-                <label className="text-sm font-medium text-gray-600">Trạng thái</label>
-              </div>
-              <div>
-                {contract.status ? (
-                  <ContractStatusTag status={contract.status as ContractStatusEnum} />
-                ) : (
-                  <span className="text-gray-400">Chưa có thông tin</span>
-                )}
-              </div>
-            </div>
-
-            {/* Nhân viên phụ trách */}
-            <div className="rounded-lg bg-white p-4 shadow-sm hover:shadow-md transition-shadow">
-              <div className="mb-2 flex items-center gap-2">
-                <UserOutlined className="text-cyan-500" />
-                <label className="text-sm font-medium text-gray-600">Nhân viên phụ trách</label>
-              </div>
-              <p className="text-base font-semibold text-gray-900">
-                {contract.staffName || <span className="text-gray-400">Chưa có thông tin</span>}
-              </p>
-            </div>
-          </div>
-
-          {/* Mô tả - Full width */}
-          {contract.description && contract.description !== "N/A" && (
-            <div className="mt-6 rounded-lg bg-blue-50 p-4">
-              <div className="mb-3 flex items-center gap-2">
-                <InfoCircleOutlined className="text-blue-500" />
-                <label className="text-sm font-medium text-gray-700">Mô tả</label>
-              </div>
-              <p className="whitespace-pre-wrap text-gray-800">
-                {contract.description}
-              </p>
-            </div>
-          )}
-
-          {/* Chi tiết giá cả và thanh toán - Hiển thị khi hợp đồng đã ký */}
+          {/* Payment Success Notification */}
           {(contract.status === "CONTRACT_SIGNED" ||
             contract.status === "DEPOSITED" ||
             contract.status === "PAID") && (
-            <>
-              <Divider className="mt-6" />
-
-              {loadingPriceDetails ? (
-                <div className="flex justify-center items-center py-8">
-                  <Spin
-                    indicator={
-                      <LoadingOutlined style={{ fontSize: 36 }} spin />
-                    }
-                    tip="Đang tải thông tin giá cả..."
-                  />
-                </div>
-              ) : priceDetails ? (
-                <div className="border-l-4 border-green-500 pl-6 pr-4 py-2">
-                  {/* Bảng tính tiền chi tiết theo từng loại xe */}
-                  {priceDetails.steps && priceDetails.steps.length > 0 && (
-                    <div className="mb-6">
-                      <table className="w-full text-sm border-collapse">
-                        <thead>
-                          <tr className="bg-gray-100">
-                            <th className="border border-gray-300 py-2 px-3 text-left">
-                              Loại xe
-                            </th>
-                            <th className="border border-gray-300 py-2 px-3 text-center">
-                              SL xe
-                            </th>
-                            <th className="border border-gray-300 py-2 px-3 text-center">
-                              Khoảng cách
-                            </th>
-                            <th className="border border-gray-300 py-2 px-3 text-right">
-                              Đơn giá (VNĐ/km)
-                            </th>
-                            <th className="border border-gray-300 py-2 px-3 text-center">
-                              Km áp dụng
-                            </th>
-                            <th className="border border-gray-300 py-2 px-3 text-right">
-                              Thành tiền (VNĐ)
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {(() => {
-                            // Nhóm các steps theo vehicleRuleName
-                            const groupedSteps: {
-                              [key: string]: typeof priceDetails.steps;
-                            } = {};
-                            priceDetails.steps.forEach((step) => {
-                              if (!groupedSteps[step.vehicleRuleName]) {
-                                groupedSteps[step.vehicleRuleName] = [];
-                              }
-                              groupedSteps[step.vehicleRuleName].push(step);
-                            });
-
-                            return Object.entries(groupedSteps).map(
-                              ([vehicleRuleName, steps]) =>
-                                steps.map((step, index) => (
-                                  <tr
-                                    key={`${vehicleRuleName}-${index}`}
-                                    className="hover:bg-gray-50"
-                                  >
-                                    {index === 0 && (
-                                      <td
-                                        className="border border-gray-300 py-2 px-3 font-semibold"
-                                        rowSpan={steps.length}
-                                      >
-                                        {vehicleRuleName}
-                                      </td>
-                                    )}
-                                    {index === 0 && (
-                                      <td
-                                        className="border border-gray-300 py-2 px-3 text-center"
-                                        rowSpan={steps.length}
-                                      >
-                                        {step.numOfVehicles}
-                                      </td>
-                                    )}
-                                    <td className="border border-gray-300 py-2 px-3 text-center">
-                                      {step.distanceRange}
-                                    </td>
-                                    <td className="border border-gray-300 py-2 px-3 text-right">
-                                      {step.unitPrice.toLocaleString("vi-VN")}
-                                    </td>
-                                    <td className="border border-gray-300 py-2 px-3 text-center">
-                                      {step.appliedKm.toFixed(2)}
-                                    </td>
-                                    <td className="border border-gray-300 py-2 px-3 text-right font-semibold">
-                                      {step.subtotal.toLocaleString("vi-VN")}
-                                    </td>
-                                  </tr>
-                                ))
-                            );
-                          })()}
-                        </tbody>
-                      </table>
-                      <div className="text-xs text-gray-500 mt-2 italic">
-                        * Thành tiền = Đơn giá × Km áp dụng × Số lượng xe
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Hiển thị summary từ backend nếu có */}
-                  {priceDetails.summary && (
-                    <div
-                      className="mb-6 whitespace-pre-line text-sm leading-relaxed p-4 bg-gray-50 rounded border border-gray-200"
-                      style={{ fontFamily: "monospace" }}
-                    >
-                      {priceDetails.summary}
-                    </div>
-                  )}
-
-                  {/* Bảng tổng kết chi tiết */}
-                  <div className="border-t border-gray-200 pt-4 mt-4">
-                    {hasAdjustedValue ? (
-                      <div>
-                        <table className="w-full text-sm">
-                          <tbody>
-                            <tr>
-                              <td className="py-2 px-4 text-sm text-gray-600">
-                                Giá niêm yết:
-                              </td>
-                              <td className="py-2 px-4 text-right text-gray-600 line-through">
-                                {priceDetails.finalTotal.toLocaleString(
+            <div className="mb-6">
+              <Alert
+                message={
+                  <div className="flex items-center">
+                    <span className="font-semibold text-lg">
+                      {contract.status === "CONTRACT_SIGNED"
+                        ? "✅ Hợp đồng đã được ký thành công!"
+                        : contract.status === "DEPOSITED"
+                        ? "✅ Thanh toán đặt cọc thành công!"
+                        : "✅ Thanh toán hoàn tất thành công!"}
+                    </span>
+                  </div>
+                }
+                description={
+                  <div className="mt-3">
+                    <Row gutter={[16, 16]}>
+                      <Col xs={24} sm={8}>
+                        <div className="bg-white p-4 rounded border-l-4 border-l-green-500">
+                          <div className="text-sm text-gray-600 mb-1">
+                            Trạng thái hiện tại
+                          </div>
+                          <div className="font-semibold text-green-600 text-lg">
+                            {contract.status === "CONTRACT_SIGNED"
+                              ? "Đã ký hợp đồng"
+                              : contract.status === "DEPOSITED"
+                              ? "Đã đặt cọc"
+                              : "Đã thanh toán"}
+                          </div>
+                        </div>
+                      </Col>
+                      {depositAmount && (
+                        <Col xs={24} sm={8}>
+                          <div className="bg-white p-4 rounded border-l-4 border-l-blue-500">
+                            <div className="text-sm text-gray-600 mb-1">
+                              {contract.status === "PAID"
+                                ? "Tổng đã thanh toán"
+                                : "Số tiền cọc"}
+                            </div>
+                            <div className="font-semibold text-blue-600 text-lg">
+                              {contract.status === "PAID"
+                                ? (() => {
+                                    const baseValue = hasAdjustedValue
+                                      ? parseContractValue(contract.adjustedValue)
+                                      : parseContractValue(contract.totalValue);
+                                    return (
+                                      baseValue.toLocaleString("vi-VN") +
+                                      " VNĐ"
+                                    );
+                                  })()
+                                : depositAmount.toLocaleString("vi-VN") +
+                                  " VNĐ"}
+                            </div>
+                          </div>
+                        </Col>
+                      )}
+                      {contract.status !== "PAID" && depositAmount && (
+                        <Col xs={24} sm={8}>
+                          <div className="bg-white p-4 rounded border-l-4 border-l-orange-500">
+                            <div className="text-sm text-gray-600 mb-1">
+                              Số tiền còn lại
+                            </div>
+                            <div className="font-semibold text-orange-600 text-lg">
+                              {(() => {
+                                const baseValue = hasAdjustedValue
+                                  ? parseContractValue(contract.adjustedValue)
+                                  : parseContractValue(contract.totalValue);
+                                return (baseValue - depositAmount).toLocaleString(
                                   "vi-VN"
-                                )}{" "}
-                                VNĐ
-                              </td>
-                            </tr>
-                            <tr>
-                              <td className="py-2 px-4 text-sm font-medium">
-                                Giá áp dụng (tổng):
-                              </td>
-                              <td className="py-2 px-4 text-right font-semibold">
-                                {parseContractValue(
-                                  contract.adjustedValue
-                                ).toLocaleString("vi-VN")}{" "}
-                                VNĐ
-                              </td>
-                            </tr>
-                          </tbody>
-                        </table>
-                        <div className="text-xs text-gray-500 mt-2">
-                          Lưu ý: Giá áp dụng là giá đã điều chỉnh cho hợp đồng
-                          này.
+                                ) + " VNĐ";
+                              })()}
+                            </div>
+                          </div>
+                        </Col>
+                      )}
+                    </Row>
+
+                    {/* Status specific information */}
+                    {contract.status === "CONTRACT_SIGNED" && depositAmount && (
+                      <div className="mt-4 p-4 bg-gradient-to-r from-blue-50 to-green-50 border border-blue-200 rounded-lg">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <h4 className="text-lg font-semibold text-gray-800 mb-2">
+                              Bước tiếp theo: Thanh toán đặt cọc
+                            </h4>
+                            <p className="text-gray-600 mb-2">
+                              Để kích hoạt hợp đồng, bạn cần thanh toán
+                              số tiền đặt cọc
+                            </p>
+                            <div className="text-sm text-blue-700">
+                              • Số tiền:{" "}
+                              <strong>
+                                {depositAmount.toLocaleString("vi-VN")} VNĐ
+                              </strong>
+                              <br />• Thời hạn: <strong>7 ngày</strong> kể từ
+                              khi ký hợp đồng
+                              <br />• Phương thức: Chuyển khoản ngân hàng
+                            </div>
+                          </div>
                         </div>
                       </div>
-                    ) : (
-                      <table className="w-full text-sm">
-                        <tbody>
-                          <tr className="border-b border-gray-200">
-                            <td className="py-2 px-4 font-semibold">
-                              Tổng tiền trước điều chỉnh:
-                            </td>
-                            <td className="py-2 px-4 text-right">
-                              {priceDetails.totalBeforeAdjustment.toLocaleString(
-                                "vi-VN"
-                              )}{" "}
-                              VNĐ
-                            </td>
-                          </tr>
-                          <tr className="border-b border-gray-200">
-                            <td className="py-2 px-4 font-semibold">
-                              Phí phụ thu loại hàng:
-                            </td>
-                            <td className="py-2 px-4 text-right">
-                              +
-                              {priceDetails.categoryExtraFee.toLocaleString(
-                                "vi-VN"
-                              )}{" "}
-                              VNĐ
-                            </td>
-                          </tr>
-                          <tr className="border-b border-gray-200">
-                            <td className="py-2 px-4 font-semibold">
-                              Hệ số nhân loại hàng:
-                            </td>
-                            <td className="py-2 px-4 text-right">
-                              x{priceDetails.categoryMultiplier}
-                            </td>
-                          </tr>
-                          {priceDetails.promotionDiscount > 0 && (
-                            <tr className="border-b border-gray-200">
-                              <td className="py-2 px-4 font-semibold">
-                                Giảm giá khuyến mãi:
-                              </td>
-                              <td className="py-2 px-4 text-right">
-                                -
-                                {priceDetails.promotionDiscount.toLocaleString(
-                                  "vi-VN"
-                                )}{" "}
-                                VNĐ
-                              </td>
-                            </tr>
-                          )}
-                          <tr className="border-t border-gray-200">
-                            <td className="py-3 px-4 font-bold text-base">
-                              TỔNG GIÁ TRỊ HỢP ĐỒNG:
-                            </td>
-                            <td className="py-3 px-4 text-right font-bold">
-                              {priceDetails.finalTotal.toLocaleString("vi-VN")}{" "}
-                              VNĐ
-                            </td>
-                          </tr>
-                        </tbody>
-                      </table>
+                    )}
+
+                    {contract.status === "DEPOSITED" && (
+                      <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-lg">
+                        <div className="flex items-center text-green-800 mb-2">
+                          <span className="text-lg">✅</span>
+                          <span className="font-semibold ml-2">
+                            Thông tin thanh toán đặt cọc
+                          </span>
+                        </div>
+                        <div className="text-sm text-green-700">
+                          • Bạn đã thanh toán thành công số tiền đặt cọc
+                          <br />
+                          • Hợp đồng đã được kích hoạt và có hiệu lực
+                          <br />
+                          • Chúng tôi sẽ bắt đầu thực hiện dịch vụ theo hợp đồng
+                          <br />• Số tiền còn lại sẽ được thanh toán sau khi
+                          hoàn thành dịch vụ
+                        </div>
+                      </div>
+                    )}
+
+                    {contract.status === "PAID" && (
+                      <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-lg">
+                        <div className="flex items-center text-green-800 mb-2">
+                          <span className="text-lg">🎊</span>
+                          <span className="font-semibold ml-2">
+                            Thanh toán hoàn tất
+                          </span>
+                        </div>
+                        <div className="text-sm text-green-700">
+                          • Bạn đã thanh toán đầy đủ toàn bộ giá trị hợp
+                          đồng
+                          <br />
+                          • Tất cả dịch vụ đã được hoàn thành theo hợp đồng
+                          <br />
+                          • Hợp đồng đã được thực hiện thành công
+                          <br />• Cảm ơn bạn đã tin tưởng và sử dụng dịch
+                          vụ
+                        </div>
+                      </div>
                     )}
                   </div>
-                </div>
-              ) : (
-                <Alert
-                  message="Chưa có thông tin chi tiết giá cả"
-                  type="info"
-                  showIcon
-                />
-              )}
-            </>
+                }
+                type="success"
+                showIcon={false}
+                className="border-green-200 bg-green-50"
+              />
+            </div>
           )}
+
+          {/* Contract Details with Enhanced UI */}
+          <div className="contract-details-section">
+            {/* Contract Status and Key Dates */}
+            <div className="mb-6">
+              <Row gutter={[16, 16]}>
+                <Col xs={24} lg={12}>
+                  <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-4">
+                    <div className="flex items-center mb-3">
+                      <FileTextOutlined className="text-blue-500 text-xl mr-3" />
+                      <h3 className="text-lg font-semibold text-gray-800">Thông tin hợp đồng</h3>
+                    </div>
+                    <div className="space-y-2">
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-gray-600">Tên hợp đồng:</span>
+                        <span className="font-medium text-gray-900">{contract.contractName || "Chưa có thông tin"}</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-gray-600">Mô tả:</span>
+                        <span className="font-medium text-gray-900">{contract.description || "Chưa có thông tin"}</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-gray-600">Trạng thái:</span>
+                        <ContractStatusTag
+                          status={contract.status as ContractStatusEnum}
+                        />
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-gray-600">Nhân viên phụ trách:</span>
+                        <span className="font-medium text-gray-900">{contract.staffName || "Chưa có thông tin"}</span>
+                      </div>
+                    </div>
+                  </div>
+                </Col>
+                
+                <Col xs={24} lg={12}>
+                  <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg p-4">
+                    <div className="flex items-center mb-3">
+                      <div className="bg-green-500 text-white rounded-full p-2 mr-3">
+                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clipRule="evenodd" />
+                        </svg>
+                      </div>
+                      <h3 className="text-lg font-semibold text-gray-800">Thời hạn hiệu lực</h3>
+                    </div>
+                    <div className="space-y-3">
+                      <div className="bg-white rounded-lg p-3 border-l-4 border-green-500">
+                        <div className="flex items-center mb-1">
+                          <span className="text-xs text-green-600 font-semibold">NGÀY HIỆU LỰC</span>
+                        </div>
+                        <div className="text-lg font-bold text-green-700">
+                          {contract.effectiveDate ? new Date(contract.effectiveDate).toLocaleDateString('vi-VN', {
+                            day: '2-digit',
+                            month: '2-digit',
+                            year: 'numeric'
+                          }) : "Chưa có thông tin"}
+                        </div>
+                        {contract.effectiveDate && (
+                          <div className="text-xs text-gray-500 mt-1">
+                            {new Date(contract.effectiveDate).toLocaleDateString('vi-VN', {
+                              weekday: 'long'
+                            })}
+                          </div>
+                        )}
+                      </div>
+                      
+                      <div className="bg-white rounded-lg p-3 border-l-4 border-red-500">
+                        <div className="flex items-center mb-1">
+                          <span className="text-xs text-red-600 font-semibold">NGÀY HẾT HẠN</span>
+                        </div>
+                        <div className="text-lg font-bold text-red-700">
+                          {contract.expirationDate ? new Date(contract.expirationDate).toLocaleDateString('vi-VN', {
+                            day: '2-digit',
+                            month: '2-digit',
+                            year: 'numeric'
+                          }) : "Chưa có thông tin"}
+                        </div>
+                        {contract.expirationDate && (
+                          <div className="text-xs text-gray-500 mt-1">
+                            {new Date(contract.expirationDate).toLocaleDateString('vi-VN', {
+                              weekday: 'long'
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </Col>
+              </Row>
+            </div>
+          </div>
+
+  
 
           {/* Action Guidance */}
           {(contract.status === "CONTRACT_DRAFT" ||
@@ -678,75 +584,70 @@ const ContractSection: React.FC<ContractProps> = ({
 
           {/* Các nút hành động cho customer */}
           <div className="mt-4 flex flex-wrap gap-3">
-            {contract.attachFileUrl && contract.attachFileUrl !== "N/A" ? (
-              <>
-                <Button
-                  type="primary"
-                  icon={<FileTextOutlined />}
-                  href={contract.attachFileUrl}
-                  target="_blank"
-                  size="large"
-                >
-                  Xem chi tiết hợp đồng
-                </Button>
+            
+            {contract.attachFileUrl && contract.attachFileUrl !== "N/A" && (
+              <Button
+                type="primary"
+                icon={<FileTextOutlined />}
+                href={contract.attachFileUrl}
+                target="_blank"
+                size="large"
+              >
+                Xem file đính kèm
+              </Button>
+            )}
 
                 {/* Nút ký hợp đồng chỉ hiện khi có file và trạng thái phù hợp */}
-                {(contract.status === "CONTRACT_DRAFT" ||
-                  contract.status === "PENDING") && (
-                  <Button
-                    type="default"
-                    icon={<EditOutlined />}
-                    onClick={handleSignContract}
-                    loading={signingContract}
-                    size="large"
-                    className="ml-3"
-                  >
-                    Ký hợp đồng
-                  </Button>
-                )}
-
-                {/* Nút thanh toán đặt cọc chỉ hiện khi hợp đồng đã ký */}
-                {(contract.status === "CONTRACT_SIGNED" ||
-                  contract.status === "UNPAID") && (
-                  <Button
-                    type="primary"
-                    icon={<CreditCardOutlined />}
-                    onClick={handlePayDeposit}
-                    loading={payingDeposit}
-                    size="large"
-                    className="bg-green-500 hover:bg-green-600 border-green-500"
-                  >
-                    {depositAmount
-                      ? `Thanh Toán Đặt Cọc ${depositAmount.toLocaleString(
-                          "vi-VN"
-                        )} VNĐ`
-                      : "Thanh Toán Đặt Cọc"}
-                  </Button>
-                )}
-
-                {/* Nút thanh toán toàn bộ chỉ hiện khi contract status là DEPOSITED và order status là ASSIGNED_TO_DRIVER */}
-                {contract.status === "DEPOSITED" &&
-                  orderStatus === "ASSIGNED_TO_DRIVER" && (
-                    <Button
-                      type="primary"
-                      icon={<CreditCardOutlined />}
-                      onClick={handlePayFullAmount}
-                      loading={payingFullAmount}
-                      size="large"
-                      className="ml-3"
-                      style={{ backgroundColor: "#52c41a" }}
-                    >
-                      Thanh Toán Toàn Bộ {remainingAmount > 0 ? `${formatCurrency(remainingAmount)} VNĐ` : ''}
-                    </Button>
-                  )}
-              </>
-            ) : (
-              <p className="text-gray-500">Chưa có file hợp đồng</p>
+            {(contract.status === "CONTRACT_DRAFT" ||
+              contract.status === "PENDING") && (
+              <Button
+                type="default"
+                icon={<EditOutlined />}
+                onClick={handleSignContract}
+                loading={signingContract}
+                size="large"
+              >
+                Ký hợp đồng
+              </Button>
             )}
+
+            {/* Nút thanh toán đặt cọc chỉ hiện khi hợp đồng đã ký */}
+            {(contract.status === "CONTRACT_SIGNED" ||
+              contract.status === "UNPAID") && (
+              <Button
+                type="primary"
+                icon={<CreditCardOutlined />}
+                onClick={handlePayDeposit}
+                loading={payingDeposit}
+                size="large"
+                className="bg-green-500 hover:bg-green-600 border-green-500"
+              >
+                {depositAmount
+                  ? `Thanh Toán Đặt Cọc ${depositAmount.toLocaleString(
+                      "vi-VN"
+                    )} VNĐ`
+                  : "Thanh Toán Đặt Cọc"}
+              </Button>
+            )}
+
+            {/* Nút thanh toán toàn bộ chỉ hiện khi contract status là DEPOSITED và order status là ASSIGNED_TO_DRIVER */}
+            {contract.status === "DEPOSITED" &&
+              orderStatus === "ASSIGNED_TO_DRIVER" && (
+                <Button
+                  type="primary"
+                  icon={<CreditCardOutlined />}
+                  onClick={handlePayFullAmount}
+                  loading={payingFullAmount}
+                  size="large"
+                  style={{ backgroundColor: "#52c41a" }}
+                >
+                  Thanh Toán Toàn Bộ
+                </Button>
+              )}
           </div>
         </>
       ) : (
-        <Empty description="Chưa có thông tin hợp đồng" />
+        <Empty description="Không có thông tin hợp đồng" />
       )}
     </Card>
   );

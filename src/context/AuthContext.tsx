@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import type { User } from "@/models/User";
 import authService from "@/services/auth";
 import type { LoginResponse } from "@/services/auth/types";
+import { onLogout as onHttpClientLogout } from "@/services/api/httpClient";
 
 interface AuthContextType {
     user: User | null;
@@ -25,6 +26,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
+        // Listen for logout events from httpClient
+        const unsubscribe = onHttpClientLogout(() => {
+            console.log('[AuthContext] Received logout event from httpClient');
+            setUser(null);
+        });
+
+        return unsubscribe;
+    }, []);
+
+    useEffect(() => {
         // Check if user is logged in
         const checkAuth = async () => {
             try {
@@ -39,11 +50,28 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
                     return;
                 }
 
-                // Get user data from sessionStorage (not localStorage)
-                const userRole = sessionStorage.getItem("user_role");
-                const userId = sessionStorage.getItem("userId");
-                const username = sessionStorage.getItem("username");
-                const email = sessionStorage.getItem("email");
+                // Get user data from sessionStorage first, then fallback to localStorage
+                let userRole = sessionStorage.getItem("user_role");
+                let userId = sessionStorage.getItem("userId");
+                let username = sessionStorage.getItem("username");
+                let email = sessionStorage.getItem("email");
+                
+                // If not in sessionStorage, check localStorage (for server restart scenarios)
+                if (!userRole || !userId) {
+                    userRole = localStorage.getItem("user_role");
+                    userId = localStorage.getItem("userId");
+                    username = localStorage.getItem("username");
+                    email = localStorage.getItem("email");
+                    
+                    // Restore to sessionStorage if found in localStorage
+                    if (userRole && userId) {
+                        sessionStorage.setItem("user_role", userRole);
+                        sessionStorage.setItem("userId", userId);
+                        if (username) sessionStorage.setItem("username", username);
+                        if (email) sessionStorage.setItem("email", email);
+                        console.log('[AuthContext] Restored session from localStorage after server restart');
+                    }
+                }
 
                 // Validate user data
                 if (!userRole || !userId || !username || !email) {
@@ -76,11 +104,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
                     authService.logout();
                 } else {
                     console.warn('[AuthContext] Token refresh failed due to network/server error, keeping user logged in');
-                    // Try to restore user from sessionStorage anyway
-                    const userRole = sessionStorage.getItem("user_role");
-                    const userId = sessionStorage.getItem("userId");
-                    const username = sessionStorage.getItem("username");
-                    const email = sessionStorage.getItem("email");
+                    // Try to restore user from sessionStorage first, then localStorage
+                    let userRole = sessionStorage.getItem("user_role");
+                    let userId = sessionStorage.getItem("userId");
+                    let username = sessionStorage.getItem("username");
+                    let email = sessionStorage.getItem("email");
+                    
+                    // Fallback to localStorage if sessionStorage is empty
+                    if (!userRole || !userId) {
+                        userRole = localStorage.getItem("user_role");
+                        userId = localStorage.getItem("userId");
+                        username = localStorage.getItem("username");
+                        email = localStorage.getItem("email");
+                    }
 
                     if (userRole && userId && username && email) {
                         const userData: User = {

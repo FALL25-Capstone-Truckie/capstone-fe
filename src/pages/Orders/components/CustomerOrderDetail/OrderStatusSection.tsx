@@ -1,5 +1,5 @@
 import React from "react";
-import { Card, Button } from "antd";
+import { Button } from "antd";
 import { TruckOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
@@ -75,7 +75,9 @@ const OrderStatusSection: React.FC<OrderStatusSectionProps> = ({
           <div className="text-center px-4 border-l border-gray-200">
             <p className="text-gray-500 text-sm">Tổng tiền</p>
             <p className="font-semibold text-lg text-blue-600">
-              {getDisplayPrice() !== null && getDisplayPrice() !== undefined
+              {status === OrderStatusEnum.PROCESSING
+                ? "Chưa có thông tin"
+                : getDisplayPrice() !== null && getDisplayPrice() !== undefined
                 ? `${getDisplayPrice()!.toLocaleString("vi-VN")} VNĐ`
                 : "Chưa có thông tin"}
             </p>
@@ -104,7 +106,7 @@ const OrderStatusSection: React.FC<OrderStatusSectionProps> = ({
               </svg>
               Bạn đã đồng ý với đề xuất phân xe của chúng tôi
             </div>
-          ) : (
+          ) : status === OrderStatusEnum.PENDING ? (
             <Button
               type="primary"
               icon={<TruckOutlined />}
@@ -113,7 +115,7 @@ const OrderStatusSection: React.FC<OrderStatusSectionProps> = ({
             >
               Xem đề xuất xe hàng
             </Button>
-          )}
+          ) : null}
         </div>
       </div>
     </div>

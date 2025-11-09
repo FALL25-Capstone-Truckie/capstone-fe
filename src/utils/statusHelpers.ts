@@ -110,3 +110,16 @@ export const getOrderDetailStatusCardColor = (status: string) => {
     
     return colorMap[metadata.bgColor] || { backgroundColor: '#f3f4f6', borderColor: '#d1d5db' };
 };
+
+/**
+ * Kiểm tra xem tất cả order details có ở status cuối cùng không
+ * Final statuses: COMPENSATION, SUCCESSFUL, RETURNED
+ */
+export const areAllOrderDetailsInFinalStatus = (orderDetails?: Array<{ status: string }>): boolean => {
+    if (!orderDetails || orderDetails.length === 0) {
+        return false;
+    }
+    
+    const finalStatuses = ['COMPENSATION', 'SUCCESSFUL', 'RETURNED'];
+    return orderDetails.every(detail => finalStatuses.includes(detail.status));
+};

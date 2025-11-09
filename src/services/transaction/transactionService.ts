@@ -1,24 +1,30 @@
 import httpClient from '../api/httpClient';
-import type { PayOsWebhookRequest, PayOsWebhookResponse } from './types';
+import { handleApiError } from '../api/errorHandler';
 
 /**
- * Transaction Service
- * Handles payment and transaction related API calls
+ * Service for handling transaction-related API calls
  */
-class TransactionService {
+const transactionService = {
   /**
-   * Send PayOS webhook notification
-   * @param data - Webhook data containing orderCode and status
+   * Call PayOS webhook for payment processing
+   * @param orderCode - Order code for the transaction
+   * @param status - Payment status
    * @returns Promise with webhook response
    */
-  async sendPayOsWebhook(data: PayOsWebhookRequest): Promise<PayOsWebhookResponse> {
-    const response = await httpClient.post<PayOsWebhookResponse>(
-      '/transactions/pay-os/webhook',
-      { data }
-    );
-    return response.data;
-  }
-}
+  callPayOSWebhook: async (orderCode: number, status: string) => {
+    try {
+      const response = await httpClient.post('/transactions/pay-os/webhook', {
+        data: {
+          orderCode,
+          status,
+        },
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error calling PayOS webhook:', error);
+      throw handleApiError(error, 'Không thể xử lý thanh toán');
+    }
+  },
+};
 
-export const transactionService = new TransactionService();
 export default transactionService;

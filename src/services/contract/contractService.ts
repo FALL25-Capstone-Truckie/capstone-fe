@@ -123,41 +123,30 @@ const contractService = {
   },
 
   /**
-   * Create contract for customer (both contract and related data)
-   * @param contractData - The contract data to create
-   * @returns Promise with created contract response
+   * Get contracts by order ID
+   * @param orderId - The order ID to get contracts for
+   * @returns Promise with contracts data
    */
-  createContractForCustomer: async (
-    contractData: CreateContractRequest
-  ): Promise<CreateContractResponse> => {
+  getContractsByOrderId: async (orderId: string) => {
     try {
-      const response = await httpClient.post<CreateContractResponse>(
-        `/contracts/both/for-cus`,
-        contractData
-      );
+      const response = await httpClient.get(`/contracts/order/${orderId}`);
       return response.data;
     } catch (error) {
-      console.error("Error creating contract for customer:", error);
-      throw handleApiError(error, "Không thể tạo hợp đồng cho khách hàng");
+      console.error(`Error fetching contracts for order ${orderId}:`, error);
+      throw handleApiError(error, "Không thể tải danh sách hợp đồng");
     }
   },
 
   /**
    * Upload contract file
-   * @param formData - FormData containing contract file and metadata
+   * @param formData - FormData containing contract file
    * @returns Promise with upload response
    */
-  uploadContract: async (formData: FormData): Promise<any> => {
+  uploadContract: async (formData: FormData) => {
     try {
-      const response = await httpClient.post(
-        `/contracts/upload-contract`,
-        formData,
-        {
-          headers: {
-            'Content-Type': 'multipart/form-data',
-          },
-        }
-      );
+      const response = await httpClient.post('/contracts/upload-contract', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
       return response.data;
     } catch (error) {
       console.error("Error uploading contract:", error);

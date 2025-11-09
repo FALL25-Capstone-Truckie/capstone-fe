@@ -9,10 +9,7 @@ interface OrderStatusSectionProps {
     status: string;
     createdAt: string;
     totalPrice: number | null;
-    contract?: {
-        totalValue: number;
-        adjustedValue: number;
-    } | null;
+    contract?: any;
 }
 
 const OrderStatusSection: React.FC<OrderStatusSectionProps> = ({
@@ -22,25 +19,24 @@ const OrderStatusSection: React.FC<OrderStatusSectionProps> = ({
     totalPrice,
     contract,
 }) => {
+    // Calculate display total from contract if available
+    const displayTotal = contract
+        ? (contract.adjustedValue && parseFloat(contract.adjustedValue) > 0
+            ? parseFloat(contract.adjustedValue)
+            : contract.totalValue
+            ? parseFloat(contract.totalValue)
+            : totalPrice)
+        : totalPrice;
+
     const formatDate = (dateString: string) => {
         return dayjs(dateString).format("DD/MM/YYYY HH:mm:ss");
     };
 
     const formatCurrency = (amount: number | null) => {
-        if (amount === null || amount === undefined) {
-            return "0 VND";
+        if (amount === null || amount === undefined || amount === 0) {
+            return "Chưa có thông tin";
         }
         return amount.toLocaleString("vi-VN", { style: "currency", currency: "VND" });
-    };
-
-    // Calculate display price: prioritize contract adjustedValue, then totalValue, then totalPrice
-    const getDisplayPrice = () => {
-        if (contract) {
-            // If contract exists, prioritize adjustedValue, then totalValue
-            return contract.adjustedValue || contract.totalValue;
-        }
-        // Fallback to order totalPrice
-        return totalPrice;
     };
 
     return (
@@ -68,7 +64,7 @@ const OrderStatusSection: React.FC<OrderStatusSectionProps> = ({
                     <div className="text-center px-4 border-l border-gray-200">
                         <p className="text-gray-500 text-sm">Tổng tiền</p>
                         <p className="font-semibold text-lg text-blue-600">
-                            {formatCurrency(getDisplayPrice())}
+                            {formatCurrency(displayTotal)}
                         </p>
                     </div>
                 </div>

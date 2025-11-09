@@ -9,7 +9,9 @@ import {
     UserOutlined,
     PhoneOutlined,
     TagOutlined,
-    EnvironmentOutlined
+    EnvironmentOutlined,
+    FireOutlined,
+    WarningOutlined,
 } from "@ant-design/icons";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
@@ -80,13 +82,17 @@ const VehicleAssignmentSection: React.FC<VehicleAssignmentSectionProps> = ({
 
     const va = currentGroup.vehicleAssignment;
 
+    // Debug log for seals
+    console.log('[VehicleAssignmentSection] Vehicle Assignment:', va);
+    console.log('[VehicleAssignmentSection] Seals:', va.seals);
+
     return (
         <div className="vehicle-assignment-section border-2 border-blue-200 rounded-xl bg-blue-50 p-6 shadow-md">
             {/* Header - Tab chọn chuyến xe */}
             <div className="mb-4">
                 <div className="text-sm font-semibold text-blue-700 mb-3 flex items-center">
                     <CarOutlined className="mr-2" />
-                    Chọn chuyến xe
+                    Chuyến xe
                 </div>
                 <Tabs
                     activeKey={selectedVehicleAssignmentIndex.toString()}
@@ -234,7 +240,7 @@ const VehicleAssignmentSection: React.FC<VehicleAssignmentSectionProps> = ({
                         key="orderDetails"
                     >
                         {currentGroup.orderDetails.length > 0 ? (
-                            <div className="grid grid-cols-1 gap-4">
+                            <div className="space-y-4">
                                 {currentGroup.orderDetails.map((detail: any) => (
                                     <Card
                                         key={detail.id}
@@ -451,6 +457,190 @@ const VehicleAssignmentSection: React.FC<VehicleAssignmentSectionProps> = ({
                             </div>
                         ) : (
                             <Empty description="Không có thông tin niêm phong" />
+                        )}
+                    </Tabs.TabPane>
+
+                    {/* Tab vi phạm & phạt */}
+                    <Tabs.TabPane
+                        tab={
+                            <span>
+                                <WarningOutlined /> Vi phạm & Phạt
+                            </span>
+                        }
+                        key="penalties"
+                    >
+                        {va.penalties && va.penalties.length > 0 ? (
+                            <div className="p-4">
+                                <div className="space-y-4">
+                                    {va.penalties.map((penalty: any, index: number) => (
+                                        <Card
+                                            key={penalty.id || index}
+                                            className="shadow-sm hover:shadow-md transition-shadow rounded-lg border-l-4 border-l-red-500"
+                                            size="small"
+                                        >
+                                            <div className="space-y-3">
+                                                {/* Header */}
+                                                <div className="flex items-start justify-between">
+                                                    <div className="flex-1">
+                                                        <div className="text-xs text-gray-500 font-medium">Loại vi phạm</div>
+                                                        <div className="text-base font-bold text-gray-900">
+                                                            {penalty.type || "Không xác định"}
+                                                        </div>
+                                                    </div>
+                                                    <Tag color="red" className="ml-2">
+                                                        {penalty.amount ? `${penalty.amount.toLocaleString('vi-VN')} VND` : 'Chưa có' }
+                                                    </Tag>
+                                                </div>
+
+                                                {/* Divider */}
+                                                <div className="border-t border-gray-100"></div>
+
+                                                {/* Details */}
+                                                <div className="space-y-2">
+                                                    <div className="flex justify-between items-start">
+                                                        <span className="text-sm text-gray-600">Mô tả:</span>
+                                                        <span className="text-sm text-gray-900 text-right max-w-xs">
+                                                            {penalty.description || "Không có mô tả"}
+                                                        </span>
+                                                    </div>
+                                                    <div className="flex justify-between items-center">
+                                                        <span className="text-sm text-gray-600">Thời gian:</span>
+                                                        <span className="font-semibold text-gray-900">
+                                                            {penalty.createdAt ? formatDate(penalty.createdAt) : "Chưa có"}
+                                                        </span>
+                                                    </div>
+                                                    {penalty.status && (
+                                                        <div className="flex justify-between items-center">
+                                                            <span className="text-sm text-gray-600">Trạng thái:</span>
+                                                            <span className="font-semibold text-gray-900">
+                                                                {penalty.status}
+                                                            </span>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </Card>
+                                    ))}
+                                </div>
+                            </div>
+                        ) : (
+                            <Empty description="Không có vi phạm nào được ghi nhận" />
+                        )}
+                    </Tabs.TabPane>
+
+                    {/* Tab tiêu thụ nhiên liệu */}
+                    <Tabs.TabPane
+                        tab={
+                            <span>
+                                <FireOutlined /> Tiêu thụ nhiên liệu
+                            </span>
+                        }
+                        key="fuel"
+                    >
+                        {va.fuelConsumption ? (
+                            <div className="p-4">
+                                <Card className="shadow-sm hover:shadow-md transition-shadow rounded-lg border-l-4 border-l-blue-500">
+                                    <div className="space-y-4">
+                                        {/* Header */}
+                                        <div className="flex items-center">
+                                            <FireOutlined className="text-2xl text-blue-500 mr-3" />
+                                            <div>
+                                                <div className="text-lg font-bold text-gray-900">
+                                                    Thông tin tiêu thụ nhiên liệu
+                                                </div>
+                                                <div className="text-sm text-gray-500">
+                                                    Ghi nhận lúc: {va.fuelConsumption.dateRecorded ? formatDate(va.fuelConsumption.dateRecorded) : "Chưa có"}
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Divider */}
+                                        <div className="border-t border-gray-100"></div>
+
+                                        {/* Details Grid */}
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <div className="space-y-3">
+                                                <div>
+                                                    <p className="text-xs text-gray-500 font-medium">Odometer đầu chuyến</p>
+                                                    <p className="text-lg font-bold text-gray-900">
+                                                        {va.fuelConsumption.odometerReadingAtStart ? `${va.fuelConsumption.odometerReadingAtStart.toLocaleString('vi-VN')} km` : "Chưa có"}
+                                                    </p>
+                                                </div>
+                                                {va.fuelConsumption.odometerReadingAtEnd && (
+                                                    <div>
+                                                        <p className="text-xs text-gray-500 font-medium">Odometer cuối chuyến</p>
+                                                        <p className="text-lg font-bold text-gray-900">
+                                                            {va.fuelConsumption.odometerReadingAtEnd.toLocaleString('vi-VN')} km
+                                                        </p>
+                                                    </div>
+                                                )}
+                                                {va.fuelConsumption.distanceTraveled && (
+                                                    <div>
+                                                        <p className="text-xs text-gray-500 font-medium">Quãng đường đã đi</p>
+                                                        <p className="text-lg font-bold text-gray-900">
+                                                            {va.fuelConsumption.distanceTraveled.toLocaleString('vi-VN')} km
+                                                        </p>
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <div className="space-y-3">
+                                                {va.fuelConsumption.fuelVolume && (
+                                                    <div>
+                                                        <p className="text-xs text-gray-500 font-medium">Lượng nhiên liệu</p>
+                                                        <p className="text-lg font-bold text-gray-900">
+                                                            {va.fuelConsumption.fuelVolume} lít
+                                                        </p>
+                                                    </div>
+                                                )}
+                                                <div>
+                                                    <p className="text-xs text-gray-500 font-medium">Ghi chú</p>
+                                                    <p className="text-sm text-gray-900">
+                                                        {va.fuelConsumption.notes || "Không có ghi chú"}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Images */}
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            {va.fuelConsumption.odometerAtStartUrl && (
+                                                <div>
+                                                    <p className="text-xs text-gray-500 font-medium mb-2">Hình ảnh odometer đầu chuyến</p>
+                                                    <img
+                                                        src={va.fuelConsumption.odometerAtStartUrl}
+                                                        alt="Odometer start"
+                                                        className="w-full h-32 object-cover rounded border border-gray-200"
+                                                    />
+                                                </div>
+                                            )}
+                                            {va.fuelConsumption.odometerAtEndUrl && (
+                                                <div>
+                                                    <p className="text-xs text-gray-500 font-medium mb-2">Hình ảnh odometer cuối chuyến</p>
+                                                    <img
+                                                        src={va.fuelConsumption.odometerAtEndUrl}
+                                                        alt="Odometer end"
+                                                        className="w-full h-32 object-cover rounded border border-gray-200"
+                                                    />
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {/* Company Invoice */}
+                                        {va.fuelConsumption.companyInvoiceImageUrl && (
+                                            <div>
+                                                <p className="text-xs text-gray-500 font-medium mb-2">Hóa đơn nhiên liệu</p>
+                                                <img
+                                                    src={va.fuelConsumption.companyInvoiceImageUrl}
+                                                    alt="Company invoice"
+                                                    className="w-full h-48 object-cover rounded border border-gray-200"
+                                                />
+                                            </div>
+                                        )}
+                                    </div>
+                                </Card>
+                            </div>
+                        ) : (
+                            <Empty description="Không có thông tin tiêu thụ nhiên liệu" />
                         )}
                     </Tabs.TabPane>
 

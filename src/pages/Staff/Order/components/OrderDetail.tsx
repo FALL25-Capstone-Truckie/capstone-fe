@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   Button,
@@ -23,13 +23,14 @@ import {
   InfoCircleOutlined,
   FileTextOutlined,
 } from "@ant-design/icons";
+import { useStaffOrderDetail } from "@/hooks";
+import { useOrderStatusTracking } from "@/hooks/useOrderStatusTracking";
+import { createOrderStatusChangeHandler } from "@/utils/orderStatusNotifications";
 import orderService from "@/services/order/orderService";
 import { contractService } from "@/services/contract";
-import { useOrderStatusTracking } from "@/hooks/useOrderStatusTracking";
-import type { Order } from "@/models/Order";
 import type { CreateContractRequest } from "@/services/contract/types";
 import type { ContractData } from "@/services/contract/contractTypes";
-import { OrderStatusEnum, OrderStatusLabels } from "@/constants/enums";
+import { OrderStatusEnum } from "@/constants/enums";
 
 import dayjs from "dayjs";
 import {
@@ -50,8 +51,9 @@ const OrderDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const messageApi = App.useApp().message;
-  const [order, setOrder] = useState<Order | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
+  
+  // Use hook for order data management
+  const { order, priceDetails, loading, refetch } = useStaffOrderDetail();
   const [activeTab, setActiveTab] = useState<string>("info");
   const [assigningVehicle, setAssigningVehicle] = useState<boolean>(false);
   const [contractModalVisible, setContractModalVisible] =
@@ -60,99 +62,15 @@ const OrderDetailPage: React.FC = () => {
     useState<boolean>(false);
   const [contractForm] = Form.useForm();
   const [creatingContract, setCreatingContract] = useState<boolean>(false);
-  const [contractData, setContractData] = useState<ContractData | null>(null);
-  const [loadingContractData, setLoadingContractData] =
-    useState<boolean>(false);
-
-  // Map status to notification icon and type
-  const getStatusNotification = (status: string) => {
-    const statusNotificationMap: Record<string, { icon: string; type: 'success' | 'error' | 'warning' | 'info'; duration: number }> = {
-      [OrderStatusEnum.PENDING]: { icon: '⏳', type: 'info', duration: 3 },
-      [OrderStatusEnum.PROCESSING]: { icon: '⚙️', type: 'info', duration: 3 },
-      [OrderStatusEnum.CONTRACT_DRAFT]: { icon: '📝', type: 'info', duration: 3 },
-      [OrderStatusEnum.CONTRACT_SIGNED]: { icon: '✍️', type: 'success', duration: 4 },
-      [OrderStatusEnum.ON_PLANNING]: { icon: '📋', type: 'info', duration: 3 },
-      [OrderStatusEnum.ASSIGNED_TO_DRIVER]: { icon: '👤', type: 'success', duration: 4 },
-      [OrderStatusEnum.FULLY_PAID]: { icon: '💳', type: 'success', duration: 4 },
-      [OrderStatusEnum.PICKING_UP]: { icon: '🚛', type: 'success', duration: 5 },
-      [OrderStatusEnum.ON_DELIVERED]: { icon: '🚚', type: 'success', duration: 5 },
-      [OrderStatusEnum.ONGOING_DELIVERED]: { icon: '📍', type: 'success', duration: 5 },
-      [OrderStatusEnum.DELIVERED]: { icon: '✅', type: 'success', duration: 5 },
-      [OrderStatusEnum.IN_TROUBLES]: { icon: '⚠️', type: 'error', duration: 8 },
-      [OrderStatusEnum.RESOLVED]: { icon: '🔧', type: 'success', duration: 5 },
-      [OrderStatusEnum.COMPENSATION]: { icon: '💰', type: 'warning', duration: 6 },
-      [OrderStatusEnum.SUCCESSFUL]: { icon: '🎉', type: 'success', duration: 5 },
-      [OrderStatusEnum.REJECT_ORDER]: { icon: '❌', type: 'error', duration: 6 },
-      [OrderStatusEnum.RETURNING]: { icon: '↩️', type: 'warning', duration: 5 },
-      [OrderStatusEnum.RETURNED]: { icon: '📦', type: 'info', duration: 4 },
-    };
-    return statusNotificationMap[status] || { icon: 'ℹ️', type: 'info', duration: 3 };
-  };
-
-  // Handle order status changes via WebSocket
-  const handleOrderStatusChange = useCallback((statusChange: any) => {
-    console.log('[StaffOrderDetail] 📢 Order status changed:', statusChange);
-    
-    // Check if this status change is for the current order
-    if (id && statusChange.orderId === id) {
-      console.log('[StaffOrderDetail] ✅ Order ID matched!');
-      
-      const notification = getStatusNotification(statusChange.newStatus);
-      const statusLabel = OrderStatusLabels[statusChange.newStatus as OrderStatusEnum] || statusChange.newStatus;
-      const notificationContent = `${notification.icon} ${statusChange.message || statusLabel}`;
-      
-      // Show notification based on status type
-      if (notification.type === 'success') {
-        messageApi.success({
-          content: notificationContent,
-          duration: notification.duration,
-        });
-      } else if (notification.type === 'error') {
-        messageApi.error({
-          content: notificationContent,
-          duration: notification.duration,
-        });
-      } else if (notification.type === 'warning') {
-        messageApi.warning({
-          content: notificationContent,
-          duration: notification.duration,
-        });
-      } else {
-        messageApi.info({
-          content: notificationContent,
-          duration: notification.duration,
-        });
-      }
-    } else {
-      console.log('[StaffOrderDetail] ❌ Order ID did not match:', {
-        statusChangeOrderId: statusChange.orderId,
-        currentOrderId: id
-      });
-    }
-  }, [id, messageApi]);
-
-  // Handle refresh when order status changes
-  const handleRefreshNeeded = useCallback(() => {
-    if (id) {
-      console.log('[StaffOrderDetail] 🔄 Refreshing order details due to status change...');
-      fetchOrderDetails(id);
-    }
-  }, [id]);
-
-  // Subscribe to order status changes
-  useOrderStatusTracking({
-    orderId: id,
-    autoConnect: true,
-    onStatusChange: handleOrderStatusChange,
-    onRefreshNeeded: handleRefreshNeeded,
-  });
-
-  // Lấy thông tin đơn hàng khi component mount
+  const [contractData, setContractData] = useState<ContractData | null>(priceDetails || null);
+  const [loadingContractData, setLoadingContractData] = useState<boolean>(false);
+  
+  // Update contractData when priceDetails from hook changes
   useEffect(() => {
-    if (id) {
-      fetchOrderDetails(id);
+    if (priceDetails) {
+      setContractData(priceDetails);
     }
-  }, [id]);
+  }, [priceDetails]);
 
   // Tự động load contract data khi order status là CONTRACT_DRAFT
   useEffect(() => {
@@ -177,19 +95,7 @@ const OrderDetailPage: React.FC = () => {
     }
   }, [order?.status, id, contractData, activeTab, loadingContractData]);
 
-  // Hàm lấy thông tin chi tiết đơn hàng từ API
-  const fetchOrderDetails = async (orderId: string) => {
-    setLoading(true);
-    try {
-      const orderData = await orderService.getOrderById(orderId);
-      setOrder(orderData);
-    } catch (error) {
-      messageApi.error("Không thể tải thông tin đơn hàng");
-      console.error("Error fetching order details:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  // fetchOrderDetails is now handled by useStaffOrderDetail hook
 
   // Xử lý khi click nút cập nhật trạng thái
   const handleUpdateStatus = (status: string) => {
@@ -207,7 +113,7 @@ const OrderDetailPage: React.FC = () => {
       await orderService.updateVehicleAssignmentForDetails(id);
       messageApi.success("Đã phân công xe cho đơn hàng thành công");
       // Refresh order details
-      fetchOrderDetails(id);
+      refetch();
     } catch (error) {
       messageApi.error("Không thể phân công xe cho đơn hàng");
       console.error("Error assigning vehicle:", error);
@@ -255,10 +161,24 @@ const OrderDetailPage: React.FC = () => {
     setContractModalVisible(true);
   };
 
-  const handleContractSave = (editedData: any) => {
-    console.log("Contract data saved:", editedData);
-    messageApi.success("Đã lưu thay đổi hợp đồng");
-  };
+  
+  // Handle order status changes via WebSocket using standardized utility
+  const handleOrderStatusChange = createOrderStatusChangeHandler({
+    orderId: id,
+    refetch: refetch,
+    messageApi: messageApi,
+    // Use default staff notifications - no custom ones needed
+    onTabSwitch: (tabKey: string) => {
+      // Map tab keys to staff order detail tabs
+      const tabMapping: Record<string, string> = {
+        'contract': 'contract',
+        'detail': 'info',
+        'details': 'info',
+      };
+      const mappedTab = tabMapping[tabKey] || tabKey;
+      setActiveTab(mappedTab);
+    },
+  });
 
   const handleContractSubmit = async (values: any) => {
     setCreatingContract(true);
@@ -459,6 +379,13 @@ const OrderDetailPage: React.FC = () => {
       </div>
     );
   }
+
+  // Subscribe to order status changes
+  useOrderStatusTracking({
+    orderId: id,
+    autoConnect: true,
+    onStatusChange: handleOrderStatusChange,
+  });
 
   return (
     <div>

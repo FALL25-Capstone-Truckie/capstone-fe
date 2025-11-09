@@ -8,10 +8,7 @@ const { Title } = Typography;
 
 interface BasicInfoTabProps {
     order: any;
-    contract?: {
-        totalValue: number;
-        adjustedValue: number;
-    } | null;
+    contract?: any;
 }
 
 const BasicInfoTab: React.FC<BasicInfoTabProps> = ({ order, contract }) => {
@@ -62,8 +59,8 @@ const BasicInfoTab: React.FC<BasicInfoTabProps> = ({ order, contract }) => {
             <AddressSection
                 pickupAddress={order.pickupAddress}
                 deliveryAddress={order.deliveryAddress}
-                senderName={order.senderName}
-                senderPhone={order.senderPhone}
+                senderRepresentativeName={order.senderRepresentativeName}
+                senderRepresentativePhone={order.senderRepresentativePhone}
                 senderCompanyName={order.senderCompanyName}
                 receiverName={order.receiverName}
                 receiverPhone={order.receiverPhone}

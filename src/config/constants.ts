@@ -1,1 +1,4 @@
-export const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8080/api/v1'; 
+// This file is deprecated. Use @/config/env.ts instead
+import { API_URL as ENV_API_URL } from './env';
+
+export const API_URL = ENV_API_URL; 

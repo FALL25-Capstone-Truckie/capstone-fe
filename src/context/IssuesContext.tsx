@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import { Client } from '@stomp/stompjs';
 import type { IMessage } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
+import { API_BASE_URL } from '@/config/env';
 import type { Issue } from '@/models/Issue';
 import issueService from '@/services/issue/issueService';
 import { message as antdMessage, Modal } from 'antd';
@@ -84,6 +85,25 @@ export const IssuesProvider: React.FC<IssuesProviderProps> = ({ children }) => {
   // Handle new issue from WebSocket
   const handleNewIssue = useCallback((msg: Issue) => {
     console.log('🆕 New issue received via WebSocket:', msg);
+    console.log('🔍 Issue details:', {
+      id: msg.id,
+      issueCategory: msg.issueCategory,
+      description: msg.description,
+      orderDetail: msg.orderDetail
+    });
+    
+    // Debug orderDetail specifically for package info
+    if (msg.orderDetail) {
+      console.log('📦 OrderDetail found:', {
+        trackingCode: msg.orderDetail.trackingCode,
+        description: msg.orderDetail.description,
+        weightBaseUnit: msg.orderDetail.weightBaseUnit,
+        unit: msg.orderDetail.unit,
+        allFields: msg.orderDetail
+      });
+    } else {
+      console.log('❌ No orderDetail found in issue');
+    }
     
     setIssues((prev) => {
       // Check if issue already exists to avoid duplicates
@@ -101,6 +121,7 @@ export const IssuesProvider: React.FC<IssuesProviderProps> = ({ children }) => {
     playMultipleBeeps(SoundType.NEW_ISSUE, 2, 300);
     
     // Show modal for urgent notification
+    console.log('🚨 Showing new issue modal for:', msg.issueCategory);
     showNewIssueModal(msg);
     
     antdMessage.warning({
@@ -199,8 +220,7 @@ export const IssuesProvider: React.FC<IssuesProviderProps> = ({ children }) => {
     console.log('🔌 Connecting to Issues WebSocket for staff user...');
     setIsConnected(false);
 
-    const host = window.location.hostname;
-    const sockJsUrl = `http://${host}:8080/vehicle-tracking-browser`;
+    const sockJsUrl = `${API_BASE_URL}/vehicle-tracking-browser`;
 
     const client = new Client({
       webSocketFactory: () => {

@@ -1,5 +1,6 @@
 import { Client, type IMessage } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
+import { API_BASE_URL, AUTH_ACCESS_TOKEN_KEY } from '@/config/env';
 
 type IssueUpdateCallback = (issue: any) => void;
 
@@ -20,10 +21,17 @@ class IssueWebSocketService {
                 return;
             }
 
-            const socket = new SockJS(`${import.meta.env.VITE_API_BASE_URL}/ws`);
+            // Use API_BASE_URL from environment configuration
+            const socket = new SockJS(`${API_BASE_URL}/ws`);
+            
+            // Get JWT token for authentication
+            const token = localStorage.getItem(AUTH_ACCESS_TOKEN_KEY);
             
             this.client = new Client({
                 webSocketFactory: () => socket as any,
+                connectHeaders: {
+                    Authorization: token ? `Bearer ${token}` : '',
+                },
                 debug: (str) => {
                     console.log('[IssueWebSocket] Debug:', str);
                 },

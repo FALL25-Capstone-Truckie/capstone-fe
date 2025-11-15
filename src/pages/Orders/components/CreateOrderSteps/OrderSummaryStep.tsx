@@ -211,7 +211,7 @@ const OrderSummaryStep: React.FC<OrderSummaryStepProps> = ({
                     <Row gutter={[8, 8]}>
                       <Col span={8}>
                         <Text strong className="block text-sm">Trọng lượng</Text>
-                        <Text>{detail.weight} {detail.unit || "kg"}</Text>
+                        <Text>{detail.weightBaseUnit || detail.weight} {detail.unit || "kg"}</Text>
                       </Col>
                       <Col span={8}>
                         <Text strong className="block text-sm">Số lượng</Text>

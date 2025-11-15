@@ -23,6 +23,7 @@ interface ContractAndPaymentTabProps {
     currencyCode: string;
     status: string;
     paymentDate: string;
+    transactionType?: string;
   }[];
   orderId?: string; // Add orderId for contract creation
   depositAmount?: number;

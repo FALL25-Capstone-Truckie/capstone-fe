@@ -8,6 +8,7 @@ import {
   ProfileOutlined,
   EnvironmentOutlined,
   CloseOutlined,
+  ExclamationCircleOutlined,
 } from "@ant-design/icons";
 import orderService from "../../../services/order/orderService";
 import { contractService } from "../../../services/contract";
@@ -538,9 +539,6 @@ const CustomerOrderDetail: React.FC = () => {
         )}
       </div>
 
-      {/* Return Shipping Issues Section - Show if there are any issues */}
-      {id && <ReturnShippingIssuesSection orderId={id} onIssuesLoaded={setReturnIssuesCount} />}
-
       <Card className="mb-6 shadow-md rounded-xl">
         <Tabs
           activeKey={activeMainTab}
@@ -633,6 +631,30 @@ const CustomerOrderDetail: React.FC = () => {
               {/* Transaction Information */}
               <TransactionSection transactions={transactions} />
             </div>
+          </TabPane>
+          
+          {/* Return Issues Tab */}
+          <TabPane
+            tab={
+              <span className="px-2 py-1">
+                <ExclamationCircleOutlined className="mr-2" /> 
+                Vấn đề trả hàng
+                {returnIssuesCount > 0 && (
+                  <span className="ml-2 px-2 py-0.5 bg-red-500 text-white text-xs rounded-full">
+                    {returnIssuesCount}
+                  </span>
+                )}
+              </span>
+            }
+            key="returnIssues"
+          >
+            {id && (
+              <ReturnShippingIssuesSection 
+                orderId={id} 
+                onIssuesLoaded={setReturnIssuesCount}
+                isInTab={true}
+              />
+            )}
           </TabPane>
         </Tabs>
       </Card>

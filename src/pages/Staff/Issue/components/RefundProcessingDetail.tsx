@@ -386,19 +386,23 @@ const RefundProcessingDetail: React.FC<RefundProcessingDetailProps> = ({ issue, 
                                         </Space>
                                     </Col>
                                 )}
-                                {issue.sender.businessAddress && (
+                            </Row>
+                            
+                            {/* Business Address - Dòng riêng spanning full width */}
+                            {issue.sender.businessAddress && (
+                                <Row gutter={[16, 12]} style={{ marginTop: 12 }}>
                                     <Col span={24}>
                                         <Space align="start">
                                             <HomeOutlined style={{ color: '#1976d2', marginTop: 4 }} />
                                             <div>
-                                                <Text type="secondary" style={{ fontSize: 12 }}>Địa chỉ kinh doanh:</Text>
+                                                <Text type="secondary" style={{ fontSize: 12 }}>Địa chỉ doanh nghiệp:</Text>
                                                 <br />
                                                 <Text>{issue.sender.businessAddress}</Text>
                                             </div>
                                         </Space>
                                     </Col>
-                                )}
-                            </Row>
+                                </Row>
+                            )}
                         </div>
                     </Space>
                 </div>

@@ -9,10 +9,13 @@ import {
 import customerIssueService, { type ReturnShippingIssue } from '@/services/issue/customerIssueService';
 import ReturnPaymentModal from './ReturnPaymentModal';
 import dayjs from 'dayjs';
+import { TransactionStatusTag } from '@/components/common/tags';
+import { TransactionEnum } from '@/constants/enums';
 
 interface ReturnShippingIssuesSectionProps {
   orderId: string;
   onIssuesLoaded?: (count: number) => void;
+  isInTab?: boolean; // Whether component is rendered in a tab or standalone
 }
 
 /**
@@ -21,7 +24,8 @@ interface ReturnShippingIssuesSectionProps {
  */
 const ReturnShippingIssuesSection: React.FC<ReturnShippingIssuesSectionProps> = ({
   orderId,
-  onIssuesLoaded
+  onIssuesLoaded,
+  isInTab = false
 }) => {
   const [issues, setIssues] = useState<ReturnShippingIssue[]>([]);
   const [loading, setLoading] = useState(true);
@@ -50,14 +54,8 @@ const ReturnShippingIssuesSection: React.FC<ReturnShippingIssuesSectionProps> = 
 
   // Get status badge
   const getStatusBadge = (status: string, transactionStatus?: string) => {
-    if (status === 'RESOLVED' && transactionStatus === 'PAID') {
-      return <Tag color="success" icon={<CheckCircleOutlined />}>Đã thanh toán</Tag>;
-    }
-    if (status === 'IN_PROGRESS' && transactionStatus === 'PENDING') {
-      return <Tag color="warning" icon={<ClockCircleOutlined />}>Chờ thanh toán</Tag>;
-    }
-    if (status === 'RESOLVED' && transactionStatus !== 'PAID') {
-      return <Tag color="error">Đã hủy</Tag>;
+    if (transactionStatus) {
+      return <TransactionStatusTag status={transactionStatus as TransactionEnum} />;
     }
     if (status === 'OPEN') {
       return <Tag color="blue">Mới báo cáo</Tag>;
@@ -86,7 +84,12 @@ const ReturnShippingIssuesSection: React.FC<ReturnShippingIssuesSectionProps> = 
   };
 
   if (loading) {
-    return (
+    return isInTab ? (
+      <div className="text-center py-8">
+        <Spin size="large" />
+        <p className="mt-4 text-gray-500">Đang tải thông tin...</p>
+      </div>
+    ) : (
       <Card title="Sự cố trả hàng" className="mb-4">
         <div className="text-center py-8">
           <Spin size="large" />
@@ -96,7 +99,21 @@ const ReturnShippingIssuesSection: React.FC<ReturnShippingIssuesSectionProps> = 
   }
 
   if (issues.length === 0) {
-    return null; // Don't show section if no issues
+    // Show empty state in tab, hide component if standalone
+    if (isInTab) {
+      return (
+        <div className="text-center py-12">
+          <CheckCircleOutlined className="text-6xl text-green-500 mb-4" />
+          <h3 className="text-lg font-semibold text-gray-700 mb-2">
+            Không có vấn đề trả hàng
+          </h3>
+          <p className="text-gray-500">
+            Đơn hàng của bạn chưa có vấn đề trả hàng nào.
+          </p>
+        </div>
+      );
+    }
+    return null; // Don't show section if no issues (standalone)
   }
 
   // Count pending payments

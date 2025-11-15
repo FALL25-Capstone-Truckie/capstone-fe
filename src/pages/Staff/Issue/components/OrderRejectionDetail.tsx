@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
     Card,
     Button,
@@ -12,7 +12,8 @@ import {
     Modal,
     Form,
     Select,
-    Space
+    Space,
+    Typography
 } from 'antd';
 import {
     DollarOutlined,
@@ -21,11 +22,23 @@ import {
     UserOutlined,
     CheckCircleOutlined,
     ShareAltOutlined,
-    ClockCircleOutlined
+    ClockCircleOutlined,
+    ExclamationCircleOutlined,
+    WarningOutlined,
+    InfoCircleOutlined
 } from '@ant-design/icons';
 import type { Issue } from '@/models/Issue';
+import { TransactionStatusTag } from '@/components/common/tags';
+import { TransactionEnum } from '@/constants/enums';
 import issueService from '@/services/issue';
 import { useVietMapRouting } from '@/hooks/useVietMapRouting';
+import VietMapMap from '@/components/common/VietMapMap';
+import type { MapLocation } from '@/models/Map';
+import type { RouteSegment, RoutePoint, SuggestRouteRequest, RouteInfoFromAPI } from '@/models/RoutePoint';
+import routeService from '@/services/route';
+import ReturnRoutePlanning from './ReturnRoutePlanning';
+
+const { Title } = Typography;
 
 interface OrderRejectionDetailProps {
     issue: Issue;
@@ -38,6 +51,7 @@ interface ReturnFeeInfo {
     adjustedFee?: number;
     finalFee: number;
     distanceKm: number;
+    fullJourneyPoints?: RoutePoint[];
 }
 
 interface OrderRejectionInfo {
@@ -52,6 +66,7 @@ interface OrderRejectionInfo {
         email: string;
         phoneNumber: string;
         company?: string;
+        businessAddress?: string;
     };
     affectedOrderDetails: Array<{
         trackingCode: string;
@@ -75,22 +90,107 @@ const OrderRejectionDetail: React.FC<OrderRejectionDetailProps> = ({ issue, onUp
     const [adjustedFee, setAdjustedFee] = useState<number | null>(null);
     const [processing, setProcessing] = useState(false);
     const [routingModalVisible, setRoutingModalVisible] = useState(false);
-    const [routeSegments, setRouteSegments] = useState<any[]>([]);
     const [routingLoading, setRoutingLoading] = useState(false);
+    const [routeSegments, setRouteSegments] = useState<Array<{
+        segmentOrder: number;
+        startPointName: string;
+        endPointName: string;
+        distanceMeters: number;
+        [key: string]: any;
+    }>>([]);
+    const [segments, setSegments] = useState<RouteSegment[]>([]);
+    const [currentMapLocation, setCurrentMapLocation] = useState<MapLocation | null>(null);
+    const [markers, setMarkers] = useState<MapLocation[]>([]);
+    const [routePoints, setRoutePoints] = useState<RoutePoint[]>([]);
+    const [fullJourneyPoints, setFullJourneyPoints] = useState<RoutePoint[]>([]); // Store full 5 points for journey history
+    const [customPoints, setCustomPoints] = useState<RoutePoint[]>([]);
+    const [isGeneratingRoute, setIsGeneratingRoute] = useState<boolean>(false);
+    const [isAnimatingRoute, setIsAnimatingRoute] = useState<boolean>(false);
+    const [selectedSegmentIndex, setSelectedSegmentIndex] = useState<number>(0);
     const { getRoute } = useVietMapRouting();
 
+// Global variable to store custom points for this modal
+const globalCustomPoints: RoutePoint[] = [];
+
+    // Helper function to translate point names to Vietnamese
+    const translatePointName = (name: string): string => {
+        const translations: { [key: string]: string } = {
+            'Delivery': 'Điểm giao hàng',
+            'Pickup': 'Điểm gửi hàng',
+            'Pickup (Return)': 'Điểm gửi hàng (Trả về)',
+            'Carrier': 'Kho vận chuyển',
+            'Carrier (Return)': 'Kho vận chuyển (Quay về)',
+        };
+        return translations[name] || name;
+    };
+
+    // Memoized callback handlers to prevent re-renders
+    const handleRouteGenerated = useCallback((segments: any, customPoints: any, fullPoints: any) => {
+        // Batch all state updates to prevent multiple re-renders
+        queueMicrotask(() => {
+            setRouteSegments(segments.map((seg: any, idx: number) => {
+                // Calculate estimated toll fee for this segment
+                const estimatedTollFee = seg.tolls?.reduce((sum: number, toll: any) => 
+                    sum + (toll.price || 0), 0) || 0;
+
+                return {
+                    segmentOrder: idx + 1,
+                    startPointName: seg.startName,
+                    endPointName: seg.endName,
+                    startLatitude: seg.startLat,
+                    startLongitude: seg.startLng,
+                    endLatitude: seg.endLat,
+                    endLongitude: seg.endLng,
+                    distanceMeters: Math.round(seg.distance * 1000),
+                    pathCoordinatesJson: JSON.stringify(seg.path || []),
+                    tollDetails: seg.tolls || [],
+                    estimatedTollFee: estimatedTollFee
+                };
+            }));
+            setCustomPoints(customPoints);
+            setFullJourneyPoints(fullPoints || []);
+        });
+    }, []);
+
+    const handleFeeCalculated = useCallback((fee: any) => {
+        // Batch state updates
+        queueMicrotask(() => {
+            setFeeInfo(fee);
+            setAdjustedFee(fee.adjustedFee || null);
+        });
+    }, []);
+
+    const handleAdjustedFeeChange = useCallback((adjustedFeeValue: number | null) => {
+        setAdjustedFee(adjustedFeeValue);
+    }, []);
+
     useEffect(() => {
-        fetchFeeCalculation();
+        // Only fetch rejection detail on mount
+        // Fee will be calculated AFTER route is created
         fetchRejectionDetail();
     }, [issue.id]);
 
-    const fetchFeeCalculation = async () => {
+    const fetchFeeCalculation = async (actualDistanceKm?: number) => {
         try {
+            console.log("💰 Calculating return fee...");
+            if (actualDistanceKm) {
+                console.log("📏 Using actual route distance:", actualDistanceKm, "km");
+            }
+            
+            // Use real API only - no mock data
             const data = await issueService.calculateReturnShippingFee(issue.id);
+            
+            // If actual distance provided, update the display
+            if (actualDistanceKm && data) {
+                data.distanceKm = actualDistanceKm; // Override with actual route distance
+            }
+            
             setFeeInfo(data);
             setAdjustedFee(data.adjustedFee || null);
+            // message.success('Đã tính toán cước phí trả hàng');
         } catch (error) {
             console.error('Error fetching fee calculation:', error);
+            message.error('Không thể tính cước phí trả hàng');
         }
     };
 
@@ -108,6 +208,113 @@ const OrderRejectionDetail: React.FC<OrderRejectionDetailProps> = ({ issue, onUp
         generateReturnRoute();
     };
 
+    // Generate route from points
+    const generateRouteFromPoints = async (basePoints: RoutePoint[], customPts: RoutePoint[]) => {
+        console.log("🔄 generateRouteFromPoints called with:", {
+            basePoints: basePoints.length,
+            customPts: customPts.length
+        });
+        
+        if (basePoints.length < 2) {
+            console.error("❌ Not enough points:", basePoints.length);
+            message.error('Cần ít nhất 2 điểm để tạo tuyến đường');
+            return;
+        }
+
+        console.log("🚀 Starting route generation...");
+        setIsGeneratingRoute(true);
+        setIsAnimatingRoute(true);
+
+        try {
+            // Tạo danh sách điểm theo thứ tự
+            const allPoints = [...basePoints];
+            
+            // Chèn custom points vào đúng vị trí
+            customPts.forEach(customPoint => {
+                const segmentIndex = customPoint.segmentIndex || 0;
+                const insertIndex = segmentIndex + 1;
+                allPoints.splice(insertIndex, 0, customPoint);
+            });
+
+            // Prepare points for route API (copy logic từ RoutePlanningStep)
+            const uniquePoints: [number, number][] = [];
+            const uniquePointTypes: ('carrier' | 'pickup' | 'delivery' | 'stopover')[] = [];
+
+            // Add base points
+            allPoints.forEach(point => {
+                uniquePoints.push([point.lng, point.lat]);
+                uniquePointTypes.push(point.type);
+            });
+
+            const requestData: any = {
+                points: uniquePoints, // Keep original format
+                pointTypes: uniquePointTypes,
+                vehicleTypeId: null // Use null instead of invalid UUID
+            };
+
+            console.log("📡 ROUTE GEN - Request data:", requestData);
+
+            // Call API to get suggested route
+            console.log("📞 Calling route service...");
+            
+            // Try route service first, but use fallback for now
+            let routeSuccess = false;
+            try {
+                const response = await routeService.suggestRoute(requestData);
+                console.log("📨 Route service response:", response);
+
+                if (response && response.segments) {
+                    console.log("✅ Got segments from API:", response.segments.length);
+                    // Process segments cho VietMapMap
+                    const processedSegments = response.segments.map(segment => ({
+                        ...segment,
+                        tolls: segment.tolls || [],
+                        distance: segment.distance || 0
+                    }));
+                    
+                    console.log("🗺️ Setting segments for VietMapMap:", processedSegments);
+                    setSegments(processedSegments); // For VietMapMap
+                    
+                    // Process segments cho UI list
+                    const uiSegments = response.segments.map((segment, index) => ({
+                        segmentOrder: index + 1,
+                        startPointName: segment.startName,
+                        endPointName: segment.endName,
+                        distanceMeters: segment.distance * 1000 // Convert to meters
+                    }));
+                    
+                    console.log("📋 Setting UI segments:", uiSegments);
+                    setRouteSegments(uiSegments);
+                    // message.success(`Tạo tuyến đường thành công với ${response.segments.length} đoạn`);
+                    routeSuccess = true;
+                    
+                    // Calculate return fee AFTER route is created successfully
+                    // Get actual distance of segment 1 (Delivery → Pickup) from route
+                    const deliveryToPickupDistance = response.segments.length > 0 ? response.segments[0].distance : 0;
+                    console.log("✅ Route created, calculating return fee with actual distance:", deliveryToPickupDistance, "km");
+                    setTimeout(() => {
+                        fetchFeeCalculation(deliveryToPickupDistance);
+                    }, 500);
+                }
+            } catch (apiError) {
+                console.log("⚠️ Route API failed, using fallback:", apiError);
+            }
+
+            if (!routeSuccess) {
+                console.log("❌ Route API failed, no fallback available");
+                message.error('Không thể tạo tuyến đường. Vui lòng thử lại.');
+                setSegments([]);
+                setRouteSegments([]);
+            }
+        } catch (error) {
+            console.error('Error generating route:', error);
+            message.error('Không thể tạo tuyến đường');
+        } finally {
+            setIsGeneratingRoute(false);
+            setTimeout(() => setIsAnimatingRoute(false), 2000);
+        }
+    };
+
     const generateReturnRoute = async () => {
         if (!detailInfo?.customerInfo) {
             message.error('Không có thông tin khách hàng');
@@ -116,66 +323,156 @@ const OrderRejectionDetail: React.FC<OrderRejectionDetailProps> = ({ issue, onUp
 
         setRoutingLoading(true);
         try {
-            // Mock route generation for return journey: carrier → pickup → delivery → pickup → carrier
-            // In real implementation, you would get actual coordinates from order addresses
-            const mockSegments = [
-                {
-                    segmentOrder: 1,
-                    startPointName: 'Carrier',
-                    endPointName: 'Pickup',
-                    startLatitude: 10.8231,
-                    startLongitude: 106.6297,
-                    endLatitude: 10.7769,
-                    endLongitude: 106.7009,
-                    distanceMeters: 15000,
-                    pathCoordinatesJson: JSON.stringify([[106.6297, 10.8231], [106.7009, 10.7769]]),
-                    tollDetails: []
-                },
-                {
-                    segmentOrder: 2,
-                    startPointName: 'Pickup',
-                    endPointName: 'Delivery',
-                    startLatitude: 10.7769,
-                    startLongitude: 106.7009,
-                    endLatitude: 10.7821,
-                    endLongitude: 106.6965,
-                    distanceMeters: 8000,
-                    pathCoordinatesJson: JSON.stringify([[106.7009, 10.7769], [106.6965, 10.7821]]),
-                    tollDetails: []
-                },
-                {
-                    segmentOrder: 3,
-                    startPointName: 'Delivery',
-                    endPointName: 'Pickup (Return)',
-                    startLatitude: 10.7821,
-                    startLongitude: 106.6965,
-                    endLatitude: 10.7769,
-                    endLongitude: 106.7009,
-                    distanceMeters: 8000,
-                    pathCoordinatesJson: JSON.stringify([[106.6965, 10.7821], [106.7009, 10.7769]]),
-                    tollDetails: []
-                },
-                {
-                    segmentOrder: 4,
-                    startPointName: 'Pickup',
-                    endPointName: 'Carrier',
-                    startLatitude: 10.7769,
-                    startLongitude: 106.7009,
-                    endLatitude: 10.8231,
-                    endLongitude: 106.6297,
-                    distanceMeters: 15000,
-                    pathCoordinatesJson: JSON.stringify([[106.7009, 10.7769], [106.6297, 10.8231]]),
-                    tollDetails: []
-                }
-            ];
+            // Get real route points from API - tương tự RoutePlanningStep
+            console.log("🔍 Fetching return route points for issue:", issue.id);
+            
+            const response = await routeService.getIssuePoints(issue.id);
+            console.log("📡 Return route points response:", response);
 
-            setRouteSegments(mockSegments);
+            // Truy cập đúng cấu trúc response - API trả về trực tiếp points
+            const points = response.points || [];
+            if (points.length === 0) {
+                message.error('Không tìm thấy điểm đường đi cho lộ trình trả hàng');
+                return;
+            }
+
+            console.log("✅ Got full journey route points:", points.length);
+            
+            // Convert API response to RoutePoint format (full 5 points for journey history)
+            const fullJourneyPoints: RoutePoint[] = points.map(point => ({
+                addressId: point.addressId || '',
+                lat: point.lat,
+                lng: point.lng,
+                address: point.address,
+                name: point.name,
+                type: point.type as 'carrier' | 'pickup' | 'delivery' | 'stopover'
+            }));
+
+            // Return route uses last 3 points: Delivery → Pickup (Return) → Carrier (Return)
+            const returnRoutePoints = fullJourneyPoints.slice(2);
+            
+            console.log("📍 Full journey points:", fullJourneyPoints.length);
+            console.log("📍 Return route points for display:", returnRoutePoints.length);
+
+            // Save full journey points for submission later
+            setFullJourneyPoints(fullJourneyPoints);
+            
+            // Set route points for display (3 điểm return)
+            setRoutePoints(returnRoutePoints);
+            
+            // Create markers from return route points
+            const allMarkers = createAllMarkers(returnRoutePoints, []);
+            setMarkers(allMarkers);
+            
+            // Set map location to first return point (Delivery)
+            if (returnRoutePoints.length > 0) {
+                const firstPoint = returnRoutePoints[0];
+                setCurrentMapLocation({
+                    lat: firstPoint.lat,
+                    lng: firstPoint.lng
+                });
+            }
+            
+            console.log("🚀 Opening modal with return points:", returnRoutePoints.length);
+            console.log("🗺️ Created markers:", allMarkers.length);
+            
+            setRoutingModalVisible(true);
+            
+            // Generate route after modal opens - with return points
+            if (returnRoutePoints.length >= 2) {
+                setTimeout(() => {
+                    console.log("⏰ Starting route generation with return points...");
+                    generateRouteFromPoints(returnRoutePoints, []);
+                }, 500);
+            }
         } catch (error) {
+            console.error('Error generating route:', error);
             message.error('Không thể tạo lộ trình');
-            console.error(error);
         } finally {
             setRoutingLoading(false);
         }
+    };
+
+    const handleGenerateReturnRoute = async () => {
+        if (!issue) {
+            message.error('Không có thông tin issue');
+            return;
+        }
+
+        // Simply open modal - let ReturnRoutePlanning handle everything
+        console.log("🚪 Opening return routing modal for issue:", issue.id);
+        setRoutingModalVisible(true);
+    };
+
+    const handleLocationChange = (location: MapLocation) => {
+        // Add custom point when user clicks on map
+        try {
+            const newCustomPoint: RoutePoint = {
+                addressId: `custom-${Date.now()}`,
+                lat: location.lat,
+                lng: location.lng,
+                address: location.address || `Điểm trung gian ${customPoints.length + 1}`,
+                name: `Điểm trung gian ${customPoints.length + 1}`,
+                type: 'stopover',
+                segmentIndex: selectedSegmentIndex
+            };
+
+            const updatedCustomPoints = [...customPoints, newCustomPoint];
+            setCustomPoints(updatedCustomPoints);
+
+            // Update markers
+            const allMarkers = createAllMarkers(routePoints, updatedCustomPoints);
+            setMarkers(allMarkers);
+
+            // Regenerate route
+            generateRouteFromPoints(routePoints, updatedCustomPoints);
+
+            message.success('Đã thêm điểm trung gian');
+        } catch (error) {
+            console.error('Error adding custom point:', error);
+            message.error('Có lỗi khi thêm điểm trung gian');
+        }
+    };
+
+    // Helper function to create markers
+    const createAllMarkers = (basePoints: RoutePoint[], customPts: RoutePoint[]): MapLocation[] => {
+        const timestamp = Date.now();
+
+        const baseMarkers = basePoints.map((point: RoutePoint, index) => ({
+            lat: point.lat,
+            lng: point.lng,
+            address: point.address,
+            name: point.name,
+            type: point.type,
+            id: `${point.type}-${point.lat}-${point.lng}-${timestamp}-${index}`
+        }));
+
+        const customMarkers = customPts.map((point, i) => ({
+            lat: point.lat,
+            lng: point.lng,
+            address: point.address || `Điểm trung gian ${i + 1}`,
+            name: `Điểm trung gian ${i + 1}`,
+            type: 'stopover' as const,
+            id: `stopover-${point.lat}-${point.lng}-${timestamp}-${i}`
+        }));
+
+        return [...baseMarkers, ...customMarkers];
+    };
+
+    // Remove custom point
+    const removeCustomPoint = (index: number) => {
+        // Remove the custom point at the specified index
+        const updatedCustomPoints = customPoints.filter((_, i) => i !== index);
+        setCustomPoints(updatedCustomPoints);
+        
+        // Update markers
+        const allMarkers = createAllMarkers(routePoints, updatedCustomPoints);
+        setMarkers(allMarkers);
+        
+        // Regenerate route and recalculate fee
+        generateRouteFromPoints(routePoints, updatedCustomPoints);
+        
+        message.success('Đã xóa điểm trung gian');
     };
 
     const handleProcess = async () => {
@@ -190,7 +487,9 @@ const OrderRejectionDetail: React.FC<OrderRejectionDetailProps> = ({ issue, onUp
         }
 
         setProcessing(true);
+        setRoutingLoading(true);
         try {
+            // Create journey history + transaction
             await issueService.processOrderRejection({
                 issueId: issue.id,
                 adjustedReturnFee: adjustedFee || undefined,
@@ -201,18 +500,23 @@ const OrderRejectionDetail: React.FC<OrderRejectionDetailProps> = ({ issue, onUp
                 paymentDeadlineHours: 24,
             });
 
-            message.success('Đã xử lý và tạo giao dịch thanh toán');
+            message.success('Đã tạo lộ trình trả hàng và giao dịch thanh toán thành công');
+            
+            // Close modal
+            setRoutingModalVisible(false);
+            
+            // Refresh issue data
             if (onUpdate) {
-                // Refresh issue data
                 const updatedIssue = await issueService.getIssueById(issue.id);
                 onUpdate(updatedIssue);
             }
             fetchRejectionDetail();
         } catch (error) {
-            message.error('Lỗi xử lý sự cố');
+            message.error('Lỗi tạo lộ trình trả hàng');
             console.error(error);
         } finally {
             setProcessing(false);
+            setRoutingLoading(false);
         }
     };
 
@@ -235,15 +539,35 @@ const OrderRejectionDetail: React.FC<OrderRejectionDetailProps> = ({ issue, onUp
 
     return (
         <>
-        <Card title="Xử lý người nhận từ chối" className="shadow-md">
+        <Card 
+            className="shadow-md"
+            style={{ borderRadius: 8 }}
+        >
+            {/* Header with gradient */}
+            <div style={{ 
+                background: 'linear-gradient(135deg, #ea580c 0%, #dc2626 100%)',
+                margin: '-24px -24px 24px -24px',
+                padding: '20px 24px',
+                borderRadius: '8px 8px 0 0'
+            }}>
+                <Space>
+                    <ExclamationCircleOutlined style={{ fontSize: 24, color: 'white' }} />
+                    <Title level={4} style={{ margin: 0, color: 'white' }}>
+                        Xử lý người nhận từ chối
+                    </Title>
+                </Space>
+            </div>
+
             {/* Customer Contact Information */}
             {detailInfo?.customerInfo && (
                 <>
                     <div className="mb-4">
-                        <h3 className="text-lg font-semibold mb-3 flex items-center">
-                            <UserOutlined className="mr-2" />
-                            Thông tin người gửi
-                        </h3>
+                        <div className="bg-orange-50 border-l-4 border-orange-400 pl-4 py-2 mb-3">
+                            <h3 className="text-lg font-semibold text-orange-800 flex items-center mb-0">
+                                <UserOutlined className="mr-2" />
+                                Thông tin người gửi
+                            </h3>
+                        </div>
                         <Descriptions bordered size="small" column={2}>
                             <Descriptions.Item label="Họ tên">
                                 {detailInfo.customerInfo.fullName}
@@ -261,6 +585,11 @@ const OrderRejectionDetail: React.FC<OrderRejectionDetailProps> = ({ issue, onUp
                                     {detailInfo.customerInfo.email}
                                 </a>
                             </Descriptions.Item>
+                            {detailInfo.customerInfo.businessAddress && (
+                                <Descriptions.Item label="Địa chỉ doanh nghiệp" span={2}>
+                                    {detailInfo.customerInfo.businessAddress}
+                                </Descriptions.Item>
+                            )}
                         </Descriptions>
                     </div>
                     <Divider />
@@ -271,21 +600,32 @@ const OrderRejectionDetail: React.FC<OrderRejectionDetailProps> = ({ issue, onUp
             {detailInfo?.affectedOrderDetails && detailInfo.affectedOrderDetails.length > 0 && (
                 <>
                     <div className="mb-4">
-                        <h3 className="text-lg font-semibold mb-3">
-                            Các kiện hàng cần trả ({detailInfo.affectedOrderDetails.length} kiện)
-                        </h3>
+                        <div className="bg-orange-50 border-l-4 border-orange-400 pl-4 py-2 mb-3">
+                            <h3 className="text-lg font-semibold text-orange-800 mb-0">
+                                📦 Các kiện hàng cần trả ({detailInfo.affectedOrderDetails.length} kiện)
+                            </h3>
+                        </div>
                         <div className="space-y-2">
                             {detailInfo.affectedOrderDetails.map((pkg, index) => (
-                                <Card size="small" key={index} className="bg-gray-50">
+                                <Card 
+                                    size="small" 
+                                    key={index} 
+                                    className="bg-gradient-to-r from-orange-50 to-orange-100 border-orange-200 hover:shadow-md transition-shadow"
+                                    style={{ borderRadius: 8 }}
+                                >
                                     <div className="flex justify-between items-center">
                                         <div>
-                                            <Tag color="blue">{pkg.trackingCode}</Tag>
+                                            <Tag color="orange" className="font-semibold">
+                                                {pkg.trackingCode}
+                                            </Tag>
                                             {pkg.description && (
-                                                <span className="ml-2 text-gray-600">{pkg.description}</span>
+                                                <span className="ml-2 text-gray-700 font-medium">
+                                                    {pkg.description}
+                                                </span>
                                             )}
                                         </div>
                                         {pkg.weightBaseUnit && (
-                                            <span className="text-gray-500">
+                                            <span className="text-orange-600 font-semibold bg-orange-100 px-2 py-1 rounded">
                                                 {pkg.weightBaseUnit} {pkg.unit || 'kg'}
                                             </span>
                                         )}
@@ -298,21 +638,23 @@ const OrderRejectionDetail: React.FC<OrderRejectionDetailProps> = ({ issue, onUp
                 </>
             )}
 
-            {/* Fee Calculation */}
-            {feeInfo && (
+            {/* Fee Calculation - Only show after route is created and fee is calculated */}
+            {/* {feeInfo && (
                 <>
                     <div className="mb-4">
-                        <h3 className="text-lg font-semibold mb-3 flex items-center">
-                            <DollarOutlined className="mr-2" />
-                            Cước phí trả hàng
-                        </h3>
-                        <Alert
-                            message="Khoảng cách trả hàng"
-                            description={`${feeInfo.distanceKm.toFixed(2)} km (từ điểm giao về điểm lấy hàng)`}
-                            type="info"
-                            showIcon
-                            className="mb-3"
-                        />
+                            <div className="bg-orange-50 border-l-4 border-orange-400 pl-4 py-2 mb-3">
+                                <h3 className="text-lg font-semibold text-orange-800 flex items-center mb-0">
+                                    <DollarOutlined className="mr-2" />
+                                    Cước phí trả hàng
+                                </h3>
+                            </div>
+                            <Alert
+                                message="Khoảng cách trả hàng"
+                                description={`${feeInfo.distanceKm.toFixed(2)} km (từ điểm giao về điểm lấy hàng)`}
+                                type="info"
+                                showIcon
+                                className="mb-3"
+                            />
                         <Descriptions bordered size="small" column={1}>
                             <Descriptions.Item label="Giá cước tính toán">
                                 <span className="font-semibold text-blue-600">
@@ -339,75 +681,113 @@ const OrderRejectionDetail: React.FC<OrderRejectionDetailProps> = ({ issue, onUp
                     </div>
                     <Divider />
                 </>
-            )}
+            )} */}
 
-            {/* Transaction Status */}
+            {/* Transaction Status - Improved UI */}
             {detailInfo?.returnTransaction && (
-                <>
-                    <div className="mb-4">
-                        <h3 className="text-lg font-semibold mb-3">Trạng thái giao dịch</h3>
-                        <Descriptions bordered size="small">
-                            <Descriptions.Item label="Mã giao dịch">
+                <Card 
+                    className="mb-4"
+                    title={
+                        <div className="flex items-center">
+                            <DollarOutlined className="mr-2 text-blue-500" />
+                            <span>Trạng thái giao dịch</span>
+                        </div>
+                    }
+                    bordered
+                >
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                        {/* Mã giao dịch */}
+                        <div className="bg-gray-50 p-3 rounded">
+                            <div className="text-xs text-gray-500 mb-1">Mã giao dịch</div>
+                            <div className="text-sm font-mono font-semibold text-gray-800">
                                 {detailInfo.returnTransaction.id}
-                            </Descriptions.Item>
-                            <Descriptions.Item label="Số tiền">
+                            </div>
+                        </div>
+
+                        {/* Số tiền */}
+                        <div className="bg-blue-50 p-3 rounded">
+                            <div className="text-xs text-gray-500 mb-1">Số tiền</div>
+                            <div className="text-base font-bold text-blue-600">
                                 {formatCurrency(detailInfo.returnTransaction.amount)}
-                            </Descriptions.Item>
-                            <Descriptions.Item label="Trạng thái">
-                                <Tag color={
-                                    detailInfo.returnTransaction.status === 'PAID' ? 'green' :
-                                    detailInfo.returnTransaction.status === 'PENDING' ? 'orange' :
-                                    'red'
-                                }>
-                                    {detailInfo.returnTransaction.status}
-                                </Tag>
-                            </Descriptions.Item>
-                        </Descriptions>
-                        {detailInfo.paymentDeadline && (
-                            <Alert
-                                message="Hạn thanh toán"
-                                description={new Date(detailInfo.paymentDeadline).toLocaleString('vi-VN')}
-                                type="warning"
-                                showIcon
-                                className="mt-3"
-                            />
-                        )}
+                            </div>
+                        </div>
+
+                        {/* Trạng thái */}
+                        <div className="bg-gray-50 p-3 rounded">
+                            <div className="text-xs text-gray-500 mb-1">Trạng thái</div>
+                            <div>
+                                <TransactionStatusTag 
+                                    status={detailInfo.returnTransaction.status as TransactionEnum}
+                                />
+                            </div>
+                        </div>
                     </div>
-                </>
+
+                    {/* Payment deadline */}
+                    {detailInfo.paymentDeadline && (
+                        <Alert
+                            icon={<ClockCircleOutlined />}
+                            message={
+                                <div className="flex items-center justify-between">
+                                    <span className="font-semibold">Hạn thanh toán</span>
+                                    <span className="text-base font-bold">
+                                        {new Date(detailInfo.paymentDeadline).toLocaleString('vi-VN', {
+                                            year: 'numeric',
+                                            month: '2-digit',
+                                            day: '2-digit',
+                                            hour: '2-digit',
+                                            minute: '2-digit'
+                                        })}
+                                    </span>
+                                </div>
+                            }
+                            type="warning"
+                            showIcon
+                            className="mb-0"
+                        />
+                    )}
+                </Card>
             )}
 
-            {/* Action Buttons */}
+            {/* Action Button */}
             {issue.status === 'OPEN' && (
-                <div className="mt-4 flex justify-end gap-3">
+                <div className="mt-4 flex justify-center">
                     <Button
+                        type="primary"
                         size="large"
                         icon={<ShareAltOutlined />}
                         onClick={handleRouting}
                         loading={routingLoading}
                     >
-                        Tạo lộ trình trả hàng
-                    </Button>
-                    <Button
-                        type="primary"
-                        size="large"
-                        icon={<CheckCircleOutlined />}
-                        onClick={handleProcess}
-                        loading={processing}
-                        disabled={!feeInfo || routeSegments.length === 0}
-                    >
-                        Xác nhận và tạo giao dịch
+                        Tạo lộ trình trả hàng & Tạo giao dịch
                     </Button>
                 </div>
             )}
 
-            {issue.status === 'IN_PROGRESS' && (
+            {/* {issue.status === 'IN_PROGRESS' && (
                 <Alert
-                    message="Đang chờ khách hàng thanh toán"
-                    description="Khi khách hàng thanh toán thành công, hệ thống sẽ tự động kích hoạt lộ trình trả hàng cho tài xế."
+                    icon={<InfoCircleOutlined />}
+                    message={
+                        <div className="font-semibold">Đang chờ khách hàng thanh toán</div>
+                    }
+                    description={
+                        <div className="space-y-2">
+                            <p>Khi khách hàng thanh toán thành công, hệ thống sẽ tự động kích hoạt lộ trình trả hàng cho tài xế.</p>
+                            <div className="bg-blue-50 p-3 rounded border border-blue-200 mt-2">
+                                <div className="text-sm font-semibold text-blue-800 mb-2">📍 Khách hàng sẽ thấy giao dịch ở đâu?</div>
+                                <div className="text-sm text-gray-700 space-y-1">
+                                    <div>• <strong>Trang Đơn hàng</strong> → Chi tiết đơn hàng → Tab "Vấn đề trả hàng"</div>
+                                    <div>• Nhấn nút <strong>"Thanh toán cước trả hàng"</strong> để mở modal thanh toán</div>
+                                    <div>• Khách hàng sẽ được chuyển đến cổng thanh toán VNPay</div>
+                                    <div>• Sau khi thanh toán thành công, trạng thái tự động cập nhật</div>
+                                </div>
+                            </div>
+                        </div>
+                    }
                     type="info"
                     showIcon
                 />
-            )}
+            )} */}
 
             {issue.status === 'RESOLVED' && (
                 <>
@@ -448,7 +828,8 @@ const OrderRejectionDetail: React.FC<OrderRejectionDetailProps> = ({ issue, onUp
             title="Tạo lộ trình trả hàng"
             open={routingModalVisible}
             onCancel={() => setRoutingModalVisible(false)}
-            width={800}
+            width={1200}
+            style={{ top: 20 }}
             footer={[
                 <Button key="cancel" onClick={() => setRoutingModalVisible(false)}>
                     Hủy
@@ -456,55 +837,21 @@ const OrderRejectionDetail: React.FC<OrderRejectionDetailProps> = ({ issue, onUp
                 <Button
                     key="confirm"
                     type="primary"
-                    onClick={() => {
-                        setRoutingModalVisible(false);
-                        message.success(`Đã tạo lộ trình với ${routeSegments.length} đoạn đường`);
-                    }}
-                    disabled={routeSegments.length === 0}
+                    onClick={handleProcess}
+                    disabled={!routeSegments.length || !feeInfo}
+                    loading={routingLoading}
                 >
-                    Xác nhận lộ trình
+                    Xác nhận & Tạo giao dịch
                 </Button>
             ]}
         >
-            {routingLoading ? (
-                <div className="text-center py-8">
-                    <Spin size="large" />
-                    <div className="mt-4 text-gray-600">Đang tạo lộ trình trả hàng...</div>
-                </div>
-            ) : (
-                <div>
-                    <Alert
-                        message="Lộ trình trả hàng"
-                        description="Hệ thống sẽ tạo lộ trình: Carrier → Pickup → Delivery → Pickup (Return) → Carrier"
-                        type="info"
-                        showIcon
-                        className="mb-4"
-                    />
-                    
-                    {routeSegments.length > 0 && (
-                        <div>
-                            <h4 className="font-semibold mb-3">Chi tiết lộ trình ({routeSegments.length} đoạn):</h4>
-                            <div className="space-y-3">
-                                {routeSegments.map((segment, index) => (
-                                    <Card key={index} size="small" className="bg-gray-50">
-                                        <div className="flex justify-between items-center">
-                                            <div>
-                                                <Tag color="blue">Đoạn {segment.segmentOrder}</Tag>
-                                                <span className="font-medium">
-                                                    {segment.startPointName} → {segment.endPointName}
-                                                </span>
-                                            </div>
-                                            <div className="text-gray-500 text-sm">
-                                                {(segment.distanceMeters / 1000).toFixed(1)} km
-                                            </div>
-                                        </div>
-                                    </Card>
-                                ))}
-                            </div>
-                        </div>
-                    )}
-                </div>
-            )}
+            <ReturnRoutePlanning
+                issueId={issue.id}
+                issue={detailInfo || issue}
+                onRouteGenerated={handleRouteGenerated}
+                onFeeCalculated={handleFeeCalculated}
+                onAdjustedFeeChange={handleAdjustedFeeChange}
+            />
         </Modal>
         </>
     );

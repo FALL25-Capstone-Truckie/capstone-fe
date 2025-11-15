@@ -3,6 +3,7 @@ import { Client } from '@stomp/stompjs';
 import type { IMessage } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
 import authService from '../services/auth/authService';
+import { API_BASE_URL } from '../config/env';
 
 // Interface cho order status change message
 export interface OrderStatusChangeMessage {
@@ -152,7 +153,7 @@ export const useOrderStatusTracking = (
     // Create STOMP client with SockJS transport
     const client = new Client({
       webSocketFactory: () => {
-        return new SockJS(`http://${window.location.hostname}:8080/vehicle-tracking-browser`);
+        return new SockJS(`${API_BASE_URL}/vehicle-tracking-browser`);
       },
       connectHeaders: {
         Authorization: `Bearer ${token}`,

@@ -9,6 +9,7 @@ import type { ReactNode } from "react";
 import { Client } from "@stomp/stompjs";
 import type { IMessage } from "@stomp/stompjs";
 import SockJS from "sockjs-client";
+import { API_BASE_URL } from "@/config/env";
 
 import type {
   ChatMessageDTO,
@@ -564,8 +565,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
       // Create new WebSocket connection with SockJS
       setConnectionStatus("connecting");
 
-      const host = window.location.hostname;
-      const sockJsUrl = `http://${host}:8080/chat-browser`;
+      const sockJsUrl = `${API_BASE_URL}/chat-browser`;
 
       console.log('🆕 Creating new WebSocket connection via SockJS:', sockJsUrl);
 

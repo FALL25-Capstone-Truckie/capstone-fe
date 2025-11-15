@@ -20,6 +20,7 @@ interface TransactionProps {
     currencyCode: string;
     status: string;
     paymentDate: string;
+    transactionType?: string;
   }[];
 }
 
@@ -29,6 +30,19 @@ const TransactionSection: React.FC<TransactionProps> = ({ transactions }) => {
     return dayjs(dateString)
       .tz("Asia/Ho_Chi_Minh")
       .format("DD/MM/YYYY HH:mm:ss");
+  };
+
+  const getTransactionTypeName = (type?: string) => {
+    switch (type) {
+      case "DEPOSIT":
+        return "Thanh toán cọc";
+      case "FULL_PAYMENT":
+        return "Thanh toán toàn bộ";
+      case "RETURN_SHIPPING":
+        return "Cước phí trả hàng";
+      default:
+        return "Chưa xác định";
+    }
   };
 
   return (
@@ -52,6 +66,11 @@ const TransactionSection: React.FC<TransactionProps> = ({ transactions }) => {
               column={{ xs: 1, sm: 2, md: 3 }}
               size="small"
             >
+              <Descriptions.Item label="Loại giao dịch">
+                <span className="font-semibold text-blue-600">
+                  {getTransactionTypeName(transaction.transactionType)}
+                </span>
+              </Descriptions.Item>
               <Descriptions.Item label="Nhà cung cấp thanh toán">
                 {transaction.paymentProvider || "Chưa có thông tin"}
               </Descriptions.Item>

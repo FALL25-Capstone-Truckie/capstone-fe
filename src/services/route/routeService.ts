@@ -20,6 +20,20 @@ const routeService = {
     },
 
     /**
+     * Get route points for an issue (for return route)
+     * @param issueId Issue ID
+     * @returns Route points including carrier, pickup, and delivery locations for return journey
+     */
+    getIssuePoints: async (issueId: string): Promise<OrderRoutePointsApiResponse> => {
+        try {
+            const response = await httpClient.get<OrderRoutePointsApiResponse>(`${BASE_URL}/issues/${issueId}/points`);
+            return response.data;
+        } catch (error) {
+            throw error;
+        }
+    },
+
+    /**
      * Suggest route based on points
      * @param data Request data containing points, point types, and vehicle type ID
      * @returns Suggested route with segments and toll information

@@ -574,6 +574,12 @@ const VietMapMap: React.FC<VietMapMapProps> = ({
 
     // Helper function để xác định màu sắc của đường đi
     const getRouteColor = (segment: RouteSegment, index: number): string => {
+        // Ưu tiên sử dụng segmentColor nếu có (được set từ component)
+        if ((segment as any).segmentColor) {
+            return (segment as any).segmentColor;
+        }
+
+        // Fall back về logic cũ nếu không có segmentColor
         // Màu xanh lá cho đoạn từ pickup đến delivery và các đoạn liên quan
         if (
             // Pickup đến Delivery

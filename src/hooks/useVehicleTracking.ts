@@ -3,6 +3,8 @@ import { Client } from '@stomp/stompjs';
 import type { IMessage } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
 import authService from '../services/auth/authService';
+import VehicleLocationCache from '../utils/vehicleLocationCache';
+import { API_BASE_URL } from '../config/env';
 
 // Định nghĩa interface cho dữ liệu vị trí xe
 export interface VehicleLocationMessage {
@@ -58,7 +60,11 @@ export const useVehicleTracking = (options: UseVehicleTrackingOptions = {}): Use
   const [vehicleLocations, setVehicleLocations] = useState<VehicleLocationMessage[]>([]);
   const [isConnected, setIsConnected] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
+  const connectingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [error, setError] = useState<string | null>(null);
+  
+  // Cache instance để lưu trữ vị trí cuối cùng của vehicle
+  const cacheRef = useRef(VehicleLocationCache.getInstance());
   
   const clientRef = useRef<Client | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -103,64 +109,50 @@ export const useVehicleTracking = (options: UseVehicleTrackingOptions = {}): Use
     }
   }, [config.orderId, config.vehicleId]);
 
-  // Handle incoming vehicle location messages
+  // Handle incoming vehicle location messages với cache fallback
   const handleVehicleLocationMessage = useCallback((message: IMessage) => {
     try {
       const locationData: VehicleLocationMessage | VehicleLocationMessage[] = JSON.parse(message.body);
       
+      let incomingVehicles: VehicleLocationMessage[];
+      
       if (Array.isArray(locationData)) {
         // CRITICAL: Deduplicate vehicles by vehicleId to prevent React key conflicts
-        // This handles edge cases where backend might send duplicates (e.g., multiple order details per vehicle)
-        const uniqueVehicles = locationData.reduce((acc, vehicle) => {
-          // Keep only the first occurrence of each vehicleId
+        incomingVehicles = locationData.reduce((acc, vehicle) => {
           if (!acc.some(v => v.vehicleId === vehicle.vehicleId)) {
             acc.push(vehicle);
           }
           return acc;
         }, [] as VehicleLocationMessage[]);
         
-        if (uniqueVehicles.length !== locationData.length) {
-          console.warn(`[VehicleTracking] Deduplicated ${locationData.length - uniqueVehicles.length} duplicate vehicle(s)`);
+        if (incomingVehicles.length !== locationData.length) {
+          console.warn(`[VehicleTracking] Deduplicated ${locationData.length - incomingVehicles.length} duplicate vehicle(s)`);
         }
-        
-        setVehicleLocations(uniqueVehicles);
-        vehicleLocationsRef.current = uniqueVehicles;
       } else {
-        setVehicleLocations(prev => {
-          const existingIndex = prev.findIndex(v => v.vehicleId === locationData.vehicleId);
-          if (existingIndex >= 0) {
-            const existing = prev[existingIndex];
-            
-            // Check if position actually changed to avoid unnecessary updates
-            // Handle null values gracefully
-            const positionChanged = 
-              (existing.latitude === null && locationData.latitude !== null) ||
-              (existing.latitude !== null && locationData.latitude === null) ||
-              (existing.latitude !== null && locationData.latitude !== null && Math.abs(existing.latitude - locationData.latitude) > 0.000001) ||
-              (existing.longitude === null && locationData.longitude !== null) ||
-              (existing.longitude !== null && locationData.longitude === null) ||
-              (existing.longitude !== null && locationData.longitude !== null && Math.abs(existing.longitude - locationData.longitude) > 0.000001);
-            
-            if (positionChanged || existing.lastUpdated !== locationData.lastUpdated) {
-              const updated = [...prev];
-              updated[existingIndex] = locationData;
-              vehicleLocationsRef.current = updated;
-              return updated;
-            } else {
-              return prev; // No change, return same reference
-            }
-          } else {
-            const updated = [...prev, locationData];
-            vehicleLocationsRef.current = updated;
-            return updated;
-          }
-        });
+        incomingVehicles = [locationData];
       }
+      
+      // Merge với cache để đảm bảo markers không bao giờ bị mất
+      const mergedVehicles = cacheRef.current.mergeWithWebSocketData(incomingVehicles);
+      
+      // Cập nhật state với merged data
+      setVehicleLocations(mergedVehicles);
+      vehicleLocationsRef.current = mergedVehicles;
+      
+      console.log(`📍 [VehicleTracking] Updated ${mergedVehicles.length} vehicles (${incomingVehicles.length} from WebSocket, merged with cache)`);
       
       setError(null);
     } catch (err) {
       logError('Failed to parse vehicle location message:', err);
       setError('Lỗi khi xử lý dữ liệu vị trí xe');
+      
+      // Trong trường hợp lỗi, vẫn hiển thị dữ liệu từ cache
+      const cachedVehicles = cacheRef.current.getAllVehicleLocations();
+      if (cachedVehicles.length > 0) {
+        setVehicleLocations(cachedVehicles);
+        vehicleLocationsRef.current = cachedVehicles;
+        console.log(`📍 [VehicleTracking] Fallback to ${cachedVehicles.length} cached vehicles`);
+      }
     }
   }, [logError]);
 
@@ -185,12 +177,21 @@ export const useVehicleTracking = (options: UseVehicleTrackingOptions = {}): Use
 
     setIsConnecting(true);
     setError(null);
+    
+    // Tự động tắt trạng thái connecting sau 3 giây để cải thiện UX
+    // Nếu có cached data, user sẽ thấy markers ngay lập tức
+    connectingTimeoutRef.current = setTimeout(() => {
+      if (isConnecting) {
+        setIsConnecting(false);
+        console.log('[VehicleTracking] ⏰ Connecting timeout - switching to show cached data');
+      }
+    }, 3000);
 
     // Create STOMP client with SockJS transport
     const client = new Client({
       // Use SockJS instead of raw WebSocket
       webSocketFactory: () => {
-        return new SockJS(`http://${window.location.hostname}:8080/vehicle-tracking-browser`);
+        return new SockJS(`${API_BASE_URL}/vehicle-tracking-browser`);
       },
       connectHeaders: {
         Authorization: `Bearer ${token}`,
@@ -204,6 +205,12 @@ export const useVehicleTracking = (options: UseVehicleTrackingOptions = {}): Use
 
     // Connection success handler
     client.onConnect = () => {
+      // Clear connecting timeout khi kết nối thành công
+      if (connectingTimeoutRef.current) {
+        clearTimeout(connectingTimeoutRef.current);
+        connectingTimeoutRef.current = null;
+      }
+      
       setIsConnected(true);
       setIsConnecting(false);
       setError(null);
@@ -269,62 +276,123 @@ export const useVehicleTracking = (options: UseVehicleTrackingOptions = {}): Use
             }, 3000);
           }, 1000);
         }
-      } catch (subscriptionError) {
-        setError('Lỗi khi đăng ký nhận dữ liệu');
+      } catch (error) {
+        logError('Error subscribing to topics:', error);
+        setError('Lỗi khi đăng ký nhận thông tin vị trí');
       }
     };
 
     // Connection error handler
     client.onStompError = (frame) => {
+      // Clear connecting timeout khi có lỗi
+      if (connectingTimeoutRef.current) {
+        clearTimeout(connectingTimeoutRef.current);
+        connectingTimeoutRef.current = null;
+      }
+      
+      logError('STOMP Error:', frame);
       setIsConnected(false);
       setIsConnecting(false);
-      setError(`Lỗi kết nối WebSocket: ${frame.headers['message'] || 'Unknown error'}`);
+      setError(`Lỗi kết nối WebSocket: ${frame.headers['message'] || 'Lỗi không xác định'}`);
+      
+      // Clear any existing subscriptions
+      subscriptionsRef.current.forEach(subscription => {
+        try {
+          subscription.unsubscribe();
+        } catch (err) {
+          // Ignore unsubscribe errors
+        }
+      });
+      subscriptionsRef.current = [];
       
       // Attempt reconnection if not exceeded max attempts
       if (reconnectAttemptsRef.current < config.maxReconnectAttempts) {
         scheduleReconnect();
+      } else {
+        setError('Không thể kết nối tới server sau nhiều lần thử. Vui lòng kiểm tra kết nối internet.');
       }
     };
 
     // WebSocket error handler
-    client.onWebSocketError = (_event) => {
+    client.onWebSocketError = (event) => {
+      logError('WebSocket Error:', event);
       setIsConnected(false);
       setIsConnecting(false);
-      setError('Lỗi kết nối WebSocket');
+      setError('Mất kết nối tới server. Đang thử kết nối lại...');
+      
+      // Clear subscriptions
+      subscriptionsRef.current.forEach(subscription => {
+        try {
+          subscription.unsubscribe();
+        } catch (err) {
+          // Ignore unsubscribe errors
+        }
+      });
+      subscriptionsRef.current = [];
       
       if (reconnectAttemptsRef.current < config.maxReconnectAttempts) {
         scheduleReconnect();
+      } else {
+        setError('Không thể kết nối tới server. Vui lòng làm mới trang.');
       }
     };
 
     // WebSocket closed handler
-    client.onWebSocketClose = (_event) => {
+    client.onWebSocketClose = (event) => {
+      logError('WebSocket Closed:', event);
       setIsConnected(false);
       setIsConnecting(false);
-      setError('Lỗi kết nối WebSocket');
+      
+      // Only show error if it wasn't a normal closure
+      if (event.code !== 1000) {
+        setError('Kết nối bị ngắt. Đang thử kết nối lại...');
+      }
+      
+      // Clear subscriptions
+      subscriptionsRef.current.forEach(subscription => {
+        try {
+          subscription.unsubscribe();
+        } catch (err) {
+          // Ignore unsubscribe errors
+        }
+      });
+      subscriptionsRef.current = [];
       
       if (reconnectAttemptsRef.current < config.maxReconnectAttempts) {
         scheduleReconnect();
+      } else {
+        setError('Không thể duy trì kết nối. Vui lòng làm mới trang.');
       }
     };
 
     // Disconnection handler
-    client.onDisconnect = () => {
+    client.onDisconnect = (receipt) => {
+      logError('Client Disconnected:', receipt);
       setIsConnected(false);
       setIsConnecting(false);
       
       // Clear subscriptions
+      subscriptionsRef.current.forEach(subscription => {
+        try {
+          subscription.unsubscribe();
+        } catch (err) {
+          // Ignore unsubscribe errors
+        }
+      });
       subscriptionsRef.current = [];
       
-      // Attempt reconnection if not manually disconnected
+      // Only attempt reconnection if not manually disconnected
       if (reconnectAttemptsRef.current < config.maxReconnectAttempts) {
         scheduleReconnect();
       }
     };
 
+    // Store client reference
     clientRef.current = client;
+
+    // Activate the connection
     client.activate();
-  }, [config, handleVehicleLocationMessage, logError, isConnecting]);
+  }, [config.orderId, config.vehicleId, config.reconnectInterval, logError, handleVehicleLocationMessage, requestInitialData]);
 
   // Schedule reconnection
   const scheduleReconnect = useCallback(() => {
@@ -370,7 +438,13 @@ export const useVehicleTracking = (options: UseVehicleTrackingOptions = {}): Use
     setIsConnected(false);
     setIsConnecting(false);
     // DON'T clear vehicleLocations - keep last known positions for user reference
-    // setVehicleLocations([]);
+    // Khi disconnect, đảm bảo vẫn hiển thị dữ liệu từ cache
+    const cachedVehicles = cacheRef.current.getAllVehicleLocations();
+    if (cachedVehicles.length > 0) {
+      setVehicleLocations(cachedVehicles);
+      vehicleLocationsRef.current = cachedVehicles;
+      console.log(`📍 [VehicleTracking] Disconnect - showing ${cachedVehicles.length} cached vehicles`);
+    }
     setError(null);
   }, [config.maxReconnectAttempts, logError, clearReconnectTimeout]);
 
@@ -381,6 +455,17 @@ export const useVehicleTracking = (options: UseVehicleTrackingOptions = {}): Use
     setTimeout(() => connect(), 1000); // Wait a bit before reconnecting
   }, [connect, disconnect]);
 
+  // Load cached vehicles on mount trước khi kết nối WebSocket
+  useEffect(() => {
+    // Load dữ liệu từ cache ngay lập tức để hiển thị markers
+    const cachedVehicles = cacheRef.current.getAllVehicleLocations();
+    if (cachedVehicles.length > 0) {
+      setVehicleLocations(cachedVehicles);
+      vehicleLocationsRef.current = cachedVehicles;
+      console.log(`📍 [VehicleTracking] Loaded ${cachedVehicles.length} vehicles from cache on mount`);
+    }
+  }, []);
+  
   // Auto-connect on mount if enabled
   useEffect(() => {
     if (config.autoConnect && (config.orderId || config.vehicleId)) {

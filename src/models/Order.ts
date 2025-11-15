@@ -73,6 +73,8 @@ export interface Incident {
 
 export interface OrderDetail {
   weight: number;
+  weightBaseUnit: number;
+  unit: string;
   description?: string;
   status: string;
   startTime?: string;
@@ -121,6 +123,7 @@ export interface OrderDetail {
 
 export interface OrderDetailCreateRequest {
   weight: number;
+  weightBaseUnit?: number;
   unit: string;
   description?: string;
   orderSizeId: string;
@@ -525,6 +528,7 @@ export interface CustomerTransaction {
   currencyCode: string;
   status: string;
   paymentDate: string;
+  transactionType?: string; // DEPOSIT, FULL_PAYMENT, RETURN_SHIPPING
 }
 
 export interface RecentReceiverSuggestion {

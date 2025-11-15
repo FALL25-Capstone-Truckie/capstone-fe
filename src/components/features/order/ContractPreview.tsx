@@ -228,7 +228,7 @@ const ContractPreview: React.FC<ContractPreviewProps> = ({
                   <tr key={index}>
                     <td>{detail.trackingCode}</td>
                     {/* <td>{detail.quantity}</td> */}
-                    <td>{detail.weight}</td>
+                    <td>{detail.weightBaseUnit} {detail.unit}</td>
                     <td>{formatCurrency((detail as any).value || 0)}</td>
                   </tr>
                 ))}

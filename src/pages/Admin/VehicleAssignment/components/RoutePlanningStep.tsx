@@ -886,7 +886,7 @@ const RoutePlanningStep: React.FC<RoutePlanningStepProps> = ({
             // Add Carrier -> Stopover1 segment
             allSegments.push({
                 ...baseSegments[0],
-                endName: 'Stopover',
+                endName: 'Điểm trung gian',
                 // Keep the original segmentOrder to maintain the mapping
                 segmentOrder: 0
             });
@@ -894,8 +894,8 @@ const RoutePlanningStep: React.FC<RoutePlanningStepProps> = ({
             // Add intermediate stopover segments if there are multiple stopovers
             for (let i = 0; i < stopoversBySegment[0].length - 1; i++) {
                 allSegments.push({
-                    startName: 'Stopover',
-                    endName: 'Stopover',
+                    startName: 'Điểm trung gian',
+                    endName: 'Điểm trung gian',
                     path: [],
                     distance: 0,
                     tolls: [],
@@ -906,7 +906,7 @@ const RoutePlanningStep: React.FC<RoutePlanningStepProps> = ({
 
             // Add last Stopover -> Pickup segment
             allSegments.push({
-                startName: 'Stopover',
+                startName: 'Điểm trung gian',
                 endName: baseSegments[0].endName,
                 path: [],
                 distance: 0,
@@ -924,7 +924,7 @@ const RoutePlanningStep: React.FC<RoutePlanningStepProps> = ({
             // Add Pickup -> Stopover1 segment
             allSegments.push({
                 ...baseSegments[1],
-                endName: 'Stopover',
+                endName: 'Điểm trung gian',
                 // Keep the original segmentOrder to maintain the mapping
                 segmentOrder: 1
             });
@@ -932,8 +932,8 @@ const RoutePlanningStep: React.FC<RoutePlanningStepProps> = ({
             // Add intermediate stopover segments if there are multiple stopovers
             for (let i = 0; i < stopoversBySegment[1].length - 1; i++) {
                 allSegments.push({
-                    startName: 'Stopover',
-                    endName: 'Stopover',
+                    startName: 'Điểm trung gian',
+                    endName: 'Điểm trung gian',
                     path: [],
                     distance: 0,
                     tolls: [],
@@ -944,7 +944,7 @@ const RoutePlanningStep: React.FC<RoutePlanningStepProps> = ({
 
             // Add last Stopover -> Delivery segment
             allSegments.push({
-                startName: 'Stopover',
+                startName: 'Điểm trung gian',
                 endName: baseSegments[1].endName,
                 path: [],
                 distance: 0,
@@ -962,7 +962,7 @@ const RoutePlanningStep: React.FC<RoutePlanningStepProps> = ({
             // Add Delivery -> Stopover1 segment
             allSegments.push({
                 ...baseSegments[2],
-                endName: 'Stopover',
+                endName: 'Điểm trung gian',
                 // Keep the original segmentOrder to maintain the mapping
                 segmentOrder: 2
             });
@@ -970,8 +970,8 @@ const RoutePlanningStep: React.FC<RoutePlanningStepProps> = ({
             // Add intermediate stopover segments if there are multiple stopovers
             for (let i = 0; i < stopoversBySegment[2].length - 1; i++) {
                 allSegments.push({
-                    startName: 'Stopover',
-                    endName: 'Stopover',
+                    startName: 'Điểm trung gian',
+                    endName: 'Điểm trung gian',
                     path: [],
                     distance: 0,
                     tolls: [],
@@ -982,7 +982,7 @@ const RoutePlanningStep: React.FC<RoutePlanningStepProps> = ({
 
             // Add last Stopover -> Carrier segment
             allSegments.push({
-                startName: 'Stopover',
+                startName: 'Điểm trung gian',
                 endName: baseSegments[2].endName,
                 path: [],
                 distance: 0,

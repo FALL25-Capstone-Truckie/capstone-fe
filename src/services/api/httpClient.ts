@@ -1,6 +1,7 @@
 import axios, { AxiosError } from 'axios';
 import type { AxiosRequestConfig } from 'axios';
 import { handleApiError } from './errorHandler';
+import { API_URL } from '@/config/env';
 
 // Event emitter for logout events
 const logoutEventTarget = new EventTarget();
@@ -17,7 +18,7 @@ const emitLogout = () => {
 
 // Create an axios instance with default config
 const httpClient = axios.create({
-  baseURL: 'http://localhost:8080/api/v1', // Make sure this matches your backend URL
+  baseURL: API_URL,
   timeout: 30000,
   headers: {
     'Content-Type': 'application/json',

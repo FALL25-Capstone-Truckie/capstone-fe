@@ -264,9 +264,23 @@ const IssueDetail: React.FC = () => {
                     </Col>
                 )}
 
-                {/* Refund Processing Detail - Hiển thị khi issue là loại damage và status là OPEN */}
-                {(issue.issueCategory === 'DAMAGE' || issue.issueTypeEntity?.issueCategory === 'DAMAGE') && 
-                 (issue.orderDetailEntity || issue.orderDetail) && (
+                {/* Refund Processing Detail - Hiển thị khi issue là loại damage */}
+                {(() => {
+                    const isDamageCategory = issue.issueCategory === 'DAMAGE' || issue.issueTypeEntity?.issueCategory === 'DAMAGE';
+                    const hasOrderDetail = issue.orderDetailEntity || issue.orderDetail;
+                    
+                    console.log('🔍 DAMAGE section check:', {
+                        issueCategory: issue.issueCategory,
+                        issueTypeCategory: issue.issueTypeEntity?.issueCategory,
+                        isDamageCategory,
+                        hasOrderDetail,
+                        orderDetailEntity: !!issue.orderDetailEntity,
+                        orderDetail: !!issue.orderDetail,
+                        willShow: isDamageCategory && hasOrderDetail
+                    });
+                    
+                    return isDamageCategory && hasOrderDetail;
+                })() && (
                     <Col span={24}>
                         <RefundProcessingDetail 
                             issue={issue}

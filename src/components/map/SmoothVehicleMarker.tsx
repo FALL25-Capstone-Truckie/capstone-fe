@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import type { VehicleLocationMessage } from '../../hooks/useVehicleTracking';
+import VehicleLocationCache from '../../utils/vehicleLocationCache';
 
 interface SmoothVehicleMarkerProps {
   vehicle: VehicleLocationMessage;
@@ -7,30 +8,34 @@ interface SmoothVehicleMarkerProps {
   isSelected?: boolean;
   isHighlighted?: boolean;
   onMarkerClick?: (vehicle: VehicleLocationMessage) => void;
+  showOfflineStatus?: boolean;
 }
-
 
 const SmoothVehicleMarker: React.FC<SmoothVehicleMarkerProps> = ({
   vehicle,
   map,
   isSelected = false,
   isHighlighted = false,
-  onMarkerClick
+  onMarkerClick,
+  showOfflineStatus = true
 }) => {
   const markerRef = useRef<any>(null);
   const lastUpdateTimeRef = useRef<number>(0);
-
+  const cacheRef = useRef(VehicleLocationCache.getInstance());
 
   // Initialize marker - ONLY when map or vehicleId changes
   useEffect(() => {
     if (!map || !vehicle || !window.vietmapgl) return;
     if (markerRef.current) return;
 
+    // Kiểm tra trạng thái online của vehicle
+    const isOnline = showOfflineStatus ? cacheRef.current.isVehicleOnline(vehicle) : true;
+
     const el = document.createElement('div');
     el.style.cssText = `
       width: 40px;
       height: 40px;
-      background-color: #1890ff;
+      background-color: ${isOnline ? '#1890ff' : '#ff7875'};
       border: 3px solid white;
       border-radius: 50%;
       cursor: pointer;
@@ -39,15 +44,16 @@ const SmoothVehicleMarker: React.FC<SmoothVehicleMarkerProps> = ({
       justify-content: center;
       font-size: 20px;
       box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-      opacity: 0.8;
+      opacity: ${isOnline ? '0.8' : '0.6'};
       pointer-events: auto !important;
       transform: none !important;
       transition: none !important;
       will-change: auto !important;
       position: absolute !important;
+      ${!isOnline ? 'filter: grayscale(0.3);' : ''}
     `;
     el.innerHTML = '🚛';
-    el.title = vehicle.licensePlateNumber;
+    el.title = `${vehicle.licensePlateNumber} ${!isOnline ? '(Offline)' : '(Online)'}`;
 
     el.addEventListener('click', () => {
       if (onMarkerClick) {
@@ -75,12 +81,12 @@ const SmoothVehicleMarker: React.FC<SmoothVehicleMarkerProps> = ({
         markerRef.current = null;
       }
     };
-  }, [map, vehicle.vehicleId, vehicle.licensePlateNumber, onMarkerClick]);
+  }, [map, vehicle.vehicleId, vehicle.licensePlateNumber, onMarkerClick, showOfflineStatus]);
 
   // Update initial position when vehicle first loads
   useEffect(() => {
     if (!markerRef.current || !vehicle.latitude || !vehicle.longitude) return;
-    
+
     // Only set initial position if marker was just created
     const currentPos = markerRef.current.getLngLat();
     if (currentPos.lat === 0 && currentPos.lng === 0) {
@@ -88,7 +94,6 @@ const SmoothVehicleMarker: React.FC<SmoothVehicleMarkerProps> = ({
       console.log(`🚛 [VEHICLE] Set initial position for ${vehicle.vehicleId}`);
     }
   }, [vehicle.vehicleId]);
-
 
   // Update position when vehicle data changes
   useEffect(() => {
@@ -123,22 +128,33 @@ const SmoothVehicleMarker: React.FC<SmoothVehicleMarkerProps> = ({
     // This prevents the "jumping" effect when camera pans/zooms
     markerRef.current.setLngLat([vehicle.longitude, vehicle.latitude]);
     console.log(`📍 [VEHICLE] Updated position for ${vehicle.vehicleId} to [${vehicle.latitude.toFixed(6)}, ${vehicle.longitude.toFixed(6)}]`);
-    
-    lastUpdateTimeRef.current = now;
 
+    lastUpdateTimeRef.current = now;
   }, [vehicle.latitude, vehicle.longitude, vehicle.vehicleId]);
 
-  // Update marker styling when selection changes
+  // Update marker styling when selection changes or online status changes
   useEffect(() => {
     if (!markerRef.current) return;
 
+    const isOnline = showOfflineStatus ? cacheRef.current.isVehicleOnline(vehicle) : true;
     const element = markerRef.current.getElement();
+
     if (element) {
-      element.style.backgroundColor = isSelected ? '#52c41a' : '#1890ff';
-      element.style.opacity = isHighlighted ? '1' : '0.8';
-      element.style.borderWidth = isSelected ? '4px' : '3px'; // Highlight with thicker border instead of scale
+      // Ưu tiên trạng thái selected, sau đó đến online status
+      if (isSelected) {
+        element.style.backgroundColor = '#52c41a'; // Xanh lá khi được chọn
+      } else if (!isOnline) {
+        element.style.backgroundColor = '#ff7875'; // Đỏ khi offline
+      } else {
+        element.style.backgroundColor = '#1890ff'; // Xanh dương bình thường
+      }
+
+      element.style.opacity = isHighlighted ? '1' : (isOnline ? '0.8' : '0.6');
+      element.style.borderWidth = isSelected ? '4px' : '3px';
+      element.style.filter = !isOnline && !isSelected ? 'grayscale(0.3)' : 'none';
+      element.title = `${vehicle.licensePlateNumber} ${!isOnline ? '(Offline)' : '(Online)'}`;
     }
-  }, [isSelected, isHighlighted]);
+  }, [isSelected, isHighlighted, vehicle.lastUpdated, vehicle.licensePlateNumber, showOfflineStatus]);
 
   return null; // This component doesn't render anything directly
 };
@@ -149,8 +165,10 @@ export default React.memo(SmoothVehicleMarker, (prevProps, nextProps) => {
     prevProps.vehicle.vehicleId === nextProps.vehicle.vehicleId &&
     prevProps.vehicle.latitude === nextProps.vehicle.latitude &&
     prevProps.vehicle.longitude === nextProps.vehicle.longitude &&
+    prevProps.vehicle.lastUpdated === nextProps.vehicle.lastUpdated &&
     prevProps.isSelected === nextProps.isSelected &&
     prevProps.isHighlighted === nextProps.isHighlighted &&
+    prevProps.showOfflineStatus === nextProps.showOfflineStatus &&
     prevProps.map === nextProps.map
   );
 });

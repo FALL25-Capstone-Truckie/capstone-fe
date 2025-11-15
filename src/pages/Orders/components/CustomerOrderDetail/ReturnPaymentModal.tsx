@@ -3,6 +3,8 @@ import { Modal, Button, Descriptions, Alert, Statistic, Tag, message, QRCode, Di
 import { DollarOutlined, ClockCircleOutlined, WarningOutlined, CheckCircleOutlined } from '@ant-design/icons';
 import customerIssueService, { type ReturnShippingIssue } from '@/services/issue/customerIssueService';
 import dayjs from 'dayjs';
+import { TransactionStatusTag } from '@/components/common/tags';
+import { TransactionEnum } from '@/constants/enums';
 
 const { Countdown } = Statistic;
 
@@ -44,24 +46,43 @@ const ReturnPaymentModal: React.FC<ReturnPaymentModalProps> = ({
     return hoursLeft < 2;
   };
 
-  // Handle payment
+  // Handle payment - Extract checkoutUrl from existing transaction (same pattern as deposit/full payment)
   const handlePayment = async () => {
+    if (!issue.returnTransaction) {
+      message.error('Không tìm thấy thông tin giao dịch');
+      return;
+    }
+
     setLoading(true);
     try {
-      const paymentData = await customerIssueService.createReturnPaymentLink(issue.issueId);
-      
-      setQrCode(paymentData.qrCode || null);
-      
-      // Open payment link in new tab
-      window.open(paymentData.checkoutUrl, '_blank');
-      
-      message.success('Đã mở trang thanh toán. Vui lòng hoàn tất thanh toán.');
+      // Parse gatewayResponse to get checkoutUrl (already created by backend)
+      let checkoutUrl = null;
+      if (issue.returnTransaction.gatewayResponse) {
+        try {
+          const gatewayData = JSON.parse(issue.returnTransaction.gatewayResponse);
+          checkoutUrl = gatewayData.checkoutUrl;
+          
+          // Extract QR code if available
+          if (gatewayData.qrCode) {
+            setQrCode(gatewayData.qrCode);
+          }
+        } catch (parseError) {
+          console.error('Error parsing gatewayResponse:', parseError);
+        }
+      }
+
+      // If we have a checkout URL, redirect to it
+      if (checkoutUrl) {
+        window.open(checkoutUrl, '_blank');
+        message.success('Đã mở trang thanh toán. Vui lòng hoàn tất thanh toán.');
+      } else {
+        message.error('Không tìm thấy link thanh toán. Vui lòng thử lại sau.');
+      }
       
       // Note: Payment status will be updated via webhook
-      // UI will refresh when status changes
       
     } catch (error: any) {
-      message.error(error.message || 'Không thể tạo link thanh toán');
+      message.error(error.message || 'Không thể mở trang thanh toán');
       console.error('Payment error:', error);
     } finally {
       setLoading(false);
@@ -127,24 +148,12 @@ const ReturnPaymentModal: React.FC<ReturnPaymentModalProps> = ({
     >
       {/* Payment Status */}
       {issue.returnTransaction && (
-        <Alert
-          message={
-            issue.returnTransaction.status === 'PAID' 
-              ? 'Đã thanh toán' 
-              : issue.returnTransaction.status === 'PENDING'
-              ? 'Chờ thanh toán'
-              : 'Thanh toán thất bại'
-          }
-          type={
-            issue.returnTransaction.status === 'PAID' 
-              ? 'success' 
-              : issue.returnTransaction.status === 'PENDING'
-              ? 'warning'
-              : 'error'
-          }
-          showIcon
-          className="mb-4"
-        />
+        <div className="mb-4">
+          <div className="flex items-center gap-2">
+            <span className="text-gray-600">Trạng thái thanh toán:</span>
+            <TransactionStatusTag status={issue.returnTransaction.status as TransactionEnum} />
+          </div>
+        </div>
       )}
 
       {/* Affected Packages */}

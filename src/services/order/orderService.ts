@@ -181,7 +181,7 @@ const orderService = {
       } else {
         // Check each orderDetail has required fields
         orderData.orderDetails.forEach((detail, index) => {
-          if (!detail.weight || detail.weight <= 0) {
+          if (!detail.weightBaseUnit && (!detail.weight || detail.weight <= 0)) {
             missingOrderRequestFields.push(`orderDetails[${index}].weight`);
           }
           if (!detail.unit) {
@@ -235,7 +235,7 @@ const orderService = {
           receiverIdentity: orderData.orderRequest.receiverIdentity || "",
         },
         orderDetails: orderData.orderDetails.map((detail) => ({
-          weight: detail.weight,
+          weight: detail.weightBaseUnit || detail.weight,
           unit: detail.unit || "kg",
           description: detail.description || "",
           orderSizeId: detail.orderSizeId,

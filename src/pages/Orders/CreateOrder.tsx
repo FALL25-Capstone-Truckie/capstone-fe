@@ -157,7 +157,7 @@ export default function CreateOrder() {
       // Kiểm tra các trường bắt buộc trong orderDetailsList
       const invalidDetails = orderDetailsList.filter(
         (detail: any) =>
-          !detail.weight ||
+          (!detail.weightBaseUnit && !detail.weight) ||
           !detail.orderSizeId ||
           !detail.description ||
           !detail.quantity
@@ -176,7 +176,7 @@ export default function CreateOrder() {
         // Tạo nhiều bản copy của item dựa trên quantity
         for (let i = 0; i < quantity; i++) {
           expandedOrderDetailsList.push({
-            weight: detail.weight,
+            weight: detail.weightBaseUnit || detail.weight,
             unit: detail.unit || "kg",
             description: detail.description || "",
             orderSizeId: detail.orderSizeId,

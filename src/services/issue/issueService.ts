@@ -342,9 +342,22 @@ const issueService = {
      * @param issueId Issue ID
      * @returns Promise with fee calculation details
      */
-    calculateReturnShippingFee: async (issueId: string): Promise<any> => {
+    calculateReturnShippingFee: async (issueId: string, distanceKm?: number): Promise<any> => {
         try {
-            const response = await httpClient.get(`/issues/order-rejection/${issueId}/return-fee`);
+            console.log('🔍 calculateReturnShippingFee called with:', { issueId, distanceKm });
+            
+            let url = `/issues/order-rejection/${issueId}/return-fee`;
+            
+            // Use new endpoint with distance if provided
+            if (distanceKm && distanceKm > 0) {
+                url = `/issues/order-rejection/${issueId}/return-fee-with-distance?distanceKm=${distanceKm}`;
+                console.log('✅ Using distance endpoint:', url);
+            } else {
+                console.log('❌ Using fallback endpoint (no distance):', url);
+                console.log('❌ Distance value:', distanceKm, 'Type:', typeof distanceKm);
+            }
+            
+            const response = await httpClient.get(url);
             return response.data.data;
         } catch (error: any) {
             console.error('Error calculating return shipping fee:', error);

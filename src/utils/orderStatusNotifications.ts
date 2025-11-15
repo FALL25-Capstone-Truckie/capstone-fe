@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import { playImportantNotificationSound } from './notificationSound';
+import { playNotificationSound, NotificationSoundType } from './notificationSound';
 import type { OrderStatusChangeMessage } from '../hooks/useOrderStatusTracking';
 
 /**
@@ -103,7 +103,7 @@ const handleDefaultNotification = (statusChange: OrderStatusChangeMessage, messa
           content: `🚛 ${statusChange.message || 'Tài xế đã bắt đầu lấy hàng!'}`,
           duration: 5,
         });
-        playImportantNotificationSound();
+        playNotificationSound(NotificationSoundType.SUCCESS);
       }
       break;
       
@@ -112,7 +112,7 @@ const handleDefaultNotification = (statusChange: OrderStatusChangeMessage, messa
         content: `✅ ${statusChange.message || 'Đơn hàng đã được giao thành công!'}`,
         duration: 5,
       });
-      playImportantNotificationSound();
+      playNotificationSound(NotificationSoundType.SUCCESS);
       break;
       
     case 'IN_TROUBLES':
@@ -120,7 +120,7 @@ const handleDefaultNotification = (statusChange: OrderStatusChangeMessage, messa
         content: `⚠️ ${statusChange.message || 'Đơn hàng gặp sự cố!'}`,
         duration: 8,
       });
-      playImportantNotificationSound();
+      playNotificationSound(NotificationSoundType.ERROR);
       break;
       
     case 'ASSIGNED_TO_DRIVER':
@@ -128,7 +128,7 @@ const handleDefaultNotification = (statusChange: OrderStatusChangeMessage, messa
         content: `🚗 ${statusChange.message || 'Đơn hàng đã được phân công cho tài xế!'}`,
         duration: 5,
       });
-      playImportantNotificationSound();
+      playNotificationSound(NotificationSoundType.INFO);
       break;
       
     case 'FULLY_PAID':
@@ -136,7 +136,7 @@ const handleDefaultNotification = (statusChange: OrderStatusChangeMessage, messa
         content: `💰 ${statusChange.message || 'Đơn hàng đã được thanh toán đầy đủ!'}`,
         duration: 5,
       });
-      playImportantNotificationSound();
+      playNotificationSound(NotificationSoundType.PAYMENT_SUCCESS);
       break;
       
     case 'CANCELLED':
@@ -144,7 +144,7 @@ const handleDefaultNotification = (statusChange: OrderStatusChangeMessage, messa
         content: `❌ ${statusChange.message || 'Đơn hàng đã bị hủy!'}`,
         duration: 5,
       });
-      playImportantNotificationSound();
+      playNotificationSound(NotificationSoundType.WARNING);
       break;
       
     default:

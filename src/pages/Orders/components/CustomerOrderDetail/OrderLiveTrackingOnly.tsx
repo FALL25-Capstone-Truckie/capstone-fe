@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { Alert, message, Card } from 'antd';
 import { WifiOutlined, DisconnectOutlined, LoadingOutlined, TruckOutlined, EnvironmentOutlined } from '@ant-design/icons';
-import { playImportantNotificationSound, initAudioContext } from '../../../../utils/notificationSound';
+import { playImportantNotificationSound } from '../../../../utils/notificationSound';
 import SmoothVehicleMarker from '../../../../components/map/SmoothVehicleMarker';
 import RoutePathRenderer from '../../../../components/map/RoutePathRenderer';
 import RouteMarkersRenderer from '../../../../components/map/RouteMarkersRenderer';
@@ -211,20 +211,7 @@ const OrderLiveTrackingOnly: React.FC<OrderLiveTrackingOnlyProps> = ({
     };
   }, [mapStyle]); // Only re-initialize if map style changes
 
-  // Initialize audio context on user interaction
-  useEffect(() => {
-    const handleUserInteraction = () => {
-      initAudioContext();
-      window.removeEventListener('click', handleUserInteraction);
-      window.removeEventListener('touchstart', handleUserInteraction);
-    };
-    window.addEventListener('click', handleUserInteraction);
-    window.addEventListener('touchstart', handleUserInteraction);
-    return () => {
-      window.removeEventListener('click', handleUserInteraction);
-      window.removeEventListener('touchstart', handleUserInteraction);
-    };
-  }, []);
+  // ZZFX doesn't require audio context initialization
 
   // Detect when tracking becomes active
   useEffect(() => {

@@ -13,7 +13,7 @@ import {
 import orderService from "../../../services/order/orderService";
 import { contractService } from "../../../services/contract";
 import { useOrderStatusTracking } from "../../../hooks/useOrderStatusTracking";
-import { playImportantNotificationSound } from "../../../utils/notificationSound";
+import { playNotificationSound, NotificationSoundType } from "../../../utils/notificationSound";
 import { areAllOrderDetailsInFinalStatus } from "../../../utils/statusHelpers";
 import { OrderStatusEnum, OrderStatusLabels } from "../../../constants/enums";
 import type {
@@ -68,7 +68,6 @@ const CustomerOrderDetail: React.FC = () => {
   const [creatingContract, setCreatingContract] = useState<boolean>(false);
   const [previousOrderStatus, setPreviousOrderStatus] = useState<string | null>(null);
   const [cancellingOrder, setCancellingOrder] = useState<boolean>(false);
-  const [returnIssuesCount, setReturnIssuesCount] = useState<number>(0);
 
   // NOTE: Real-time tracking logic is now handled inside RouteMapWithRealTimeTracking
   // to prevent unnecessary re-renders of CustomerOrderDetail parent component
@@ -231,7 +230,16 @@ const CustomerOrderDetail: React.FC = () => {
         });
       }
       
-      playImportantNotificationSound();
+      // Play appropriate sound based on notification type
+      if (notification.type === 'success') {
+        playNotificationSound(NotificationSoundType.SUCCESS);
+      } else if (notification.type === 'error') {
+        playNotificationSound(NotificationSoundType.ERROR);
+      } else if (notification.type === 'warning') {
+        playNotificationSound(NotificationSoundType.WARNING);
+      } else {
+        playNotificationSound(NotificationSoundType.INFO);
+      }
       
       // Auto-switch to "Live Tracking" tab for delivery-related statuses
       if ([OrderStatusEnum.PICKING_UP, OrderStatusEnum.ON_DELIVERED, OrderStatusEnum.ONGOING_DELIVERED].includes(statusChange.newStatus)) {
@@ -514,6 +522,22 @@ const CustomerOrderDetail: React.FC = () => {
 
   const { order, contract, transactions } = orderData;
 
+  // Check if there are any ORDER_REJECTION issues with IN_PROGRESS status (regular variable, no hooks)
+  const hasOrderRejectionIssues = 
+    order.vehicleAssignments && order.vehicleAssignments.length > 0 &&
+    order.vehicleAssignments.some((va: any) => 
+      va.issues && va.issues.some((issue: any) => issue.issueCategory === 'ORDER_REJECTION' && issue.status === 'IN_PROGRESS')
+    );
+
+  // Count ORDER_REJECTION issues with IN_PROGRESS status (regular variable, no hooks)
+  const returnIssuesCount = 
+    !order.vehicleAssignments || order.vehicleAssignments.length === 0 
+      ? 0 
+      : order.vehicleAssignments.reduce((count: number, va: any) => {
+          const rejectionIssues = va.issues ? va.issues.filter((issue: any) => issue.issueCategory === 'ORDER_REJECTION' && issue.status === 'IN_PROGRESS') : [];
+          return count + rejectionIssues.length;
+        }, 0);
+
   return (
     <div className="max-w-6xl mx-auto px-4 py-6">
       <div className="mb-6 flex items-center justify-between">
@@ -633,29 +657,33 @@ const CustomerOrderDetail: React.FC = () => {
             </div>
           </TabPane>
           
-          {/* Return Issues Tab */}
-          <TabPane
-            tab={
-              <span className="px-2 py-1">
-                <ExclamationCircleOutlined className="mr-2" /> 
-                Vấn đề trả hàng
-                {returnIssuesCount > 0 && (
-                  <span className="ml-2 px-2 py-0.5 bg-red-500 text-white text-xs rounded-full">
-                    {returnIssuesCount}
-                  </span>
-                )}
-              </span>
-            }
-            key="returnIssues"
-          >
-            {id && (
-              <ReturnShippingIssuesSection 
-                orderId={id} 
-                onIssuesLoaded={setReturnIssuesCount}
-                isInTab={true}
-              />
-            )}
-          </TabPane>
+          {/* Return Shipping Issues Tab - Only show if there are issues */}
+          {returnIssuesCount > 0 && (
+            <TabPane
+              tab={
+                <span>
+                  <ExclamationCircleOutlined />
+                  Sự cố trả hàng
+                  {returnIssuesCount > 0 && (
+                    <span className="ml-2 px-2 py-1 bg-orange-500 text-white text-xs rounded-full">
+                      {returnIssuesCount}
+                    </span>
+                  )}
+                </span>
+              }
+              key="returnIssues"
+            >
+              {id && (
+                <ReturnShippingIssuesSection 
+                  orderId={id}
+                  issues={order.vehicleAssignments?.flatMap((va: any) => 
+                    va.issues?.filter((issue: any) => issue.issueCategory === 'ORDER_REJECTION' && issue.status === 'IN_PROGRESS') || []
+                  ) || []}
+                  isInTab={true}
+                />
+              )}
+            </TabPane>
+          )}
         </Tabs>
       </Card>
 

@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { Alert, message } from 'antd';
 import { WifiOutlined, DisconnectOutlined, LoadingOutlined, TruckOutlined } from '@ant-design/icons';
-import { playImportantNotificationSound, initAudioContext } from '../../../../../utils/notificationSound';
+import { playImportantNotificationSound } from '../../../../../utils/notificationSound';
 import RouteMapSection from './RouteMapSection';
 import SmoothVehicleMarker from '../../../../../components/map/SmoothVehicleMarker';
 import { useVehicleTracking, type VehicleLocationMessage } from '../../../../../hooks/useVehicleTracking';
@@ -13,6 +13,7 @@ interface RouteMapWithRealTimeTrackingProps {
   journeyInfo?: Partial<JourneyHistory>;
   orderId: string;
   shouldShowRealTimeTracking: boolean;
+  issues?: any[]; // Issues to display on map
 }
 
 /**
@@ -25,7 +26,8 @@ const RouteMapWithRealTimeTracking: React.FC<RouteMapWithRealTimeTrackingProps> 
   journeySegments,
   journeyInfo,
   orderId,
-  shouldShowRealTimeTracking
+  shouldShowRealTimeTracking,
+  issues
 }) => {
   console.log('🎯 [RouteMapWithRealTimeTracking] COMPONENT RENDERED/RE-RENDERED');
   console.log('Props:', { orderId, shouldShowRealTimeTracking, journeySegmentsCount: journeySegments?.length });
@@ -61,20 +63,7 @@ const RouteMapWithRealTimeTracking: React.FC<RouteMapWithRealTimeTrackingProps> 
     isFinite(vehicle.latitude) && isFinite(vehicle.longitude)
   );
 
-  // Initialize audio context on user interaction
-  useEffect(() => {
-    const handleUserInteraction = () => {
-      initAudioContext();
-      window.removeEventListener('click', handleUserInteraction);
-      window.removeEventListener('touchstart', handleUserInteraction);
-    };
-    window.addEventListener('click', handleUserInteraction);
-    window.addEventListener('touchstart', handleUserInteraction);
-    return () => {
-      window.removeEventListener('click', handleUserInteraction);
-      window.removeEventListener('touchstart', handleUserInteraction);
-    };
-  }, []);
+  // ZZFX doesn't require audio context initialization
 
   // Detect when tracking becomes active
   useEffect(() => {
@@ -420,6 +409,7 @@ const RouteMapWithRealTimeTracking: React.FC<RouteMapWithRealTimeTrackingProps> 
         <RouteMapSection
           journeySegments={journeySegments}
           journeyInfo={journeyInfo}
+          issues={issues}
           onMapReady={handleMapReady}
           mapContainerRef={mapContainerRef}
         >

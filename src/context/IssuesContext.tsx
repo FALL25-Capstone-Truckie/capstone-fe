@@ -8,7 +8,7 @@ import type { Issue } from '@/models/Issue';
 import issueService from '@/services/issue/issueService';
 import { message as antdMessage, Modal } from 'antd';
 import { useAuth } from '@/context';
-import { SoundType, playNotificationSound, playMultipleBeeps } from '@/utils/soundUtils';
+import { playNotificationSound, NotificationSoundType } from '@/utils/notificationSound';
 import SealConfirmationModal from '@/components/modals/SealConfirmationModal';
 
 interface IssuesContextType {
@@ -57,6 +57,7 @@ export const IssuesProvider: React.FC<IssuesProviderProps> = ({ children }) => {
   const subscriptionNewRef = useRef<any>(null);
   const subscriptionStatusRef = useRef<any>(null);
   const subscriptionUserMessagesRef = useRef<any>(null);
+  const subscriptionReturnPaymentRef = useRef<any>(null);
 
   // Fetch issues from API
   const fetchIssues = useCallback(async () => {
@@ -118,7 +119,7 @@ export const IssuesProvider: React.FC<IssuesProviderProps> = ({ children }) => {
     });
     
     // Play notification sound for new issue
-    playMultipleBeeps(SoundType.NEW_ISSUE, 2, 300);
+    playNotificationSound(NotificationSoundType.NEW_ISSUE);
     
     // Show modal for urgent notification
     console.log('🚨 Showing new issue modal for:', msg.issueCategory);
@@ -146,6 +147,50 @@ export const IssuesProvider: React.FC<IssuesProviderProps> = ({ children }) => {
     });
   }, []);
 
+  // Handle return payment success notification
+  const handleReturnPaymentSuccess = useCallback((messageData: any) => {
+    console.log('💰 [IssuesContext] Return payment success:', messageData);
+    
+    // Play notification sound for payment success
+    playNotificationSound(NotificationSoundType.PAYMENT_SUCCESS);
+    
+    // Show notification modal
+    Modal.success({
+      title: '✅ Khách hàng đã thanh toán cước trả hàng',
+      content: messageData.message,
+      okText: 'Đã hiểu',
+      width: 500,
+    });
+    
+    // Show antd message
+    antdMessage.success({
+      content: `💰 ${messageData.message}`,
+      duration: 8,
+    });
+    
+    // Refresh issues list to get updated status
+    fetchIssues();
+    
+    // Show browser notification if supported
+    if ('Notification' in window) {
+      if (Notification.permission === 'granted') {
+        new Notification('💰 Thanh toán thành công', {
+          body: messageData.message,
+          icon: '/favicon.ico'
+        });
+      } else if (Notification.permission !== 'denied') {
+        Notification.requestPermission().then(permission => {
+          if (permission === 'granted') {
+            new Notification('💰 Thanh toán thành công', {
+              body: messageData.message,
+              icon: '/favicon.ico'
+            });
+          }
+        });
+      }
+    }
+  }, [fetchIssues]);
+
   // Handle staff-specific messages from WebSocket
   const handleStaffMessage = useCallback((messageData: any) => {
     console.log('📬 [IssuesContext] Handle staff message:', messageData);
@@ -155,7 +200,7 @@ export const IssuesProvider: React.FC<IssuesProviderProps> = ({ children }) => {
         console.log('🔔 Showing SEAL_CONFIRMATION modal and notification');
         
         // Play notification sound for seal confirmation
-        playNotificationSound(SoundType.SEAL_CONFIRMATION, 0.7);
+        playNotificationSound(NotificationSoundType.SEAL_CONFIRM);
         
         // Show antd message first
         antdMessage.success({
@@ -275,7 +320,21 @@ export const IssuesProvider: React.FC<IssuesProviderProps> = ({ children }) => {
         }
       );
 
-      console.log('✅ Staff user subscribed to issues topics and user messages');
+      // Subscribe to return payment success notifications (broadcast to all staff)
+      subscriptionReturnPaymentRef.current = client.subscribe(
+        '/topic/issues/return-payment-success',
+        (message: IMessage) => {
+          try {
+            const messageData = JSON.parse(message.body);
+            console.log('💰 Staff received return payment success notification:', messageData);
+            handleReturnPaymentSuccess(messageData);
+          } catch (error) {
+            console.error('Error parsing return payment message:', error);
+          }
+        }
+      );
+
+      console.log('✅ Staff user subscribed to issues topics, user messages, and return payment notifications');
     };
 
     client.onWebSocketError = (event) => {
@@ -299,7 +358,7 @@ export const IssuesProvider: React.FC<IssuesProviderProps> = ({ children }) => {
 
     client.activate();
     clientRef.current = client;
-  }, [isAuthenticated, user, handleNewIssue, handleIssueStatusChange, handleStaffMessage]);
+  }, [isAuthenticated, user, handleNewIssue, handleIssueStatusChange, handleStaffMessage, handleReturnPaymentSuccess]);
 
   // Disconnect WebSocket
   const disconnectWebSocket = useCallback(() => {
@@ -318,6 +377,11 @@ export const IssuesProvider: React.FC<IssuesProviderProps> = ({ children }) => {
     if (subscriptionUserMessagesRef.current) {
       subscriptionUserMessagesRef.current.unsubscribe();
       subscriptionUserMessagesRef.current = null;
+    }
+
+    if (subscriptionReturnPaymentRef.current) {
+      subscriptionReturnPaymentRef.current.unsubscribe();
+      subscriptionReturnPaymentRef.current = null;
     }
 
     if (clientRef.current) {

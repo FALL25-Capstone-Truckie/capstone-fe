@@ -457,39 +457,85 @@ const VietMapMap: React.FC<VietMapMapProps> = ({
                     el.setAttribute('data-marker-id', location.id);
                 }
 
-                // Set color based on point type
+                // Set color and icon based on point type
                 let color = '#1677ff'; // Default blue
+                let icon = '📍'; // Default pin
+                
                 if (location.type === 'carrier') {
-                    if (location.name?.startsWith('Quay về')) {
-                        color = '#52c41a'; // Green for return carrier
-                    } else {
-                        color = '#52c41a'; // Green for carrier
-                    }
+                    color = '#faad14'; // Orange for carrier
+                    icon = '🏭'; // Factory
                 } else if (location.type === 'pickup') {
-                    color = '#faad14'; // Yellow for pickup
+                    color = '#52c41a'; // Green for pickup
+                    icon = '📦'; // Package
                 } else if (location.type === 'delivery') {
                     color = '#f5222d'; // Red for delivery
+                    icon = '🎯'; // Target
+                } else if (location.type === 'stopover') {
+                    color = '#1890ff'; // Blue for stopover
+                    icon = '📍'; // Pin
+                    
+                    // Check if this is an issue marker (has issueCategory)
+                    if (location.issueCategory) {
+                        // Set icon and color based on issueCategory
+                        switch(location.issueCategory) {
+                            case 'ORDER_REJECTION':
+                                icon = '📦'; // Package
+                                color = '#ff4d4f'; // Red
+                                break;
+                            case 'SEAL_REPLACEMENT':
+                                icon = '🔒'; // Lock
+                                color = '#fa141480'; // Yellow/Orange
+                                break;
+                            case 'DAMAGE':
+                            case 'CARGO_ISSUE':
+                            case 'MISSING_ITEMS':
+                            case 'WRONG_ITEMS':
+                                icon = '⚠️'; // Warning
+                                color = '#fa141480'; // Orange
+                                break;
+                            case 'PENALTY':
+                                icon = '🚨'; // Police siren
+                                color = '#ffb84d80'; // Red
+                                break;
+                            case 'ACCIDENT':
+                            case 'VEHICLE_BREAKDOWN':
+                                icon = '🔧'; // Wrench
+                                color = '#ff4d4f80'; // Red
+                                break;
+                            case 'WEATHER':
+                                icon = '🌧️'; // Rain
+                                color = '#1890ff80'; // Blue
+                                break;
+                            case 'GENERAL':
+                            default:
+                                icon = '❗'; // Exclamation
+                                color = '#faad1480'; // Yellow
+                                break;
+                        }
+                    }
                 }
 
                 el.style.backgroundColor = color;
                 el.style.border = '2px solid white';
-                el.style.boxShadow = '0 0 5px rgba(0,0,0,0.3)';
+                el.style.borderRadius = '50%';
+                el.style.boxShadow = '0 2px 8px rgba(0,0,0,0.3)';
                 el.style.cursor = 'pointer';
+                el.style.display = 'flex';
+                el.style.alignItems = 'center';
+                el.style.justifyContent = 'center';
 
-                // Thêm text để dễ nhận diện
-                const textEl = document.createElement('div');
-                textEl.style.position = 'absolute';
-                textEl.style.top = '50%';
-                textEl.style.left = '50%';
-                textEl.style.transform = 'translate(-50%, -50%)';
-                textEl.style.color = 'white';
-                textEl.style.fontWeight = 'bold';
-                textEl.style.fontSize = '12px';
-                textEl.textContent = `${index + 1}`;
-                el.appendChild(textEl);
+                // Add icon emoji
+                el.innerHTML = icon;
+                el.style.fontSize = '16px';
+                el.title = location.name || location.address || '';
 
                 // Tạo marker
-                const marker = new window.vietmapgl.Marker(el)
+                const marker = new window.vietmapgl.Marker({
+                    element: el,
+                    anchor: 'center',
+                    pitchAlignment: 'viewport',
+                    rotationAlignment: 'viewport'
+                })
                     .setLngLat([location.lng, location.lat])
                     .addTo(mapRef.current);
 

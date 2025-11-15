@@ -25,12 +25,13 @@ const { Title } = Typography;
 interface RouteMapSectionProps {
     journeySegments: JourneySegmentModel[];
     journeyInfo?: Partial<JourneyHistory>;
+    issues?: any[]; // Issues to display on map
     onMapReady?: (map: any) => void;
     children?: React.ReactNode;
     mapContainerRef?: React.RefObject<HTMLDivElement | null>; // Ref for map container div
 }
 
-const RouteMapSection: React.FC<RouteMapSectionProps> = ({ journeySegments, journeyInfo, onMapReady, children, mapContainerRef }) => {
+const RouteMapSection: React.FC<RouteMapSectionProps> = ({ journeySegments, journeyInfo, issues, onMapReady, children, mapContainerRef }) => {
     const [mapLocation, setMapLocation] = useState<MapLocation | null>(null);
     const [markers, setMarkers] = useState<MapLocation[]>([]);
     const [routeSegments, setRouteSegments] = useState<RouteSegment[]>([]);
@@ -199,6 +200,59 @@ const RouteMapSection: React.FC<RouteMapSectionProps> = ({ journeySegments, jour
                 }
             });
 
+            // Add issue markers if issues are provided (Staff can see all issues including PENALTY)
+            if (issues && issues.length > 0) {
+                issues.forEach((issue) => {
+                    if (issue.locationLatitude && issue.locationLongitude &&
+                        !isNaN(issue.locationLatitude) && !isNaN(issue.locationLongitude) &&
+                        isFinite(issue.locationLatitude) && isFinite(issue.locationLongitude)) {
+                        
+                        // Get issue icon and color based on category
+                        let issueIcon = '⚠️';
+                        
+                        switch(issue.issueCategory) {
+                            case 'ORDER_REJECTION':
+                                issueIcon = '📦';
+                                break;
+                            case 'SEAL_REPLACEMENT':
+                                issueIcon = '🔒';
+                                break;
+                            case 'DAMAGE':
+                                issueIcon = '⚠️';
+                                break;
+                            case 'PENALTY':
+                                issueIcon = '🚨';
+                                break;
+                            default:
+                                issueIcon = '❗';
+                        }
+                        
+                        // Create marker label with issue type name and reported time
+                        const issueTypeName = issue.issueTypeName || issue.issueCategory || 'Sự cố';
+                        
+                        // Format reported time
+                        let reportedTime = '';
+                        if (issue.reportedAt) {
+                            try {
+                                const date = new Date(issue.reportedAt);
+                                reportedTime = ` - ${date.getDate().toString().padStart(2, '0')}/${(date.getMonth() + 1).toString().padStart(2, '0')} ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
+                            } catch (e) {
+                                reportedTime = '';
+                            }
+                        }
+                        
+                        newMarkers.push({
+                            lat: issue.locationLatitude,
+                            lng: issue.locationLongitude,
+                            address: `${issueTypeName}${reportedTime}`,
+                            name: `${issueIcon} ${issueTypeName}`,
+                            type: 'stopover', // Use stopover type (icon/color will be different via issueCategory)
+                            issueCategory: issue.issueCategory, // Pass issueCategory for proper icon/color selection
+                        });
+                    }
+                });
+            }
+
             // Set the map center to the first point if we have valid markers
             if (newMarkers.length > 0) {
                 setMapLocation(newMarkers[0]);
@@ -209,7 +263,7 @@ const RouteMapSection: React.FC<RouteMapSectionProps> = ({ journeySegments, jour
             setRouteSegments(newRouteSegments);
             setHasValidRoute(validRouteFound);
         }
-    }, [journeySegments]);
+    }, [journeySegments, issues]);
 
     // Auto-fit bounds when routeSegments are ready and map is loaded
     useEffect(() => {

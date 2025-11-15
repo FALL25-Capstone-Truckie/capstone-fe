@@ -381,7 +381,7 @@ const issueService = {
     },
 
     /**
-     * Process ORDER_REJECTION: create transaction and route (Staff)
+     * Process ORDER_REJECTION issue: create journey and notify customer for payment
      * @param request Process request data
      * @returns Promise with updated rejection detail
      */
@@ -392,7 +392,6 @@ const issueService = {
         totalTollFee: number;
         totalTollCount: number;
         totalDistance: number;
-        paymentDeadlineHours: number;
     }): Promise<any> => {
         try {
             const response = await httpClient.post('/issues/order-rejection/process', request);

@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { Alert, message } from 'antd';
 import { WifiOutlined, DisconnectOutlined, LoadingOutlined, TruckOutlined } from '@ant-design/icons';
-import { playImportantNotificationSound, initAudioContext } from '../../../../utils/notificationSound';
+import { playImportantNotificationSound } from '../../../../utils/notificationSound';
 import RouteMapSection from './RouteMapSection';
 import RealTimeVehicleMarker from '../../../../components/map/RealTimeVehicleMarker';
 import OrderDetailStatusCard from '../../../../components/common/OrderDetailStatusCard';
@@ -60,20 +60,7 @@ const RouteMapWithRealTimeTracking: React.FC<RouteMapWithRealTimeTrackingProps> 
     isFinite(vehicle.latitude) && isFinite(vehicle.longitude)
   );
 
-  // Initialize audio context on user interaction (to avoid autoplay restrictions)
-  useEffect(() => {
-    const handleUserInteraction = () => {
-      initAudioContext();
-      window.removeEventListener('click', handleUserInteraction);
-      window.removeEventListener('touchstart', handleUserInteraction);
-    };
-    window.addEventListener('click', handleUserInteraction);
-    window.addEventListener('touchstart', handleUserInteraction);
-    return () => {
-      window.removeEventListener('click', handleUserInteraction);
-      window.removeEventListener('touchstart', handleUserInteraction);
-    };
-  }, []);
+  // ZZFX doesn't require audio context initialization
 
   // Detect when tracking becomes active (transition from FULLY_PAID to PICKING_UP)
   useEffect(() => {

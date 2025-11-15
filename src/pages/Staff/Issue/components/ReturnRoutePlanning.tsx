@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { Button, Card, Spin, Typography, App, Tooltip, Tag, Row, Col, Divider, Space, Badge, Modal, InputNumber, Alert } from 'antd';
 import routeService from '@/services/route';
 import issueService from '@/services/issue';
@@ -205,7 +205,8 @@ const ReturnRoutePlanning: React.FC<ReturnRoutePlanningProps> = ({
     };
 
     // Get current segments - backend already returns correct segments, just add colors
-    const getCurrentSegments = () => {
+    // Memoize to prevent recalculation on every render
+    const getCurrentSegments = useMemo(() => {
         if (!segments || segments.length === 0) return [];
 
         // Xác định base segment cho từng segment
@@ -241,7 +242,7 @@ const ReturnRoutePlanning: React.FC<ReturnRoutePlanningProps> = ({
                 segmentColor: segmentColor
             };
         });
-    };
+    }, [segments]); // Only recalculate when segments change
 
 
     // Generate route from base points and custom points
@@ -433,7 +434,7 @@ const ReturnRoutePlanning: React.FC<ReturnRoutePlanningProps> = ({
             // Remove duplicate success message (already shown in generateRouteFromPoints)
         } catch (error) {
             console.error('❌ Error calculating fee:', error);
-            message.error('Không thể tính cước phí trả hàng');
+            // message.error('Không thể tính cước phí trả hàng');
         }
     };
 
@@ -445,7 +446,7 @@ const ReturnRoutePlanning: React.FC<ReturnRoutePlanningProps> = ({
             const selectedIndex = selectedSegmentIndexRef.current;
 
             // Get the actual segments including stopovers
-            const currentSegments = getCurrentSegments();
+            const currentSegments = getCurrentSegments;
 
             if (selectedIndex >= currentSegments.length) {
                 message.error("Đoạn đường không hợp lệ");
@@ -619,7 +620,7 @@ const ReturnRoutePlanning: React.FC<ReturnRoutePlanningProps> = ({
                                 selectedSegmentIndexRef.current = newIndex;
                             }}
                         >
-                            {getCurrentSegments().map((segment: RouteSegment, index: number) => (
+                            {getCurrentSegments.map((segment: RouteSegment, index: number) => (
                                 <option key={index} value={index}>
                                     Đoạn {segment.segmentOrder}: {translatePointName(segment.startName)} → {translatePointName(segment.endName)} 
                                     ({(segment.distance || 0).toFixed(2)} km)
@@ -678,7 +679,7 @@ const ReturnRoutePlanning: React.FC<ReturnRoutePlanningProps> = ({
 
                 {/* Route Details */}
                 {(() => {
-                    const currentSegments = getCurrentSegments();
+                    const currentSegments = getCurrentSegments;
                     return currentSegments.length > 0 && (
                         <div className="flex-1 overflow-y-auto">
                             <h4 className="text-xs font-semibold mb-2">Chi tiết ({currentSegments.length} đoạn):</h4>
@@ -826,7 +827,7 @@ const ReturnRoutePlanning: React.FC<ReturnRoutePlanningProps> = ({
                     onLocationChange={handleLocationChange}
                     mapLocation={currentMapLocation}
                     showRouteLines={segments.length > 0}
-                    routeSegments={getCurrentSegments()}
+                    routeSegments={getCurrentSegments}
                     animateRoute={true}
                 />
             </div>

@@ -25,7 +25,7 @@ import {
 import BillOfLadingPreviewModal from "./StaffOrderDetail/BillOfLadingPreviewModal";
 import OrderLiveTrackingOnly from "./StaffOrderDetail/OrderLiveTrackingOnly";
 import { useOrderStatusTracking } from "../../../../hooks/useOrderStatusTracking";
-import { playImportantNotificationSound } from "../../../../utils/notificationSound";
+import { playNotificationSound, NotificationSoundType } from "../../../../utils/notificationSound";
 
 dayjs.extend(timezone);
 
@@ -129,7 +129,7 @@ const StaffOrderDetail: React.FC = () => {
           content: `🚛 ${statusChange.message || 'Tài xế đã bắt đầu lấy hàng!'}`,
           duration: 5,
         });
-        playImportantNotificationSound();
+        playNotificationSound(NotificationSoundType.SUCCESS);
         // Auto-switch to live tracking tab for delivery-related statuses
         setTimeout(() => {
           setActiveMainTab('liveTracking');
@@ -139,7 +139,7 @@ const StaffOrderDetail: React.FC = () => {
           content: `✅ ${statusChange.message || 'Đơn hàng đã được giao thành công!'}`,
           duration: 5,
         });
-        playImportantNotificationSound();
+        playNotificationSound(NotificationSoundType.SUCCESS);
         // Auto-switch to live tracking tab
         setTimeout(() => {
           setActiveMainTab('liveTracking');
@@ -149,7 +149,7 @@ const StaffOrderDetail: React.FC = () => {
           content: `⚠️ ${statusChange.message || 'Đơn hàng gặp sự cố!'}`,
           duration: 8,
         });
-        playImportantNotificationSound();
+        playNotificationSound(NotificationSoundType.ERROR);
         // Auto-switch to live tracking tab for incident visibility
         setTimeout(() => {
           setActiveMainTab('liveTracking');
@@ -159,7 +159,7 @@ const StaffOrderDetail: React.FC = () => {
           content: `🚗 ${statusChange.message || 'Đơn hàng đã được phân công cho tài xế!'}`,
           duration: 5,
         });
-        playImportantNotificationSound();
+        playNotificationSound(NotificationSoundType.INFO);
       } else {
         // Generic notification for other status changes
         messageApi.info({

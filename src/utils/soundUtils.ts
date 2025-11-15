@@ -14,18 +14,75 @@ export enum SoundType {
 class SoundManager {
   private audioContext: AudioContext | null = null;
   private sounds: Map<SoundType, AudioBuffer> = new Map();
+  private isEnabled: boolean = false;
 
   constructor() {
-    // Initialize audio context on first user interaction
-    this.initAudioContext();
+    // Don't initialize audio context immediately, wait for user interaction
+    this.setupUserInteractionListener();
+  }
+
+  private setupUserInteractionListener() {
+    // Enable audio on first user interaction
+    const enableAudio = async () => {
+      if (!this.isEnabled) {
+        console.log('🔊 [SoundUtils] Enabling audio on user interaction');
+        this.initAudioContext();
+        
+        // Try to resume audio context immediately
+        if (this.audioContext && this.audioContext.state === 'suspended') {
+          try {
+            await this.audioContext.resume();
+            console.log('✅ [SoundUtils] Audio context auto-resumed on interaction');
+          } catch (err) {
+            console.warn('⚠️ [SoundUtils] Failed to auto-resume:', err);
+          }
+        }
+        
+        this.isEnabled = true;
+      }
+    };
+
+    document.addEventListener('click', enableAudio, { once: true, capture: true });
+    document.addEventListener('keydown', enableAudio, { once: true, capture: true });
+    document.addEventListener('touchstart', enableAudio, { once: true, capture: true });
   }
 
   private initAudioContext() {
     try {
       this.audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      console.log('🔊 [SoundUtils] Audio context initialized:', this.audioContext.state);
     } catch (error) {
       console.warn('Audio context not supported:', error);
     }
+  }
+
+  /**
+   * Manually enable audio (call this on user interaction if needed)
+   */
+  async enableAudio() {
+    if (!this.audioContext) {
+      this.initAudioContext();
+    }
+    
+    // Resume audio context if suspended
+    if (this.audioContext && this.audioContext.state === 'suspended') {
+      try {
+        await this.audioContext.resume();
+        console.log('✅ [SoundUtils] Audio context manually resumed');
+      } catch (err) {
+        console.error('❌ [SoundUtils] Failed to resume audio context:', err);
+        throw err;
+      }
+    }
+    
+    this.isEnabled = true;
+  }
+  
+  /**
+   * Get current audio context state
+   */
+  getAudioContextState(): AudioContextState | null {
+    return this.audioContext?.state || null;
   }
 
   /**
@@ -33,27 +90,36 @@ class SoundManager {
    */
   async playSound(type: SoundType, volume: number = 0.5) {
     try {
+      console.log('🔊 [SoundUtils] Attempting to play sound:', type);
+      
       if (!this.audioContext) {
+        console.log('🔊 [SoundUtils] Initializing audio context...');
         this.initAudioContext();
       }
 
       if (!this.audioContext) {
-        console.warn('Audio context not available');
+        console.warn('🔊 [SoundUtils] Audio context not available');
         return;
       }
 
+      console.log('🔊 [SoundUtils] Audio context state:', this.audioContext.state);
+
       // Resume audio context if suspended (required by browser policies)
       if (this.audioContext.state === 'suspended') {
+        console.log('🔊 [SoundUtils] Resuming suspended audio context...');
         await this.audioContext.resume();
+        console.log('🔊 [SoundUtils] Audio context resumed, new state:', this.audioContext.state);
       }
 
       // Generate different tones for different notification types
       const frequency = this.getFrequencyForType(type);
       const duration = this.getDurationForType(type);
 
+      console.log('🔊 [SoundUtils] Playing tone:', { frequency, duration, volume });
       await this.playTone(frequency, duration, volume);
+      console.log('✅ [SoundUtils] Sound played successfully');
     } catch (error) {
-      console.warn('Error playing sound:', error);
+      console.error('❌ [SoundUtils] Error playing sound:', error);
     }
   }
 
@@ -135,4 +201,12 @@ export const playNotificationSound = (type: SoundType, volume?: number) => {
 
 export const playMultipleBeeps = (type: SoundType, count?: number, interval?: number) => {
   soundManager.playMultipleBeeps(type, count, interval);
+};
+
+export const enableAudio = async () => {
+  await soundManager.enableAudio();
+};
+
+export const getAudioContextState = () => {
+  return soundManager.getAudioContextState();
 };

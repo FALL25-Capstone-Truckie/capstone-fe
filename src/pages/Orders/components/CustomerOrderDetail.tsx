@@ -57,6 +57,7 @@ const CustomerOrderDetail: React.FC = () => {
   
   const [activeMainTab, setActiveMainTab] = useState<string>(getInitialTab());
   const [activeDetailTab, setActiveDetailTab] = useState<string>("0");
+  const [liveTrackingRemountKey, setLiveTrackingRemountKey] = useState<number>(0);
   const [vehicleSuggestions, setVehicleSuggestions] = useState<
     VehicleSuggestion[]
   >([]);
@@ -167,7 +168,8 @@ const CustomerOrderDetail: React.FC = () => {
       console.log('[CustomerOrderDetail] ✅ Order ID matched!');
       
       // CRITICAL: Refetch for important status transitions BEFORE and including PICKING_UP
-      // For status changes after PICKING_UP, just update locally to avoid disrupting live tracking
+      // Also refetch for RETURNING/RETURNED to get new return journey data
+      // For other status changes after PICKING_UP, just update locally to avoid disrupting live tracking
       const statusesRequiringRefetch = [
         'PROCESSING',
         'CONTRACT_DRAFT',
@@ -176,7 +178,9 @@ const CustomerOrderDetail: React.FC = () => {
         'ASSIGNED_TO_DRIVER',
         'FULLY_PAID',
         'PICKING_UP',
-        'REJECT_ORDER'
+        'REJECT_ORDER',
+        'RETURNING',    // Refetch để lấy return journey mới
+        'RETURNED'      // Refetch để cập nhật final state
       ];
       
       const shouldRefetch = statusesRequiringRefetch.includes(statusChange.newStatus);
@@ -189,9 +193,7 @@ const CustomerOrderDetail: React.FC = () => {
         'RESOLVED',
         'COMPENSATION',
         'DELIVERED',
-        'SUCCESSFUL',
-        'RETURNING',
-        'RETURNED'
+        'SUCCESSFUL'
       ];
       
       const isAfterPickupStatus = statusesAfterPickup.includes(statusChange.newStatus);
@@ -259,10 +261,17 @@ const CustomerOrderDetail: React.FC = () => {
       }
       
       // Auto-switch to "Live Tracking" tab for delivery-related statuses
-      if ([OrderStatusEnum.PICKING_UP, OrderStatusEnum.ON_DELIVERED, OrderStatusEnum.ONGOING_DELIVERED].includes(statusChange.newStatus)) {
+      if ([OrderStatusEnum.PICKING_UP, OrderStatusEnum.ON_DELIVERED, OrderStatusEnum.ONGOING_DELIVERED, OrderStatusEnum.RETURNING].includes(statusChange.newStatus)) {
         setTimeout(() => {
           setActiveMainTab('liveTracking');
           // Auto scroll will be handled by useEffect watching activeMainTab
+        }, 1000);
+      }
+      
+      // Auto-switch to "Return Issues" tab when RETURNED status
+      if (statusChange.newStatus === OrderStatusEnum.RETURNED) {
+        setTimeout(() => {
+          setActiveMainTab('returnIssues');
         }, 1000);
       }
     } else {
@@ -301,18 +310,20 @@ const CustomerOrderDetail: React.FC = () => {
       OrderStatusEnum.DELIVERED,
       OrderStatusEnum.RETURNING
     ].includes(orderStatus as OrderStatusEnum);
-    
     const allDetailsInFinalStatus = areAllOrderDetailsInFinalStatus(orderDetails);
     const shouldShowLiveTracking = isDeliveryStatus && !allDetailsInFinalStatus;
     
     // Check if return issues tab should be available
     const returnIssuesCount = 
-      !vehicleAssignments || vehicleAssignments.length === 0 
+      !vehicleAssignments || vehicleAssignments.length === 0
         ? 0 
         : vehicleAssignments.reduce((count: number, va: any) => {
-            const rejectionIssues = va.issues ? va.issues.filter((issue: any) => issue.issueCategory === 'ORDER_REJECTION' && issue.status === 'IN_PROGRESS') : [];
-            return count + rejectionIssues.length;
-          }, 0);
+        const rejectionIssues = va.issues ? va.issues.filter((issue: any) => 
+          issue.issueCategory === 'ORDER_REJECTION' && 
+          (issue.status === 'IN_PROGRESS' || issue.status === 'RESOLVED')
+        ) : [];
+        return count + rejectionIssues.length;
+      }, 0);
     const shouldShowReturnIssues = returnIssuesCount > 0;
     
     // Validate tab availability and fallback to 'basic' if not available
@@ -676,7 +687,10 @@ const CustomerOrderDetail: React.FC = () => {
     !order.vehicleAssignments || order.vehicleAssignments.length === 0 
       ? 0 
       : order.vehicleAssignments.reduce((count: number, va: any) => {
-          const rejectionIssues = va.issues ? va.issues.filter((issue: any) => issue.issueCategory === 'ORDER_REJECTION' && issue.status === 'IN_PROGRESS') : [];
+          const rejectionIssues = va.issues ? va.issues.filter((issue: any) => 
+            issue.issueCategory === 'ORDER_REJECTION' && 
+            (issue.status === 'IN_PROGRESS' || issue.status === 'RESOLVED')
+          ) : [];
           return count + rejectionIssues.length;
         }, 0);
 
@@ -709,7 +723,17 @@ const CustomerOrderDetail: React.FC = () => {
         <Tabs
           activeKey={activeMainTab}
           onChange={(key) => {
+            const wasLiveTracking = activeMainTab === 'liveTracking';
+            const isNowLiveTracking = key === 'liveTracking';
+            
             setActiveMainTab(key);
+            
+            // Force complete remount when switching TO liveTracking from another tab
+            if (!wasLiveTracking && isNowLiveTracking) {
+              console.log('[CustomerOrderDetail] 🔄 Force remounting LiveTracking component');
+              setLiveTrackingRemountKey(prev => prev + 1);
+            }
+            
             // Scroll map to view when live tracking tab is clicked
             if (key === 'liveTracking') {
               setTimeout(() => {
@@ -768,10 +792,13 @@ const CustomerOrderDetail: React.FC = () => {
               }
               key="liveTracking"
             >
+              {/* Force complete remount with key when tab activates */}
               <OrderLiveTrackingOnly
+                key={`live-tracking-${order.id}-${liveTrackingRemountKey}`}
                 orderId={order.id}
                 shouldShowRealTimeTracking={true}
                 vehicleAssignments={order.vehicleAssignments || []}
+                isTabActive={activeMainTab === 'liveTracking'}
               />
             </TabPane>
           )}
@@ -819,7 +846,10 @@ const CustomerOrderDetail: React.FC = () => {
                 <ReturnShippingIssuesSection 
                   orderId={id}
                   issues={order.vehicleAssignments?.flatMap((va: any) => 
-                    va.issues?.filter((issue: any) => issue.issueCategory === 'ORDER_REJECTION' && issue.status === 'IN_PROGRESS') || []
+                    va.issues?.filter((issue: any) => 
+                      issue.issueCategory === 'ORDER_REJECTION' && 
+                      (issue.status === 'IN_PROGRESS' || issue.status === 'RESOLVED')
+                    ) || []
                   ) || []}
                   isInTab={true}
                 />

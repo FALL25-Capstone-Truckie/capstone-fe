@@ -37,7 +37,7 @@ export interface OrderDetailForIssue {
     unit: string;
 }
 
-export type IssueStatus = 'OPEN' | 'IN_PROGRESS' | 'RESOLVED';
+export type IssueStatus = 'OPEN' | 'IN_PROGRESS' | 'RESOLVED' | 'PAYMENT_OVERDUE';
 
 export type IssueCategory = 
     | 'GENERAL' 
@@ -201,6 +201,8 @@ export const getIssueStatusColor = (status: IssueStatus): string => {
             return 'blue';
         case 'RESOLVED':
             return 'green';
+        case 'PAYMENT_OVERDUE':
+            return 'red';
         default:
             return 'default';
     }
@@ -214,6 +216,8 @@ export const getIssueStatusLabel = (status: IssueStatus): string => {
             return 'Đang xử lý';
         case 'RESOLVED':
             return 'Đã giải quyết';
+        case 'PAYMENT_OVERDUE':
+            return 'Quá hạn thanh toán';
         default:
             return status;
     }

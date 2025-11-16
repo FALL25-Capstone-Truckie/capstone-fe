@@ -334,17 +334,26 @@ const VehicleAssignmentSection: React.FC<VehicleAssignmentSectionProps> = ({
                         {va.journeyHistories && va.journeyHistories.length > 0 ? (
                             <div className="p-2">
                                 {(() => {
-                                    // Chỉ hiển thị journey history mới nhất (phần tử đầu tiên)
-                                    const latestJourney = va.journeyHistories[0];
-                                    if (!latestJourney.journeySegments || latestJourney.journeySegments.length === 0) {
+                                    // Chỉ hiển thị ACTIVE journey history mới nhất
+                                    const activeJourneys = va.journeyHistories
+                                        .filter((j: any) => j.status === 'ACTIVE')
+                                        .sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+                                    
+                                    if (activeJourneys.length === 0) {
+                                        return <Empty description="Không có lộ trình đang hoạt động" />;
+                                    }
+                                    
+                                    const activeJourney = activeJourneys[0];
+                                    
+                                    if (!activeJourney.journeySegments || activeJourney.journeySegments.length === 0) {
                                         return <Empty description="Không có thông tin lộ trình" />;
                                     }
 
                                     return (
                                         <div>
                                             <RouteMapSection
-                                                journeySegments={latestJourney.journeySegments}
-                                                journeyInfo={latestJourney}
+                                                journeySegments={activeJourney.journeySegments}
+                                                journeyInfo={activeJourney}
                                                 issues={va.issues}
                                             />
                                         </div>

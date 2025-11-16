@@ -365,8 +365,9 @@ const ReturnRoutePlanning: React.FC<ReturnRoutePlanningProps> = ({
                     ...segment,
                     tolls: segment.tolls || [],
                     distance: segment.distance || 0,
-                    startName: translatePointName(segment.startName),
-                    endName: translatePointName(segment.endName),
+                    // Keep original English names for consistency with backend
+                    startName: segment.startName,
+                    endName: segment.endName,
                     segmentOrder: segment.segmentOrder || (index + 1)
                 }));
 

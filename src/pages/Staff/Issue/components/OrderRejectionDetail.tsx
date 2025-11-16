@@ -134,18 +134,23 @@ const globalCustomPoints: RoutePoint[] = [];
             setRouteSegments(segments.map((seg: any, idx: number) => {
                 // Calculate estimated toll fee for this segment
                 const estimatedTollFee = seg.tolls?.reduce((sum: number, toll: any) => 
-                    sum + (toll.price || 0), 0) || 0;
+                    sum + (toll.amount || toll.price || 0), 0) || 0;
+
+                // Extract start/end coordinates from path array
+                const path = seg.path || [];
+                const startPoint = path.length > 0 ? path[0] : [0, 0]; // [lng, lat]
+                const endPoint = path.length > 0 ? path[path.length - 1] : [0, 0]; // [lng, lat]
 
                 return {
                     segmentOrder: idx + 1,
                     startPointName: seg.startName,
                     endPointName: seg.endName,
-                    startLatitude: seg.startLat,
-                    startLongitude: seg.startLng,
-                    endLatitude: seg.endLat,
-                    endLongitude: seg.endLng,
-                    distanceMeters: Math.round(seg.distance * 1000),
-                    pathCoordinatesJson: JSON.stringify(seg.path || []),
+                    startLatitude: startPoint[1], // lat from [lng, lat]
+                    startLongitude: startPoint[0], // lng from [lng, lat]
+                    endLatitude: endPoint[1], // lat from [lng, lat]
+                    endLongitude: endPoint[0], // lng from [lng, lat]
+                    distanceMeters: seg.distance, // Keep as km (field name is misleading, but system uses km)
+                    pathCoordinatesJson: JSON.stringify(path), // Already in [[lng, lat], ...] format
                     tollDetails: seg.tolls || [],
                     estimatedTollFee: estimatedTollFee
                 };
@@ -182,10 +187,15 @@ const globalCustomPoints: RoutePoint[] = [];
         // Subscribe to issue updates via WebSocket
         const unsubscribe = issueWebSocket.subscribeToIssue(issue.id, (updatedIssue) => {
             console.log('🔄 [OrderRejectionDetail] Received issue update:', updatedIssue);
+            console.log('   - Issue status:', updatedIssue.status);
+            console.log('   - Transaction:', updatedIssue.transaction);
             
-            // If issue status changed to RESOLVED (payment successful), refetch detail
-            if (updatedIssue.status === 'RESOLVED') {
-                console.log('✅ [OrderRejectionDetail] Issue resolved, refetching detail...');
+            // Check if transaction status changed to PAID (customer paid successfully)
+            const transactionPaid = updatedIssue.transaction?.status === 'PAID';
+            
+            // If transaction paid OR issue resolved, refetch detail
+            if (transactionPaid || updatedIssue.status === 'RESOLVED') {
+                console.log('✅ [OrderRejectionDetail] Payment successful or issue resolved, refetching detail...');
                 message.success('Khách hàng đã thanh toán thành công!');
                 fetchRejectionDetail();
             }
@@ -316,16 +326,8 @@ const globalCustomPoints: RoutePoint[] = [];
                     console.log("🗺️ Setting segments for VietMapMap:", processedSegments);
                     setSegments(processedSegments); // For VietMapMap
                     
-                    // Process segments cho UI list
-                    const uiSegments = response.segments.map((segment, index) => ({
-                        segmentOrder: index + 1,
-                        startPointName: segment.startName,
-                        endPointName: segment.endName,
-                        distanceMeters: segment.distance * 1000 // Convert to meters
-                    }));
-                    
-                    console.log("📋 Setting UI segments:", uiSegments);
-                    setRouteSegments(uiSegments);
+                    // Note: routeSegments will be set by handleRouteGenerated callback
+                    // which properly transforms segments with all required fields
                     // message.success(`Tạo tuyến đường thành công với ${response.segments.length} đoạn`);
                     routeSuccess = true;
                     
@@ -530,6 +532,17 @@ const globalCustomPoints: RoutePoint[] = [];
         setProcessing(true);
         setRoutingLoading(true);
         try {
+            // Log request data for debugging
+            console.log('🚀 [OrderRejectionDetail] Submitting processOrderRejection with:', {
+                issueId: issue.id,
+                adjustedReturnFee: adjustedFee || undefined,
+                routeSegmentsCount: routeSegments.length,
+                routeSegments: routeSegments,
+                totalTollFee: 0,
+                totalTollCount: 0,
+                totalDistance: feeInfo.distanceKm,
+            });
+            
             // Create journey history + transaction
             await issueService.processOrderRejection({
                 issueId: issue.id,
@@ -868,7 +881,7 @@ const globalCustomPoints: RoutePoint[] = [];
                         </div>
                     </div>
 
-                    {detailInfo.returnTransaction.status === 'PAID' && (
+                    {/* {detailInfo.returnTransaction.status === 'PAID' && (
                         <Alert
                             icon={<CheckCircleOutlined />}
                             message="Đã thanh toán thành công"
@@ -876,7 +889,7 @@ const globalCustomPoints: RoutePoint[] = [];
                             type="success"
                             showIcon
                         />
-                    )}
+                    )} */}
                 </Card>
             )}
 
@@ -943,11 +956,48 @@ const globalCustomPoints: RoutePoint[] = [];
                 />
             )}
 
+            {/* Payment Overdue Alert */}
+            {issue.status === 'PAYMENT_OVERDUE' && (
+                <Alert
+                    icon={<WarningOutlined />}
+                    message={
+                        <div className="font-semibold text-lg">⚠️ Quá hạn thanh toán</div>
+                    }
+                    description={
+                        <div className="space-y-2">
+                            <p className="text-base">
+                                Khách hàng đã quá thời gian thanh toán cước phí trả hàng <strong>{formatCurrency(detailInfo?.finalFee || 0)}</strong>.
+                            </p>
+                            {/* <p className="text-sm text-gray-700">
+                                🚨 <strong>Hành động cần thực hiện:</strong>
+                            </p>
+                            <ul className="list-disc list-inside text-sm text-gray-700 space-y-1 ml-4">
+                                <li>Liên hệ khách hàng qua số điện thoại bên trên để xác nhận</li>
+                                <li>Nếu khách hàng từ chối thanh toán: Hàng sẽ bị bỏ lại và quay về lộ trình ban đầu</li>
+                                <li>Nếu khách hàng đồng ý thanh toán: Liên hệ quản lý để tạo giao dịch mới</li>
+                            </ul> */}
+                            <Divider className="my-3" />
+                            <div className="bg-red-50 p-3 rounded border border-red-200">
+                                <p className="text-sm text-red-700 mb-2">
+                                    <strong>⏰ Thời gian quá hạn:</strong> {detailInfo?.paymentDeadline ? new Date(detailInfo.paymentDeadline).toLocaleString('vi-VN') : 'N/A'}
+                                </p>
+                                {/* <p className="text-sm text-gray-600">
+                                    Vui lòng xử lý sự cố này sớm nhất để tránh ảnh hưởng đến lịch trình giao hàng.
+                                </p> */}
+                            </div>
+                        </div>
+                    }
+                    type="error"
+                    showIcon
+                    className="mb-4"
+                />
+            )}
+
             {issue.status === 'RESOLVED' && (
                 <>
                     <Alert
                         message="Đã hoàn tất"
-                        description="Khách hàng đã thanh toán và tài xế đã trả hàng về điểm lấy hàng."
+                        description="Khách hàng đã thanh toán và tài xế sẽ tiến hành trả hàng về điểm lấy hàng."
                         type="success"
                         showIcon
                     />

@@ -190,11 +190,11 @@ const OrderLiveTrackingMap: React.FC<OrderLiveTrackingMapProps> = ({
                 Đã kết nối
               </Tag>
             )}
-            {!isConnected && !isConnecting && (
+            {/* {!isConnected && !isConnecting && (
               <Tag icon={<DisconnectOutlined />} color="error">
                 Mất kết nối
               </Tag>
-            )}
+            )} */}
             {validVehicles.length > 0 && (
               <Tag icon={<TruckOutlined />} color="blue">
                 {validVehicles.length} xe đang vận chuyển

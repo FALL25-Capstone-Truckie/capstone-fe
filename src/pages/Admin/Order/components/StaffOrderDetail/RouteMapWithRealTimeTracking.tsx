@@ -551,11 +551,11 @@ const RouteMapWithRealTimeTracking: React.FC<RouteMapWithRealTimeTrackingProps> 
                   )}
                   {isConnecting ? 'Đang kết nối...' : isConnected ? 'Theo dõi trực tiếp' : 'Mất kết nối'}
                 </span>
-                {!isConnected && !isConnecting && vehicleLocations.length > 0 && (
+                {/* {!isConnected && !isConnecting && vehicleLocations.length > 0 && (
                   <span className="text-xs text-yellow-600">
                     📍 Hiển thị vị trí cuối cùng
                   </span>
-                )}
+                )} */}
               </div>
             </div>
           )}
@@ -602,11 +602,11 @@ const RouteMapWithRealTimeTracking: React.FC<RouteMapWithRealTimeTrackingProps> 
                 )}
                 {isConnecting ? 'Đang kết nối...' : isConnected ? 'Theo dõi trực tiếp' : 'Mất kết nối'}
               </span>
-              {!isConnected && !isConnecting && vehicleLocations.length > 0 && (
+              {/* {!isConnected && !isConnecting && vehicleLocations.length > 0 && (
                 <span className="text-xs text-yellow-600">
                   📍 Hiển thị vị trí cuối cùng
                 </span>
-              )}
+              )} */}
             </div>
           </div>
         )}

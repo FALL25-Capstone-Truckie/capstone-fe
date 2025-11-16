@@ -6,7 +6,8 @@ import {
   ClockCircleOutlined,
   CheckCircleOutlined,
   WarningOutlined,
-  InboxOutlined
+  InboxOutlined,
+  SyncOutlined
 } from '@ant-design/icons';
 import customerIssueService, { type ReturnShippingIssue } from '@/services/issue/customerIssueService';
 import dayjs from 'dayjs';
@@ -40,30 +41,30 @@ const ReturnShippingIssuesSection: React.FC<ReturnShippingIssuesSectionProps> = 
   const mapToReturnShippingIssue = (issue: any): ReturnShippingIssue | null => {
     if (issue.issueCategory !== 'ORDER_REJECTION') return null;
 
+    // Map transactions array if available
+    const transactions = issue.transactions?.map((t: any) => ({
+      id: t.id,
+      status: t.status,
+      amount: t.amount,
+      currencyCode: t.currencyCode || 'VND',
+      paymentProvider: t.paymentProvider || 'PayOS',
+      paymentDate: t.paymentDate
+    })) || [];
+
+    // Find PAID transaction for backward compatibility
+    const paidTransaction = transactions.find((t: any) => t.status === 'PAID');
+
     return {
       issueId: issue.id,
-      issueCode: issue.id, // Use id as code if no code available
+      issueCode: issue.id,
       description: issue.description || '',
       status: issue.status || 'IN_PROGRESS',
-      reportedAt: new Date().toISOString(), // Use current time if not available
+      reportedAt: new Date().toISOString(),
       finalFee: issue.finalFee || 0,
       paymentDeadline: issue.paymentDeadline,
       affectedOrderDetails: issue.affectedOrderDetails || [],
-      returnTransaction: issue.transaction ? {
-        id: issue.transaction.id,
-        status: issue.transaction.status,
-        amount: issue.transaction.amount,
-        currencyCode: issue.transaction.currencyCode || 'VND',
-        paymentProvider: issue.transaction.paymentProvider || 'PayOS',
-        paymentDate: issue.transaction.paymentDate
-      } : issue.refund ? {
-        id: issue.refund.id,
-        status: 'PAID',
-        amount: issue.refund.refundAmount,
-        currencyCode: 'VND',
-        paymentProvider: 'Refund',
-        paymentDate: issue.refund.refundDate
-      } : undefined
+      returnTransaction: paidTransaction || transactions[transactions.length - 1], // Use latest transaction
+      transactions: transactions // Add transactions array
     };
   };
 
@@ -200,7 +201,12 @@ const ReturnShippingIssuesSection: React.FC<ReturnShippingIssuesSectionProps> = 
 
   // Count pending payments
   const pendingPayments = mappedIssues.filter(
-    issue => issue.status === 'IN_PROGRESS' && issue.returnTransaction?.status === 'PENDING'
+    issue => {
+      if (issue.status !== 'IN_PROGRESS') return false;
+      // Check if there's any PENDING transaction
+      const hasPendingTransaction = issue.transactions?.some((t: any) => t.status === 'PENDING');
+      return hasPendingTransaction || issue.returnTransaction?.status === 'PENDING';
+    }
   ).length;
 
   return (
@@ -379,7 +385,16 @@ const ReturnShippingIssuesSection: React.FC<ReturnShippingIssuesSectionProps> = 
                     </span>
                   </div>
                   
-                  {issue.paymentDeadline && (issue.returnTransaction?.status === 'PENDING' || !issue.returnTransaction) && (
+                  {/* Only show countdown if issue is IN_PROGRESS, has payment deadline, and NOT yet paid */}
+                  {issue.status === 'IN_PROGRESS' && issue.paymentDeadline && (() => {
+                    const hasPaidTransaction = issue.transactions?.some((t: any) => t.status === 'PAID') || 
+                                              issue.returnTransaction?.status === 'PAID';
+                    const hasPendingTransaction = issue.transactions?.some((t: any) => t.status === 'PENDING') || 
+                                                  issue.returnTransaction?.status === 'PENDING' || 
+                                                  !issue.returnTransaction;
+                    // Only show countdown if NOT paid yet and has pending/no transaction
+                    return !hasPaidTransaction && hasPendingTransaction;
+                  })() && (
                     <>
                       <div className="border-t pt-4 mt-3">
                         <div className="text-center mb-3">
@@ -397,9 +412,6 @@ const ReturnShippingIssuesSection: React.FC<ReturnShippingIssuesSectionProps> = 
                                 <div className="text-5xl font-bold text-red-600 mb-1">
                                   Hết hạn
                                 </div>
-                                {/* <div className="text-sm text-red-500">
-                                  ❌ Đã quá thời gian thanh toán
-                                </div> */}
                               </div>
                             ) : (
                               <Statistic.Countdown
@@ -482,25 +494,113 @@ const ReturnShippingIssuesSection: React.FC<ReturnShippingIssuesSectionProps> = 
                 </Button>
               )}
 
-              {issue.status === 'RESOLVED' && issue.returnTransaction?.status === 'PAID' && (
+              {/* Payment Overdue Status */}
+              {issue.status === 'PAYMENT_OVERDUE' && (
                 <Alert
-                  message="✅ Đã thanh toán thành công"
-                  description="Tài xế đang tiến hành trả hàng về điểm lấy hàng. Vui lòng theo dõi trạng thái vận chuyển."
-                  type="success"
-                  showIcon
-                  icon={<CheckCircleOutlined />}
-                />
-              )}
-
-              {issue.status === 'RESOLVED' && issue.returnTransaction?.status !== 'PAID' && (
-                <Alert
-                  message="❌ Đã hủy do hết hạn"
-                  description="Các kiện hàng bị từ chối đã được hủy do không thanh toán phí trả hàng trong thời hạn quy định."
-                  type="warning"
+                  message="⏰ Quá hạn thanh toán"
+                  description={
+                    <div className="space-y-2">
+                      <p>
+                        Bạn đã quá thời gian thanh toán phí trả hàng <strong>{formatCurrency(issue.finalFee || 0)}</strong>.
+                      </p>
+                      <p className="text-sm">
+                        Các kiện hàng đã bị từ chối sẽ không được trả về và sẽ được xử lý theo điều khoản của hợp đồng. 
+                      </p>
+                      {issue.paymentDeadline && (
+                        <p className="text-xs text-red-600">
+                          Hết hạn lúc: {formatDeadline(issue.paymentDeadline)}
+                        </p>
+                      )}
+                    </div>
+                  }
+                  type="error"
                   showIcon
                   icon={<WarningOutlined />}
                 />
               )}
+
+              {/* Show payment success and return delivery status */}
+              {(() => {
+                // Check if there's any PAID transaction
+                const hasPaidTransaction = issue.transactions?.some((t: any) => t.status === 'PAID') || 
+                                          issue.returnTransaction?.status === 'PAID';
+                const paidTx = issue.transactions?.find((t: any) => t.status === 'PAID') || issue.returnTransaction;
+                
+                // IN_PROGRESS + PAID = Driver is returning goods
+                if (issue.status === 'IN_PROGRESS' && hasPaidTransaction) {
+                  return (
+                    <div className="space-y-3">
+                      <Alert
+                        message="✅ Đã thanh toán thành công"
+                        description="Tài xế đang tiến hành trả hàng về điểm lấy hàng. Vui lòng theo dõi trạng thái vận chuyển."
+                        type="info"
+                        showIcon
+                        icon={<SyncOutlined spin />}
+                      />
+                      
+                      {/* Show transaction details */}
+                      <Card size="small" className="bg-blue-50 border-blue-200">
+                        <Descriptions column={2} size="small">
+                          <Descriptions.Item label="Mã giao dịch">{paidTx?.id}</Descriptions.Item>
+                          <Descriptions.Item label="Số tiền">
+                            <span className="font-bold text-blue-600">{formatCurrency(paidTx?.amount || 0)}</span>
+                          </Descriptions.Item>
+                          <Descriptions.Item label="Ngày thanh toán">
+                            {paidTx?.paymentDate ? dayjs(paidTx.paymentDate).format('DD/MM/YYYY HH:mm:ss') : 'N/A'}
+                          </Descriptions.Item>
+                          <Descriptions.Item label="Trạng thái">
+                            <TransactionStatusTag status={paidTx?.status as TransactionEnum} />
+                          </Descriptions.Item>
+                        </Descriptions>
+                      </Card>
+                    </div>
+                  );
+                }
+                
+                // RESOLVED + PAID = Driver confirmed return delivery completed
+                if (issue.status === 'RESOLVED' && hasPaidTransaction) {
+                  return (
+                    <div className="space-y-3">
+                      <Alert
+                        message="✅ Đã hoàn thành trả hàng"
+                        description="Tài xế đã xác nhận trả hàng về điểm lấy hàng thành công. Vấn đề đã được giải quyết hoàn toàn."
+                        type="success"
+                        showIcon
+                        icon={<CheckCircleOutlined />}
+                      />
+                      
+                      {/* Show transaction details */}
+                      <Card size="small" className="bg-green-50 border-green-200">
+                        <Descriptions column={2} size="small">
+                          <Descriptions.Item label="Mã giao dịch">{paidTx?.id}</Descriptions.Item>
+                          <Descriptions.Item label="Số tiền">
+                            <span className="font-bold text-green-600">{formatCurrency(paidTx?.amount || 0)}</span>
+                          </Descriptions.Item>
+                          <Descriptions.Item label="Ngày thanh toán">
+                            {paidTx?.paymentDate ? dayjs(paidTx.paymentDate).format('DD/MM/YYYY HH:mm:ss') : 'N/A'}
+                          </Descriptions.Item>
+                          <Descriptions.Item label="Trạng thái">
+                            <TransactionStatusTag status={paidTx?.status as TransactionEnum} />
+                          </Descriptions.Item>
+                        </Descriptions>
+                      </Card>
+                    </div>
+                  );
+                }
+                
+                // RESOLVED without PAID = Cancelled/Rejected payment
+                if (issue.status === 'RESOLVED' && !hasPaidTransaction) {
+                  return (
+                    <Alert
+                      message="❌ Đã hủy do hết hạn"
+                      description="Các kiện hàng bị từ chối đã được hủy do không thanh toán phí trả hàng trong thời hạn quy định."
+                      type="warning"
+                      showIcon
+                      icon={<WarningOutlined />}
+                    />
+                  );
+                }
+              })()}
             </Card>
           ))}
         </div>

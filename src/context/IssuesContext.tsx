@@ -62,6 +62,7 @@ export const IssuesProvider: React.FC<IssuesProviderProps> = ({ children }) => {
   const subscriptionStatusRef = useRef<any>(null);
   const subscriptionUserMessagesRef = useRef<any>(null);
   const subscriptionReturnPaymentRef = useRef<any>(null);
+  const shownPaymentNotificationsRef = useRef<Set<string>>(new Set());
 
   // Fetch issues from API
   const fetchIssues = useCallback(async () => {
@@ -155,6 +156,16 @@ export const IssuesProvider: React.FC<IssuesProviderProps> = ({ children }) => {
   const handleReturnPaymentSuccess = useCallback((messageData: any) => {
     console.log('💰 [IssuesContext] Return payment success:', messageData);
     
+    // Check if we already shown modal for this issue to prevent duplicate notifications
+    const notificationKey = `${messageData.issueId}_${messageData.transactionId || 'payment'}`;
+    if (shownPaymentNotificationsRef.current.has(notificationKey)) {
+      console.log('⏭️ [IssuesContext] Skipping duplicate notification for:', notificationKey);
+      return;
+    }
+    
+    // Mark this notification as shown
+    shownPaymentNotificationsRef.current.add(notificationKey);
+    
     // Play notification sound for payment success
     try {
       playNotificationSound(NotificationSoundType.PAYMENT_SUCCESS);
@@ -162,24 +173,23 @@ export const IssuesProvider: React.FC<IssuesProviderProps> = ({ children }) => {
       console.error('Failed to play notification sound:', error);
     }
     
-    // Show notification modal
-    modal.success({
-      title: '✅ Khách hàng đã thanh toán cước trả hàng',
-      content: messageData.message,
-      okText: 'Đã hiểu',
-      width: 500,
-    });
-    
-    // Show antd message
-    message.success({
-      content: `💰 ${messageData.message}`,
-      duration: 8,
-    });
+    // Show notification modal - only once
+    // modal.success({
+    //   title: '✅ Khách hàng đã thanh toán cước trả hàng',
+    //   content: messageData.message,
+    //   okText: 'Đã hiểu',
+    //   width: 500,
+    // });
     
     // Show antd notification (persistent)
+    // Convert HTML message to React element with proper line breaks
+    const messageLines = messageData.message.split('\n').map((line: string, index: number) => (
+      <div key={index} dangerouslySetInnerHTML={{ __html: line }} />
+    ));
+    
     notification.success({
       message: '💰 Thanh toán thành công',
-      description: messageData.message,
+      description: <div>{messageLines}</div>,
       duration: 10,
       placement: 'topRight',
     });
@@ -192,25 +202,21 @@ export const IssuesProvider: React.FC<IssuesProviderProps> = ({ children }) => {
       detail: { issueId: messageData.issueId }
     }));
     
-    // Show browser notification if supported
-    if ('Notification' in window) {
-      if (Notification.permission === 'granted') {
-        new Notification('💰 Thanh toán thành công', {
-          body: messageData.message,
-          icon: '/favicon.ico'
-        });
-      } else if (Notification.permission !== 'denied') {
-        Notification.requestPermission().then(permission => {
-          if (permission === 'granted') {
-            new Notification('💰 Thanh toán thành công', {
-              body: messageData.message,
-              icon: '/favicon.ico'
-            });
-          }
-        });
-      }
+    // Emit event for customer order detail page to refetch order (to get ACTIVE journey history)
+    if (messageData.orderId) {
+      window.dispatchEvent(new CustomEvent('refetch-order-detail', {
+        detail: { orderId: messageData.orderId }
+      }));
     }
-  }, [fetchIssues]);
+    
+    // Show browser notification if supported
+    if ('Notification' in window && Notification.permission === 'granted') {
+      new Notification('💰 Thanh toán thành công', {
+        body: messageData.message,
+        icon: '/favicon.ico'
+      });
+    }
+  }, [fetchIssues, modal, notification]);
 
   // Handle staff-specific messages from WebSocket
   const handleStaffMessage = useCallback((messageData: any) => {

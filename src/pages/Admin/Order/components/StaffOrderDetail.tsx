@@ -70,7 +70,8 @@ const StaffOrderDetail: React.FC = () => {
       console.log('[StaffOrderDetail] ✅ Order ID matched!');
       
       // CRITICAL: Refetch for important status transitions BEFORE and including PICKING_UP
-      // For status changes after PICKING_UP, just update locally to avoid disrupting real-time tracking
+      // Also refetch for RETURNING/RETURNED to get new return journey data
+      // For other status changes after PICKING_UP, just update locally to avoid disrupting real-time tracking
       const statusesRequiringRefetch = [
         'PROCESSING',
         'CONTRACT_DRAFT',
@@ -79,7 +80,9 @@ const StaffOrderDetail: React.FC = () => {
         'ASSIGNED_TO_DRIVER',
         'FULLY_PAID',
         'PICKING_UP',
-        'REJECT_ORDER'
+        'REJECT_ORDER',
+        'RETURNING',    // Refetch để lấy return journey mới
+        'RETURNED'      // Refetch để cập nhật final state
       ];
       
       const shouldRefetch = statusesRequiringRefetch.includes(statusChange.newStatus);
@@ -92,9 +95,7 @@ const StaffOrderDetail: React.FC = () => {
         'RESOLVED',
         'COMPENSATION',
         'DELIVERED',
-        'SUCCESSFUL',
-        'RETURNING',
-        'RETURNED'
+        'SUCCESSFUL'
       ];
       
       const isAfterPickupStatus = statusesAfterPickup.includes(statusChange.newStatus);
@@ -154,6 +155,22 @@ const StaffOrderDetail: React.FC = () => {
         setTimeout(() => {
           setActiveMainTab('liveTracking');
         }, 1000);
+      } else if (statusChange.newStatus === 'RETURNING') {
+        messageApi.warning({
+          content: `↩️ ${statusChange.message || 'Đơn hàng đang được trả về!'}`,
+          duration: 6,
+        });
+        playNotificationSound(NotificationSoundType.WARNING);
+        // Auto-switch to live tracking tab to see return journey
+        setTimeout(() => {
+          setActiveMainTab('liveTracking');
+        }, 1000);
+      } else if (statusChange.newStatus === 'RETURNED') {
+        messageApi.info({
+          content: `📦 ${statusChange.message || 'Đơn hàng đã được trả về thành công!'}`,
+          duration: 5,
+        });
+        playNotificationSound(NotificationSoundType.INFO);
       } else if (statusChange.newStatus === 'ASSIGNED_TO_DRIVER') {
         messageApi.info({
           content: `🚗 ${statusChange.message || 'Đơn hàng đã được phân công cho tài xế!'}`,

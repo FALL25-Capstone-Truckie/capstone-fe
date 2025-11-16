@@ -22,7 +22,8 @@ import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
 import RouteMapSection from "./RouteMapSection";
 import OrderDetailStatusCard from "../../../../../components/common/OrderDetailStatusCard";
-import { formatSealStatus, getSealStatusColor } from "../../../../../models/JourneyHistory";
+import { formatSealStatus } from "../../../../../models/JourneyHistory";
+import { getSealStatusColor } from "../../../../../constants/enums";
 import { getIssueStatusLabel, getIssueStatusColor, getSealStatusLabel } from '@/constants/enums';
 import vietmapService from '@/services/vietmap/vietmapService';
 import "./VehicleAssignmentSection.css";
@@ -338,21 +339,32 @@ const VehicleAssignmentSection: React.FC<VehicleAssignmentSectionProps> = ({
                     >
                         {va.journeyHistories && va.journeyHistories.length > 0 ? (
                             <div className="p-2">
-                                {va.journeyHistories.map((journey: any, journeyIdx: number) => {
-                                    if (!journey.journeySegments || journey.journeySegments.length === 0) {
-                                        return null;
+                                {(() => {
+                                    // Chỉ hiển thị ACTIVE journey history mới nhất
+                                    const activeJourneys = va.journeyHistories
+                                        .filter((j: any) => j.status === 'ACTIVE')
+                                        .sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+                                    
+                                    if (activeJourneys.length === 0) {
+                                        return <Empty description="Không có lộ trình đang hoạt động" />;
+                                    }
+                                    
+                                    const activeJourney = activeJourneys[0];
+                                    
+                                    if (!activeJourney.journeySegments || activeJourney.journeySegments.length === 0) {
+                                        return <Empty description="Không có thông tin lộ trình" />;
                                     }
 
                                     return (
-                                        <div key={journey.id || `journey-${journeyIdx}`} className="mb-4">
+                                        <div>
                                             <RouteMapSection
-                                                journeySegments={journey.journeySegments}
-                                                journeyInfo={journey}
+                                                journeySegments={activeJourney.journeySegments}
+                                                journeyInfo={activeJourney}
                                                 issues={va.issues}
                                             />
                                         </div>
                                     );
-                                })}
+                                })()}
                             </div>
                         ) : (
                             <Empty description="Không có lịch sử hành trình nào" />

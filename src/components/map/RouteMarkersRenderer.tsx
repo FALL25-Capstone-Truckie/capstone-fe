@@ -44,8 +44,19 @@ const RouteMarkersRenderer: React.FC<RouteMarkersRendererProps> = ({
         return;
       }
 
-      // Process ALL journeys for this vehicle assignment
-      va.journeyHistories.forEach((journey: any, journeyIndex: number) => {
+      // Only process the latest ACTIVE journey history
+      const activeJourneys = va.journeyHistories
+        .filter((j: any) => j.status === 'ACTIVE')
+        .sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      
+      if (activeJourneys.length === 0) {
+        return;
+      }
+
+      const latestActiveJourney = activeJourneys[0];
+
+      // Process only the latest ACTIVE journey
+      [latestActiveJourney].forEach((journey: any, journeyIndex: number) => {
         if (!journey || !journey.journeySegments || journey.journeySegments.length === 0) {
           return;
         }

@@ -53,7 +53,7 @@ const SmoothVehicleMarker: React.FC<SmoothVehicleMarkerProps> = ({
       ${!isOnline ? 'filter: grayscale(0.3);' : ''}
     `;
     el.innerHTML = '🚛';
-    el.title = `${vehicle.licensePlateNumber} ${!isOnline ? '(Offline)' : '(Online)'}`;
+    // el.title = `${vehicle.licensePlateNumber} ${!isOnline ? '(Offline)' : '(Online)'}`;
 
     el.addEventListener('click', () => {
       if (onMarkerClick) {
@@ -152,7 +152,7 @@ const SmoothVehicleMarker: React.FC<SmoothVehicleMarkerProps> = ({
       element.style.opacity = isHighlighted ? '1' : (isOnline ? '0.8' : '0.6');
       element.style.borderWidth = isSelected ? '4px' : '3px';
       element.style.filter = !isOnline && !isSelected ? 'grayscale(0.3)' : 'none';
-      element.title = `${vehicle.licensePlateNumber} ${!isOnline ? '(Offline)' : '(Online)'}`;
+      // element.title = `${vehicle.licensePlateNumber} ${!isOnline ? '(Offline)' : '(Online)'}`;
     }
   }, [isSelected, isHighlighted, vehicle.lastUpdated, vehicle.licensePlateNumber, showOfflineStatus]);
 

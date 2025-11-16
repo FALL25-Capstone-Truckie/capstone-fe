@@ -27,7 +27,7 @@ export interface ReturnShippingIssue {
   adjustedFee?: number;
   finalFee?: number;
   
-  // Transaction
+  // Transaction (deprecated - use transactions array)
   returnTransaction?: {
     id: string;
     amount: number;
@@ -38,6 +38,18 @@ export interface ReturnShippingIssue {
     gatewayOrderCode?: number;
     paymentDate?: string;
   };
+  
+  // All transactions (includes PENDING, FAILED, PAID)
+  transactions?: Array<{
+    id: string;
+    amount: number;
+    status: string;
+    currencyCode: string;
+    paymentProvider: string;
+    gatewayResponse?: string;
+    gatewayOrderCode?: number;
+    paymentDate?: string;
+  }>;
   
   // Payment deadline
   paymentDeadline?: string;

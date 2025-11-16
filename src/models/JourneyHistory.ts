@@ -159,17 +159,5 @@ export const formatSealStatus = (status: string): string => {
     }
 };
 
-// Helper function to get seal status color
-export const getSealStatusColor = (status: string): string => {
-    switch (status) {
-        case 'ACTIVE':
-        case 'IN_USE':
-            return 'green';
-        case 'USED':
-            return 'blue';
-        case 'REMOVED':
-            return 'red';
-        default:
-            return 'default';
-    }
-};
+// Note: getSealStatusColor is already exported from constants/enums/sealStatus.ts
+// Import it from there if needed

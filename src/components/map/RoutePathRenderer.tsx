@@ -58,8 +58,25 @@ const RoutePathRenderer: React.FC<RoutePathRendererProps> = ({
         return;
       }
 
-      // Render ALL journeys for this vehicle assignment
-      va.journeyHistories.forEach((journey: any, journeyIndex: number) => {
+      // Only render the latest ACTIVE journey history
+      const activeJourneys = va.journeyHistories
+        .filter((j: any) => j.status === 'ACTIVE')
+        .sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      
+      if (activeJourneys.length === 0) {
+        console.log(`[RoutePathRenderer] VA ${vaIndex} has no ACTIVE journey`);
+        return;
+      }
+
+      const latestActiveJourney = activeJourneys[0];
+      console.log(`[RoutePathRenderer] VA ${vaIndex} using ACTIVE journey:`, {
+        id: latestActiveJourney.id,
+        status: latestActiveJourney.status,
+        createdAt: latestActiveJourney.createdAt
+      });
+
+      // Render only the latest ACTIVE journey
+      [latestActiveJourney].forEach((journey: any, journeyIndex: number) => {
         console.log(`[RoutePathRenderer] Processing VA ${vaIndex} Journey ${journeyIndex}:`, {
           id: journey.id,
           status: journey.status,

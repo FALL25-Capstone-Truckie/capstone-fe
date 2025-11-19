@@ -15,11 +15,15 @@ import {
 import {
   FileTextOutlined,
   DownloadOutlined,
+  EditOutlined,
 } from "@ant-design/icons";
 import { StaffContractPreview } from "../../../../components/features/order";
 import ContractExportContent from "../../../../components/features/order/ContractExportContent";
 import type { ContractData } from "../../../../services/contract/contractTypes";
-import { useRefreshContracts, useStaffContractOperations } from "../../../../hooks";
+import {
+  useRefreshContracts,
+  useStaffContractOperations,
+} from "../../../../hooks";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 import { ContractStatusTag } from "../../../../components/common/tags";
@@ -61,7 +65,8 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
 }) => {
   const messageApi = App.useApp().message;
   const [contractData, setContractData] = useState<ContractData | null>(null);
-  const [contractSettings, setContractSettings] = useState<ContractSettings | null>(null);
+  const [contractSettings, setContractSettings] =
+    useState<ContractSettings | null>(null);
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [isCreationModalOpen, setIsCreationModalOpen] =
     useState<boolean>(false);
@@ -84,7 +89,7 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
         console.error("[Staff] Error fetching contract settings:", error);
       }
     };
-    
+
     fetchContractSettings();
   }, []);
 
@@ -94,6 +99,8 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
     expirationDate: "",
     hasAdjustedValue: false,
     adjustedValue: 0,
+    contractName: "",
+    description: "",
   });
 
   const { refetch: refetchContracts } = useRefreshContracts(orderId);
@@ -135,8 +142,12 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
     try {
       const contractData = {
         contractName: values.contractName as string,
-        startDate: (values.dateRange as Array<{format: (pattern: string) => string}>)[0].format("YYYY-MM-DD"),
-        endDate: (values.dateRange as Array<{format: (pattern: string) => string}>)[1].format("YYYY-MM-DD"),
+        startDate: (
+          values.dateRange as Array<{ format: (pattern: string) => string }>
+        )[0].format("YYYY-MM-DD"),
+        endDate: (
+          values.dateRange as Array<{ format: (pattern: string) => string }>
+        )[1].format("YYYY-MM-DD"),
         totalValue: values.totalValue,
         adjustedValue: values.adjustedValue,
         description: values.description,
@@ -154,7 +165,7 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
 
         // Refetch contracts to reflect the new contract status
         refetchContracts();
-        
+
         // Refresh parent component data
         if (onRefetch) {
           onRefetch();
@@ -176,13 +187,17 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
 
     // Use values from preview form customization if available, otherwise use contract data
     const effectiveDateValue = contractCustomization.effectiveDate
-      ? new Date(contractCustomization.effectiveDate).toISOString().split("T")[0]
+      ? new Date(contractCustomization.effectiveDate)
+          .toISOString()
+          .split("T")[0]
       : contract.effectiveDate
       ? new Date(contract.effectiveDate).toISOString().split("T")[0]
       : new Date().toISOString().split("T")[0];
 
     const expirationDateValue = contractCustomization.expirationDate
-      ? new Date(contractCustomization.expirationDate).toISOString().split("T")[0]
+      ? new Date(contractCustomization.expirationDate)
+          .toISOString()
+          .split("T")[0]
       : contract.expirationDate
       ? new Date(contract.expirationDate).toISOString().split("T")[0]
       : new Date(Date.now() + 365 * 24 * 60 * 60 * 1000)
@@ -193,15 +208,16 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
       ? contractCustomization.adjustedValue
       : Number(contract.adjustedValue) || 0;
 
-    const orderCodeText = contractData?.orderInfo?.orderCode || 'đơn hàng';
-    
+    const orderCodeText = contractData?.orderInfo?.orderCode || "đơn hàng";
+
     // Clean "N/A" values with meaningful defaults
-    const { contractName: cleanContractName, description: cleanDescription } = cleanContractData(
-      contract.contractName,
-      contract.description,
-      orderCodeText
-    );
-    
+    const { contractName: cleanContractName, description: cleanDescription } =
+      cleanContractData(
+        contract.contractName,
+        contract.description,
+        orderCodeText
+      );
+
     uploadForm.setFieldsValue({
       contractName: cleanContractName,
       effectiveDate: dayjs(effectiveDateValue),
@@ -236,15 +252,15 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
 
       // Ensure the hidden container is visible temporarily for rendering
       const originalStyle = containerElement.style.cssText;
-      containerElement.style.cssText = "position: fixed; top: 0; left: 0; width: 210mm; backgroundColor: white; z-index: -9999;";
+      containerElement.style.cssText =
+        "position: fixed; top: 0; left: 0; width: 210mm; backgroundColor: white; z-index: -9999;";
 
       if (containerElement) {
         const canvas = await html2canvas(containerElement, {
           useCORS: true,
           allowTaint: true,
           background: "#ffffff",
-          width: containerElement.scrollWidth,
-          height: containerElement.scrollHeight,
+          scale: 2,
           logging: false,
         });
 
@@ -252,6 +268,7 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
           orientation: "portrait",
           unit: "mm",
           format: "a4",
+          compress: true,
         });
 
         const pageWidth = 210;
@@ -265,24 +282,7 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
         const ratio = (contentWidth * 3.779527559) / imgWidth;
         const scaledHeight = (imgHeight * ratio) / 3.779527559;
 
-        const scaleFactor = 0.5;
-        const scaledCanvas = document.createElement("canvas");
-        const scaledCtx = scaledCanvas.getContext("2d");
-
-        scaledCanvas.width = canvas.width * scaleFactor;
-        scaledCanvas.height = canvas.height * scaleFactor;
-
-        if (scaledCtx) {
-          scaledCtx.drawImage(
-            canvas,
-            0,
-            0,
-            scaledCanvas.width,
-            scaledCanvas.height
-          );
-        }
-
-        const imgData = scaledCanvas.toDataURL("image/jpeg", 0.5);
+        const imgData = canvas.toDataURL("image/jpeg", 0.95);
 
         if (scaledHeight <= contentHeight) {
           pdf.addImage(
@@ -295,7 +295,7 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
           );
         } else {
           const totalPages = Math.ceil(scaledHeight / contentHeight);
-          const pixelsPerPage = scaledCanvas.height / totalPages;
+          const pixelsPerPage = imgHeight / totalPages;
 
           for (let page = 0; page < totalPages; page++) {
             if (page > 0) pdf.addPage();
@@ -304,30 +304,26 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
             const pageCtx = pageCanvas.getContext("2d");
 
             if (pageCtx) {
-              pageCanvas.width = scaledCanvas.width;
+              pageCanvas.width = imgWidth;
               const startY = page * pixelsPerPage;
-              const endY = Math.min(
-                startY + pixelsPerPage,
-                scaledCanvas.height
-              );
+              const endY = Math.min(startY + pixelsPerPage, imgHeight);
               const currentPageHeight = endY - startY;
               pageCanvas.height = currentPageHeight;
 
               pageCtx.drawImage(
-                scaledCanvas,
+                canvas,
                 0,
                 startY,
-                scaledCanvas.width,
+                imgWidth,
                 currentPageHeight,
                 0,
                 0,
-                scaledCanvas.width,
+                imgWidth,
                 currentPageHeight
               );
 
-              const pageImgData = pageCanvas.toDataURL("image/jpeg", 0.5);
-              const pageHeightMM =
-                (currentPageHeight * ratio * scaleFactor) / 3.779527559;
+              const pageImgData = pageCanvas.toDataURL("image/jpeg", 0.95);
+              const pageHeightMM = (currentPageHeight * ratio) / 3.779527559;
 
               pdf.addImage(
                 pageImgData,
@@ -368,8 +364,14 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
         return new Date(dateString).toISOString().slice(0, 19);
       };
 
-      formData.append("effectiveDate", formatDateTime(values.effectiveDate as string));
-      formData.append("expirationDate", formatDateTime(values.expirationDate as string));
+      formData.append(
+        "effectiveDate",
+        formatDateTime(values.effectiveDate as string)
+      );
+      formData.append(
+        "expirationDate",
+        formatDateTime(values.expirationDate as string)
+      );
       formData.append("adjustedValue", (values.adjustedValue || 0).toString());
       formData.append("description", values.description as string);
 
@@ -377,15 +379,23 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
       console.log("Upload response:", uploadResponse);
 
       // Handle response safely
-      if (uploadResponse && typeof uploadResponse === 'object' && 'data' in uploadResponse) {
-        const response = uploadResponse as { success: boolean; message?: string; data?: unknown };
+      if (
+        uploadResponse &&
+        typeof uploadResponse === "object" &&
+        "data" in uploadResponse
+      ) {
+        const response = uploadResponse as {
+          success: boolean;
+          message?: string;
+          data?: unknown;
+        };
         if (response.success) {
           messageApi.destroy();
           messageApi.success("Hợp đồng đã được tải lên thành công!");
           setIsUploadModalOpen(false);
           setIsModalOpen(false); // Đóng cả modal preview
           uploadForm.resetFields();
-          
+
           // Refresh contract data after successful upload
           setTimeout(async () => {
             try {
@@ -397,7 +407,7 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
               console.error("Error refreshing contract data:", error);
             }
           }, 500);
-          
+
           // Refetch parent order data to reflect contract status change
           if (onRefetch) {
             setTimeout(() => {
@@ -412,13 +422,14 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
       }
     } catch (error) {
       messageApi.destroy();
-      
+
       // Hide the container again in case of error
       const containerElement = document.querySelector(
         "#pdf-export-container"
       ) as HTMLElement;
       if (containerElement) {
-        containerElement.style.cssText = "position: fixed; top: -9999px; left: -9999px; width: 210mm; minHeight: 297mm; backgroundColor: white;";
+        containerElement.style.cssText =
+          "position: fixed; top: -9999px; left: -9999px; width: 210mm; minHeight: 297mm; backgroundColor: white;";
       }
 
       const errorResponse = error as ErrorResponse;
@@ -438,24 +449,78 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
     }
   };
 
-  const handleOpenModal = async () => {
+  const handleOpenInputModal = () => {
+    // Initialize form with default values or existing customization
+    const today = dayjs();
+    const oneYearLater = dayjs().add(1, "year");
+
+    // Pre-fill with contract data if available
+    form.setFieldsValue({
+      contractName:
+        contract?.contractName ||
+        `Hợp đồng vận chuyển - ${contract?.id || "ORD" + Date.now()}`,
+      effectiveDate: contractCustomization.effectiveDate
+        ? dayjs(contractCustomization.effectiveDate)
+        : today,
+      expirationDate: contractCustomization.expirationDate
+        ? dayjs(contractCustomization.expirationDate)
+        : oneYearLater,
+      adjustedValue: contractCustomization.adjustedValue || 0,
+      description:
+        contract?.description ||
+        "Hợp đồng vận chuyển cho " +
+          (contract?.id || "đơn hàng") +
+          ". Điều khoản theo thỏa thuận.",
+    });
+
+    setIsCreationModalOpen(true);
+  };
+
+  const handleInputModalOk = () => {
+    form
+      .validateFields()
+      .then((values) => {
+        // Update contract customization with form values
+        setContractCustomization({
+          effectiveDate: values.effectiveDate.toISOString(),
+          expirationDate: values.expirationDate.toISOString(),
+          hasAdjustedValue: values.adjustedValue > 0,
+          adjustedValue: values.adjustedValue || 0,
+          contractName: values.contractName,
+          description: values.description,
+        });
+
+        setIsCreationModalOpen(false);
+        messageApi.success("Thông tin hợp đồng đã được cập nhật");
+
+        // Open preview modal after setting data
+        handleOpenPreviewModal();
+      })
+      .catch((errorInfo) => {
+        console.error("Validation failed:", errorInfo);
+      });
+  };
+
+  const handleOpenPreviewModal = async () => {
     if (!contractData) {
       await handlePreviewContract();
     }
 
-    // Initialize contract customization with default values
-    const today = new Date();
-    const oneYearLater = new Date(today);
-    oneYearLater.setFullYear(today.getFullYear() + 1);
-
-    setContractCustomization({
-      effectiveDate: today.toISOString(),
-      expirationDate: oneYearLater.toISOString(),
-      hasAdjustedValue: false,
-      adjustedValue: 0,
-    });
-
     setIsModalOpen(true);
+  };
+
+  const handleOpenModal = async () => {
+    // Check if contract customization has been set
+    if (
+      !contractCustomization.effectiveDate ||
+      !contractCustomization.expirationDate
+    ) {
+      // Open input modal first
+      handleOpenInputModal();
+    } else {
+      // Directly open preview modal
+      handleOpenPreviewModal();
+    }
   };
 
   const handleCloseModal = () => {
@@ -475,39 +540,39 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
 
     // Ensure the hidden container is visible temporarily for rendering
     const originalStyle = containerElement.style.cssText;
-    containerElement.style.cssText = "position: fixed; top: 0; left: 0; width: 210mm; backgroundColor: white; z-index: -9999; overflow: visible;";
+    containerElement.style.cssText =
+      "position: fixed; top: 0; left: 0; width: 210mm; backgroundColor: white; z-index: -9999; overflow: visible;";
 
     try {
       messageApi.loading("Đang tạo file PDF với nhiều trang...", 0);
 
       // Wait for any dynamic content to render
-      await new Promise(resolve => setTimeout(resolve, 200));
+      await new Promise((resolve) => setTimeout(resolve, 200));
 
       const canvas = await html2canvas(containerElement, {
         useCORS: true,
         allowTaint: true,
         background: "#ffffff",
         logging: false,
-        scale: 2, // 2x resolution for better quality
-        width: containerElement.scrollWidth,
-        height: containerElement.scrollHeight,
+        scale: 2,
         onclone: (clonedDoc: Document) => {
-          // Ensure fonts are loaded in cloned document
-          const clonedElement = clonedDoc.querySelector("#pdf-export-container") as HTMLElement;
+          const clonedElement = clonedDoc.querySelector(
+            "#pdf-export-container"
+          ) as HTMLElement;
           if (clonedElement) {
             clonedElement.style.fontFamily = "'Times New Roman', serif";
             clonedElement.style.fontSize = "12pt";
           }
-        }
-      } as any); // Cast to any to use scale option which exists but not in types
+        },
+      } as any);
 
-      // Hide the container again
       containerElement.style.cssText = originalStyle;
 
       const pdf = new jsPDF({
         orientation: "portrait",
         unit: "mm",
         format: "a4",
+        compress: true,
       });
 
       const pageWidth = 210;
@@ -522,10 +587,10 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
       const scaledHeight = (imgHeight * ratio) / 3.779527559;
 
       if (scaledHeight <= contentHeight) {
-        const imgData = canvas.toDataURL("image/png", 1.0);
+        const imgData = canvas.toDataURL("image/jpeg", 0.95);
         pdf.addImage(
           imgData,
-          "PNG",
+          "JPEG",
           margin,
           margin,
           contentWidth,
@@ -551,6 +616,8 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
             const currentPageHeight = endY - startY;
             pageCanvas.height = currentPageHeight;
 
+            pageCtx.imageSmoothingEnabled = true;
+            pageCtx.imageSmoothingQuality = "high";
             pageCtx.drawImage(
               canvas,
               0,
@@ -563,12 +630,12 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
               currentPageHeight
             );
 
-            const pageImgData = pageCanvas.toDataURL("image/png", 1.0);
+            const pageImgData = pageCanvas.toDataURL("image/jpeg", 0.95);
             const pageHeightMM = (currentPageHeight * ratio) / 3.779527559;
 
             pdf.addImage(
               pageImgData,
-              "PNG",
+              "JPEG",
               margin,
               margin,
               contentWidth,
@@ -616,7 +683,6 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
     >
       {contract ? (
         <>
-
           {/* Contract Details with Enhanced UI */}
           <div className="contract-details-section">
             {/* Contract Status and Key Dates */}
@@ -626,87 +692,133 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
                   <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-4">
                     <div className="flex items-center mb-3">
                       <FileTextOutlined className="text-blue-500 text-xl mr-3" />
-                      <h3 className="text-lg font-semibold text-gray-800">Thông tin hợp đồng</h3>
+                      <h3 className="text-lg font-semibold text-gray-800">
+                        Thông tin hợp đồng
+                      </h3>
                     </div>
                     <div className="space-y-2">
                       <div className="flex justify-between items-center">
-                        <span className="text-sm text-gray-600">Tên hợp đồng:</span>
-                        <span className="font-medium text-gray-900">{contract.contractName || "Chưa có thông tin"}</span>
+                        <span className="text-sm text-gray-600">
+                          Tên hợp đồng:
+                        </span>
+                        <span className="font-medium text-gray-900">
+                          {contract.contractName || "Chưa có thông tin"}
+                        </span>
                       </div>
                       <div className="flex justify-between items-center">
                         <span className="text-sm text-gray-600">Mô tả:</span>
-                        <span className="font-medium text-gray-900">{contract.description || "Chưa có thông tin"}</span>
+                        <span className="font-medium text-gray-900">
+                          {contract.description || "Chưa có thông tin"}
+                        </span>
                       </div>
                       <div className="flex justify-between items-center">
-                        <span className="text-sm text-gray-600">Trạng thái:</span>
+                        <span className="text-sm text-gray-600">
+                          Trạng thái:
+                        </span>
                         <ContractStatusTag
                           status={contract.status as ContractStatusEnum}
                         />
                       </div>
                       <div className="flex justify-between items-center">
-                        <span className="text-sm text-gray-600">Nhân viên phụ trách:</span>
-                        <span className="font-medium text-gray-900">{contract.staffName || "Chưa có thông tin"}</span>
+                        <span className="text-sm text-gray-600">
+                          Nhân viên phụ trách:
+                        </span>
+                        <span className="font-medium text-gray-900">
+                          {contract.staffName || "Chưa có thông tin"}
+                        </span>
                       </div>
                       <div className="flex justify-between items-center pt-2 border-t border-blue-200">
-                        <span className="text-sm text-gray-600">Giá trị hợp đồng:</span>
+                        <span className="text-sm text-gray-600">
+                          Giá trị hợp đồng:
+                        </span>
                         <span className="font-semibold text-lg text-blue-600">
-                          {(contract.adjustedValue && contract.adjustedValue > 0) 
-                            ? `${contract.adjustedValue.toLocaleString('vi-VN')} VNĐ`
-                            : (contract.totalValue && contract.totalValue > 0)
-                            ? `${contract.totalValue.toLocaleString('vi-VN')} VNĐ`
+                          {contract.adjustedValue && contract.adjustedValue > 0
+                            ? `${contract.adjustedValue.toLocaleString(
+                                "vi-VN"
+                              )} VNĐ`
+                            : contract.totalValue && contract.totalValue > 0
+                            ? `${contract.totalValue.toLocaleString(
+                                "vi-VN"
+                              )} VNĐ`
                             : "Chưa có thông tin"}
                         </span>
                       </div>
                     </div>
                   </div>
                 </Col>
-                
+
                 <Col xs={24} lg={12}>
                   <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg p-4">
                     <div className="flex items-center mb-3">
                       <div className="bg-green-500 text-white rounded-full p-2 mr-3">
-                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clipRule="evenodd" />
+                        <svg
+                          className="w-4 h-4"
+                          fill="currentColor"
+                          viewBox="0 0 20 20"
+                        >
+                          <path
+                            fillRule="evenodd"
+                            d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z"
+                            clipRule="evenodd"
+                          />
                         </svg>
                       </div>
-                      <h3 className="text-lg font-semibold text-gray-800">Thời hạn hiệu lực</h3>
+                      <h3 className="text-lg font-semibold text-gray-800">
+                        Thời hạn hiệu lực
+                      </h3>
                     </div>
                     <div className="space-y-3">
                       <div className="bg-white rounded-lg p-3 border-l-4 border-green-500">
                         <div className="flex items-center mb-1">
-                          <span className="text-xs text-green-600 font-semibold">NGÀY HIỆU LỰC</span>
+                          <span className="text-xs text-green-600 font-semibold">
+                            NGÀY HIỆU LỰC
+                          </span>
                         </div>
                         <div className="text-lg font-bold text-green-700">
-                          {contract.effectiveDate ? new Date(contract.effectiveDate).toLocaleDateString('vi-VN', {
-                            day: '2-digit',
-                            month: '2-digit',
-                            year: 'numeric'
-                          }) : "Chưa có thông tin"}
+                          {contract.effectiveDate
+                            ? new Date(
+                                contract.effectiveDate
+                              ).toLocaleDateString("vi-VN", {
+                                day: "2-digit",
+                                month: "2-digit",
+                                year: "numeric",
+                              })
+                            : "Chưa có thông tin"}
                         </div>
                         {contract.effectiveDate && (
                           <div className="text-xs text-gray-500 mt-1">
-                            {new Date(contract.effectiveDate).toLocaleDateString('vi-VN', {
-                              weekday: 'long'
+                            {new Date(
+                              contract.effectiveDate
+                            ).toLocaleDateString("vi-VN", {
+                              weekday: "long",
                             })}
                           </div>
                         )}
                       </div>
-                      
+
                       <div className="bg-white rounded-lg p-3 border-l-4 border-red-500">
                         <div className="flex items-center mb-1">
-                          <span className="text-xs text-red-600 font-semibold">NGÀY HẾT HẠN</span>
+                          <span className="text-xs text-red-600 font-semibold">
+                            NGÀY HẾT HẠN
+                          </span>
                         </div>
                         <div className="text-lg font-bold text-red-700">
-                          {contract.expirationDate ? new Date(contract.expirationDate).toLocaleDateString('vi-VN', {
-                            day: '2-digit',
-                            month: '2-digit',
-                            year: 'numeric'
-                          }) : "Chưa có thông tin"}
+                          {contract.expirationDate
+                            ? new Date(
+                                contract.expirationDate
+                              ).toLocaleDateString("vi-VN", {
+                                day: "2-digit",
+                                month: "2-digit",
+                                year: "numeric",
+                              })
+                            : "Chưa có thông tin"}
                         </div>
                         {contract.expirationDate && (
                           <div className="text-xs text-gray-500 mt-1">
-                            {new Date(contract.expirationDate).toLocaleDateString('vi-VN', {
-                              weekday: 'long'
+                            {new Date(
+                              contract.expirationDate
+                            ).toLocaleDateString("vi-VN", {
+                              weekday: "long",
                             })}
                           </div>
                         )}
@@ -791,28 +903,37 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
         open={isModalOpen}
         onCancel={handleCloseModal}
         footer={
-          <div className="flex justify-end gap-2">
+          <div className="flex justify-between">
             <Button
-              icon={<FileTextOutlined />}
-              onClick={handleOpenUploadModal}
+              icon={<EditOutlined />}
+              onClick={handleOpenInputModal}
               size="large"
-              type="primary"
-              style={{ background: "#52c41a", borderColor: "#52c41a" }}
             >
-              Xuất hợp đồng
+              Chỉnh sửa thông tin
             </Button>
-            <Button
-              icon={<DownloadOutlined />}
-              onClick={handleExportPdf}
-              size="large"
-              type="default"
-              className="border-blue-500 text-blue-500 hover:border-blue-600 hover:text-blue-600"
-            >
-              Xuất PDF
-            </Button>
-            <Button onClick={handleCloseModal} size="large">
-              Đóng
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                icon={<FileTextOutlined />}
+                onClick={handleOpenUploadModal}
+                size="large"
+                type="primary"
+                style={{ background: "#52c41a", borderColor: "#52c41a" }}
+              >
+                Xuất hợp đồng
+              </Button>
+              <Button
+                icon={<DownloadOutlined />}
+                onClick={handleExportPdf}
+                size="large"
+                type="default"
+                className="border-blue-500 text-blue-500 hover:border-blue-600 hover:text-blue-600"
+              >
+                Xuất PDF
+              </Button>
+              <Button onClick={handleCloseModal} size="large">
+                Đóng
+              </Button>
+            </div>
           </div>
         }
         width="95vw"
@@ -871,27 +992,39 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
         </div>
       </Modal>
 
-      {/* Contract Creation Modal */}
+      {/* Contract Data Input Modal */}
       <Modal
-        title="Tạo hợp đồng mới"
+        title={
+          <div className="flex items-center">
+            <FileTextOutlined className="mr-2 text-green-500" />
+            <span>Điều chỉnh thông tin xuất hợp đồng</span>
+          </div>
+        }
         open={isCreationModalOpen}
         onCancel={() => {
           setIsCreationModalOpen(false);
           form.resetFields();
         }}
+        onOk={handleInputModalOk}
         width={600}
-        footer={null}
+        okText="Xác nhận"
+        cancelText="Hủy"
       >
+        <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded">
+          <p className="text-sm text-blue-800">
+            <strong>📝 Lưu ý:</strong> Vui lòng kiểm tra và điều chỉnh thông tin
+            hợp đồng trước khi xuất. Các thông tin này sẽ được lưu vào file PDF
+            và gửi lên hệ thống.
+          </p>
+        </div>
+
         <Form
           form={form}
           layout="vertical"
-          onFinish={handleCreateContract}
           initialValues={{
-            contractName: "Hợp đồng vận chuyển",
-            totalValue: 0,
+            effectiveDate: dayjs(),
+            expirationDate: dayjs().add(1, "year"),
             adjustedValue: 0,
-            description: "Hợp đồng vận chuyển hàng hóa",
-            attachFileUrl: "",
           }}
         >
           <Form.Item
@@ -899,93 +1032,84 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
             name="contractName"
             rules={[
               { required: true, message: "Vui lòng nhập tên hợp đồng" },
-              { max: 255, message: "Tên hợp đồng không được vượt quá 255 ký tự" }
+              {
+                max: 255,
+                message: "Tên hợp đồng không được vượt quá 255 ký tự",
+              },
             ]}
           >
-            <Input 
-              placeholder="Nhập tên hợp đồng" 
-              showCount
-              maxLength={255}
-            />
+            <Input placeholder="Nhập tên hợp đồng" showCount maxLength={255} />
           </Form.Item>
 
           <Form.Item
-            label="Thời gian hiệu lực"
-            name="dateRange"
+            label="Ngày hiệu lực"
+            name="effectiveDate"
+            rules={[{ required: true, message: "Vui lòng chọn ngày hiệu lực" }]}
+          >
+            <DateSelectGroup mode="delivery" />
+          </Form.Item>
+
+          <Form.Item
+            label="Ngày hết hạn"
+            name="expirationDate"
             rules={[
-              { required: true, message: "Vui lòng chọn thời gian hiệu lực" },
+              { required: true, message: "Vui lòng chọn ngày hết hạn" },
+              ({ getFieldValue }) => ({
+                validator(_, value) {
+                  const effectiveDate = getFieldValue("effectiveDate");
+                  if (
+                    !value ||
+                    !effectiveDate ||
+                    value.isAfter(effectiveDate)
+                  ) {
+                    return Promise.resolve();
+                  }
+                  return Promise.reject(
+                    new Error("Ngày hết hạn phải sau ngày hiệu lực")
+                  );
+                },
+              }),
             ]}
           >
-            <DatePicker.RangePicker
-              style={{ width: "100%" }}
-              placeholder={["Ngày bắt đầu", "Ngày kết thúc"]}
-            />
+            <DateSelectGroup mode="delivery" />
           </Form.Item>
 
           <Form.Item
-            label="Tổng giá trị hợp đồng"
-            name="totalValue"
-            rules={[{ required: true, message: "Vui lòng nhập tổng giá trị" }]}
-          >
-            <InputNumber
-              style={{ width: "100%" }}
-              placeholder="Nhập tổng giá trị"
-              formatter={(value) =>
-                `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ",")
-              }
-              parser={(value) => value!.replace(/\$\s?|(,*)/g, "")}
-              addonAfter="VND"
-            />
-          </Form.Item>
-
-          <Form.Item
-            label="Giá trị hỗ trợ"
+            label="Giá trị điều chỉnh (trợ giá)"
             name="adjustedValue"
-            rules={[
-              { required: true, message: "Vui lòng nhập giá trị hỗ trợ" },
-            ]}
+            tooltip="Giá trị điều chỉnh sẽ thay thế tổng giá trị hợp đồng nếu lớn hơn 0"
+            initialValue={0}
           >
             <InputNumber
               style={{ width: "100%" }}
-              placeholder="Nhập giá trị hỗ trợ"
+              placeholder="Nhập giá trị điều chỉnh (để 0 nếu không điều chỉnh)"
               formatter={(value) =>
                 `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ",")
               }
-              parser={(value) => value!.replace(/\$\s?|(,*)/g, "")}
+              parser={(value) => {
+                if (!value) return 0 as any;
+                const parsed = Number(value.replace(/\$\s?|(,*)/g, ""));
+                return (isNaN(parsed) ? 0 : parsed) as any;
+              }}
               addonAfter="VND"
+              min={0}
             />
           </Form.Item>
 
           <Form.Item
             label="Mô tả hợp đồng"
             name="description"
-            rules={[{ required: true, message: "Vui lòng nhập mô tả" }]}
+            rules={[
+              { required: true, message: "Vui lòng nhập mô tả" },
+              { max: 100, message: "Mô tả không được vượt quá 100 ký tự" },
+            ]}
           >
-            <Input.TextArea rows={3} placeholder="Nhập mô tả hợp đồng" />
-          </Form.Item>
-
-          <Form.Item label="URL file đính kèm (tùy chọn)" name="attachFileUrl">
-            <Input placeholder="Nhập URL file đính kèm" />
-          </Form.Item>
-
-          <Form.Item className="mb-0">
-            <div className="flex justify-end gap-2">
-              <Button
-                onClick={() => {
-                  setIsCreationModalOpen(false);
-                  form.resetFields();
-                }}
-              >
-                Hủy
-              </Button>
-              <Button
-                type="primary"
-                htmlType="submit"
-                loading={creatingContract}
-              >
-                Tạo hợp đồng
-              </Button>
-            </div>
+            <Input.TextArea
+              rows={3}
+              placeholder="Nhập mô tả hợp đồng (tối đa 100 ký tự)"
+              showCount
+              maxLength={100}
+            />
           </Form.Item>
         </Form>
       </Modal>
@@ -1024,14 +1148,13 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
             name="contractName"
             rules={[
               { required: true, message: "Vui lòng nhập tên hợp đồng" },
-              { max: 255, message: "Tên hợp đồng không được vượt quá 255 ký tự" }
+              {
+                max: 255,
+                message: "Tên hợp đồng không được vượt quá 255 ký tự",
+              },
             ]}
           >
-            <Input 
-              placeholder="Nhập tên hợp đồng" 
-              showCount
-              maxLength={255}
-            />
+            <Input placeholder="Nhập tên hợp đồng" showCount maxLength={255} />
           </Form.Item>
 
           <Form.Item
@@ -1049,11 +1172,17 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
               { required: true, message: "Vui lòng chọn ngày hết hạn" },
               ({ getFieldValue }) => ({
                 validator(_, value) {
-                  const effectiveDate = getFieldValue('effectiveDate');
-                  if (!value || !effectiveDate || value.isAfter(effectiveDate)) {
+                  const effectiveDate = getFieldValue("effectiveDate");
+                  if (
+                    !value ||
+                    !effectiveDate ||
+                    value.isAfter(effectiveDate)
+                  ) {
                     return Promise.resolve();
                   }
-                  return Promise.reject(new Error('Ngày hết hạn phải sau ngày hiệu lực'));
+                  return Promise.reject(
+                    new Error("Ngày hết hạn phải sau ngày hiệu lực")
+                  );
                 },
               }),
             ]}
@@ -1088,12 +1217,12 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
             name="description"
             rules={[
               { required: true, message: "Vui lòng nhập mô tả" },
-              { max: 100, message: "Mô tả không được vượt quá 100 ký tự" }
+              { max: 100, message: "Mô tả không được vượt quá 100 ký tự" },
             ]}
           >
-            <Input.TextArea 
-              rows={3} 
-              placeholder="Nhập mô tả hợp đồng (tối đa 100 ký tự)" 
+            <Input.TextArea
+              rows={3}
+              placeholder="Nhập mô tả hợp đồng (tối đa 100 ký tự)"
               showCount
               maxLength={100}
             />

@@ -25,6 +25,7 @@ import {
   HddOutlined,
   TruckFilled,
   UserOutlined,
+  FileTextOutlined,
 } from "@ant-design/icons";
 import { icons } from "lucide-react";
 
@@ -153,6 +154,13 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({
           key: "/staff/vehicle-assignments",
           icon: <SwapOutlined />,
           label: <Link to="/staff/vehicle-assignments">Phân công xe</Link>,
+        },
+        {
+          key: "/staff/contract-stipulation",
+          icon: <FileTextOutlined />,
+          label: (
+            <Link to="/staff/contract-stipulation">Điều khoản hợp đồng</Link>
+          ),
         },
         {
           key: "/staff/penalties",

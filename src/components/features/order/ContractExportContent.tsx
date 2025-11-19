@@ -21,6 +21,8 @@ interface ContractCustomization {
   expirationDate: string;
   hasAdjustedValue: boolean;
   adjustedValue: number;
+  contractName?: string;
+  description?: string;
 }
 
 interface ContractExportContentProps {
@@ -66,9 +68,11 @@ const ContractExportContent: React.FC<ContractExportContentProps> = ({
     ? customization.adjustedValue
     : 0;
 
-  
   return (
-    <div className="contract-export-content" style={{ padding: '20px', fontFamily: 'Times New Roman, serif' }}>
+    <div
+      className="contract-export-content"
+      style={{ padding: "20px", fontFamily: "Times New Roman, serif" }}
+    >
       <style>{`
         .contract-export-content {
           font-family: 'Times New Roman', serif !important;
@@ -448,9 +452,7 @@ const ContractExportContent: React.FC<ContractExportContentProps> = ({
                 minWidth: "120pt",
               }}
             >
-              {formatCurrency(
-                contractData.priceDetails.totalBeforeAdjustment
-              )}
+              {formatCurrency(contractData.priceDetails.totalBeforeAdjustment)}
             </div>
           </div>
 
@@ -461,14 +463,20 @@ const ContractExportContent: React.FC<ContractExportContentProps> = ({
             <span>{contractData.priceDetails.categoryMultiplier}</span>
           </div>
 
-          
           {/* VAT as separate row in price table - before total */}
           {contractSettings?.vatRate && (
             <div className="price-row">
               <span>
-                <strong>VAT {(contractSettings.vatRate * 100).toFixed(1)}%:</strong>
+                <strong>
+                  VAT {(contractSettings.vatRate * 100).toFixed(1)}%:
+                </strong>
               </span>
-              <span>{formatCurrency(contractData.priceDetails.finalTotal * contractSettings.vatRate)}</span>
+              <span>
+                {formatCurrency(
+                  contractData.priceDetails.finalTotal *
+                    contractSettings.vatRate
+                )}
+              </span>
             </div>
           )}
 
@@ -494,12 +502,14 @@ const ContractExportContent: React.FC<ContractExportContentProps> = ({
 
           <div className="total-section">
             <strong style={{ fontSize: "14pt" }}>
-              TỔNG GIÁ TRỊ HỢP ĐỒNG{contractSettings?.vatRate ? ' (Đã bao gồm VAT)' : ''}:
+              TỔNG GIÁ TRỊ HỢP ĐỒNG
+              {contractSettings?.vatRate ? " (Đã bao gồm VAT)" : ""}:
             </strong>
             <strong style={{ fontSize: "16pt" }}>
               {formatCurrency(
-                contractSettings?.vatRate 
-                  ? contractData.priceDetails.finalTotal * (1 + contractSettings.vatRate)
+                contractSettings?.vatRate
+                  ? contractData.priceDetails.finalTotal *
+                      (1 + contractSettings.vatRate)
                   : contractData.priceDetails.finalTotal
               )}
             </strong>
@@ -507,8 +517,16 @@ const ContractExportContent: React.FC<ContractExportContentProps> = ({
 
           {/* Note about pre-tax value */}
           {contractSettings?.vatRate && (
-            <div style={{ marginTop: "5px", fontSize: "10pt", color: "#666", fontStyle: "italic" }}>
-              (Giá trị trước thuế: {formatCurrency(contractData.priceDetails.finalTotal)})
+            <div
+              style={{
+                marginTop: "5px",
+                fontSize: "10pt",
+                color: "#666",
+                fontStyle: "italic",
+              }}
+            >
+              (Giá trị trước thuế:{" "}
+              {formatCurrency(contractData.priceDetails.finalTotal)})
             </div>
           )}
 
@@ -529,22 +547,25 @@ const ContractExportContent: React.FC<ContractExportContentProps> = ({
           <p>
             - Đặt cọc: {contractData.contractSettings.depositPercent}% (
             {formatCurrency(
-              ((contractSettings?.vatRate 
-                ? contractData.priceDetails.finalTotal * (1 + contractSettings.vatRate)
+              ((contractSettings?.vatRate
+                ? contractData.priceDetails.finalTotal *
+                  (1 + contractSettings.vatRate)
                 : contractData.priceDetails.finalTotal) *
                 contractData.contractSettings.depositPercent) /
-              100
-            )}) trong vòng{" "}
-            {contractData.contractSettings.expiredDepositDate} ngày
+                100
+            )}
+            ) trong vòng {contractData.contractSettings.expiredDepositDate} ngày
           </p>
           <p>
             - Thanh toán còn lại:{" "}
             {formatCurrency(
-              (contractSettings?.vatRate 
-                ? contractData.priceDetails.finalTotal * (1 + contractSettings.vatRate)
+              (contractSettings?.vatRate
+                ? contractData.priceDetails.finalTotal *
+                  (1 + contractSettings.vatRate)
                 : contractData.priceDetails.finalTotal) -
-                ((contractSettings?.vatRate 
-                  ? contractData.priceDetails.finalTotal * (1 + contractSettings.vatRate)
+                ((contractSettings?.vatRate
+                  ? contractData.priceDetails.finalTotal *
+                    (1 + contractSettings.vatRate)
                   : contractData.priceDetails.finalTotal) *
                   contractData.contractSettings.depositPercent) /
                   100
@@ -580,7 +601,9 @@ const ContractExportContent: React.FC<ContractExportContentProps> = ({
               {contractData.assignResult.map((assign, index) => (
                 <tr key={index}>
                   <td>{assign.sizeRuleName}</td>
-                  <td>{assign.currentLoad} {assign.currentLoadUnit}</td>
+                  <td>
+                    {assign.currentLoad} {assign.currentLoadUnit}
+                  </td>
                   <td>{assign.assignedDetails.length}</td>
                 </tr>
               ))}
@@ -666,7 +689,10 @@ const ContractExportContent: React.FC<ContractExportContentProps> = ({
 
       <div style={{ textAlign: "center", marginTop: "30px" }}>
         <p>
-          <em>Hợp đồng được lập tại TP. Hồ Chí Minh, ngày {new Date().toLocaleDateString('vi-VN')}</em>
+          <em>
+            Hợp đồng được lập tại TP. Hồ Chí Minh, ngày{" "}
+            {new Date().toLocaleDateString("vi-VN")}
+          </em>
         </p>
       </div>
     </div>

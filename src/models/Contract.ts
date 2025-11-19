@@ -41,3 +41,21 @@ export interface ContractSettingsResponse {
   statusCode: number;
   data: ContractSettings[];
 }
+
+export interface StipulationSettings {
+  id?: string;
+  contents: Record<string, string>;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface StipulationSettingsResponse {
+  success: boolean;
+  message: string;
+  statusCode: number;
+  data: StipulationSettings;
+}
+
+export interface UpdateStipulationSettingsRequest {
+  contents: Record<string, string>;
+}

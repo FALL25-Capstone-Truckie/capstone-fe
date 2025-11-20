@@ -35,6 +35,7 @@ export interface OrderDetailForIssue {
     description: string;
     weightBaseUnit: number;
     unit: string;
+    orderId?: string; // Order ID for grouping issues
 }
 
 export type IssueStatus = 'OPEN' | 'IN_PROGRESS' | 'RESOLVED' | 'PAYMENT_OVERDUE';
@@ -167,6 +168,7 @@ export interface OrderDetailInfo {
     trackingCode?: string;
     packageName?: string;
     status?: string;
+    orderId?: string; // Order ID for grouping issues
 }
 
 export interface CustomerInfo {

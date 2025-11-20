@@ -17,44 +17,20 @@ const RoutePathRenderer: React.FC<RoutePathRendererProps> = ({
   vehicleAssignments,
   selectedVehicleId
 }) => {
-  console.log('[RoutePathRenderer] Component rendered with:', {
-    hasMap: !!map,
-    vaCount: vehicleAssignments?.length || 0,
-    selectedVehicleId
-  });
-
   const layersRef = useRef<string[]>([]);
 
   useEffect(() => {
     if (!map || !vehicleAssignments || vehicleAssignments.length === 0) {
-      console.log('[RoutePathRenderer] Skipping - no map or vehicleAssignments', {
-        hasMap: !!map,
-        vaCount: vehicleAssignments?.length || 0
-      });
       return;
     }
 
     // Render routes immediately - don't wait for map load
     // The map should already be loaded when this component is rendered
-    console.log('[RoutePathRenderer] Starting render with', vehicleAssignments.length, 'vehicle assignments');
-    console.log('[RoutePathRenderer] VehicleAssignments data:', JSON.stringify(vehicleAssignments.map((va, i) => ({
-      index: i,
-      id: va.id,
-      hasJourneyHistories: !!va.journeyHistories,
-      journeyCount: va.journeyHistories?.length || 0
-    }))));
 
     // First pass: Create/update all routes from all journeys
     const createdLayers: string[] = [];
     vehicleAssignments.forEach((va, vaIndex) => {
-      console.log(`[RoutePathRenderer] Processing VA ${vaIndex}:`, {
-        id: va.id,
-        hasJourneyHistories: !!va.journeyHistories,
-        journeyCount: va.journeyHistories?.length || 0
-      });
-
       if (!va.journeyHistories || va.journeyHistories.length === 0) {
-        console.log(`[RoutePathRenderer] VA ${vaIndex} has no journeyHistories`);
         return;
       }
 
@@ -64,28 +40,13 @@ const RoutePathRenderer: React.FC<RoutePathRendererProps> = ({
         .sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
       
       if (activeJourneys.length === 0) {
-        console.log(`[RoutePathRenderer] VA ${vaIndex} has no ACTIVE journey`);
         return;
       }
 
       const latestActiveJourney = activeJourneys[0];
-      console.log(`[RoutePathRenderer] VA ${vaIndex} using ACTIVE journey:`, {
-        id: latestActiveJourney.id,
-        status: latestActiveJourney.status,
-        createdAt: latestActiveJourney.createdAt
-      });
-
       // Render only the latest ACTIVE journey
       [latestActiveJourney].forEach((journey: any, journeyIndex: number) => {
-        console.log(`[RoutePathRenderer] Processing VA ${vaIndex} Journey ${journeyIndex}:`, {
-          id: journey.id,
-          status: journey.status,
-          hasSegments: !!journey.journeySegments,
-          segmentCount: journey.journeySegments?.length || 0
-        });
-
         if (!journey || !journey.journeySegments || journey.journeySegments.length === 0) {
-          console.log(`[RoutePathRenderer] VA ${vaIndex} Journey ${journeyIndex} has no segments`);
           return;
         }
 
@@ -113,12 +74,8 @@ const RoutePathRenderer: React.FC<RoutePathRendererProps> = ({
         });
 
         if (coordinates.length < 2) {
-          console.log(`[RoutePathRenderer] VA ${vaIndex} Journey ${journeyIndex} has only ${coordinates.length} coordinates`);
           return;
         }
-
-        console.log(`[RoutePathRenderer] VA ${vaIndex} Journey ${journeyIndex} has ${coordinates.length} coordinates`);
-
         // Create source and layer for this journey route
         const sourceId = `route-source-${vaIndex}-${journeyIndex}`;
         const layerId = `route-layer-${vaIndex}-${journeyIndex}`;
@@ -137,7 +94,6 @@ const RoutePathRenderer: React.FC<RoutePathRendererProps> = ({
                 properties: {}
               }
             });
-            console.log(`[RoutePathRenderer] Created source ${sourceId}`);
           }
 
           // Add layer if not exists
@@ -167,13 +123,12 @@ const RoutePathRenderer: React.FC<RoutePathRendererProps> = ({
                 'line-opacity': 0.9
               }
             }, beforeLayer); // Insert before first symbol layer if found
-            console.log(`[RoutePathRenderer] Created layer ${layerId} (before: ${beforeLayer || 'top'})`);
+            
           } else {
             // Update paint properties if layer already exists
             map.setPaintProperty(layerId, 'line-color', '#1677ff');
             map.setPaintProperty(layerId, 'line-width', 6);
             map.setPaintProperty(layerId, 'line-opacity', 0.9);
-            console.log(`[RoutePathRenderer] Updated layer ${layerId}`);
           }
 
           createdLayers.push(sourceId, layerId);
@@ -185,8 +140,6 @@ const RoutePathRenderer: React.FC<RoutePathRendererProps> = ({
 
     // Update ref with created layers
     layersRef.current = createdLayers;
-    console.log('[RoutePathRenderer] Render complete with', createdLayers.length, 'layers');
-
     return () => {
       // Cleanup on unmount
       layersRef.current.forEach(id => {

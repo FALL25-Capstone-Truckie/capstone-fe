@@ -73,8 +73,6 @@ const SmoothVehicleMarker: React.FC<SmoothVehicleMarkerProps> = ({
       .addTo(map);
 
     markerRef.current = marker;
-    console.log(`🚛 [VEHICLE] Created marker for vehicle ${vehicle.vehicleId}`);
-
     return () => {
       if (markerRef.current) {
         markerRef.current.remove();
@@ -91,7 +89,6 @@ const SmoothVehicleMarker: React.FC<SmoothVehicleMarkerProps> = ({
     const currentPos = markerRef.current.getLngLat();
     if (currentPos.lat === 0 && currentPos.lng === 0) {
       markerRef.current.setLngLat([vehicle.longitude, vehicle.latitude]);
-      console.log(`🚛 [VEHICLE] Set initial position for ${vehicle.vehicleId}`);
     }
   }, [vehicle.vehicleId]);
 
@@ -127,7 +124,7 @@ const SmoothVehicleMarker: React.FC<SmoothVehicleMarkerProps> = ({
     // Jump directly to new position without animation
     // This prevents the "jumping" effect when camera pans/zooms
     markerRef.current.setLngLat([vehicle.longitude, vehicle.latitude]);
-    console.log(`📍 [VEHICLE] Updated position for ${vehicle.vehicleId} to [${vehicle.latitude.toFixed(6)}, ${vehicle.longitude.toFixed(6)}]`);
+    
 
     lastUpdateTimeRef.current = now;
   }, [vehicle.latitude, vehicle.longitude, vehicle.vehicleId]);

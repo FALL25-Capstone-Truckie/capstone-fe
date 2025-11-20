@@ -3,19 +3,33 @@ import SockJS from 'sockjs-client';
 import { API_BASE_URL, AUTH_ACCESS_TOKEN_KEY } from '@/config/env';
 
 type IssueUpdateCallback = (issue: any) => void;
+type UserNotificationCallback = (notification: any) => void;
 
 class IssueWebSocketService {
     private client: Client | null = null;
     private subscribers: Map<string, IssueUpdateCallback[]> = new Map();
+    private userNotificationCallbacks: UserNotificationCallback[] = [];
     private reconnectAttempts = 0;
     private reconnectDelay = 5000; // 5 giây
+    private userId: string | null = null;
 
     /**
      * Connect to WebSocket server
+     * @param userId Optional user ID for subscribing to user-specific notifications
      */
-    connect(): Promise<void> {
+    connect(userId?: string): Promise<void> {
+        // Store userId for user-specific subscriptions
+        if (userId) {
+            this.userId = userId;
+        }
+        
         return new Promise((resolve, reject) => {
             if (this.client?.connected) {
+                // If already connected but userId changed, resubscribe
+                if (userId && userId !== this.userId) {
+                    this.userId = userId;
+                    this.setupUserNotificationSubscription();
+                }
                 resolve();
                 return;
             }
@@ -32,7 +46,6 @@ class IssueWebSocketService {
                     Authorization: token ? `Bearer ${token}` : '',
                 },
                 debug: (str) => {
-                    console.log('[IssueWebSocket] Debug:', str);
                 },
                 reconnectDelay: this.reconnectDelay,
                 heartbeatIncoming: 4000,
@@ -40,7 +53,6 @@ class IssueWebSocketService {
             });
 
             this.client.onConnect = () => {
-                console.log('✅ [IssueWebSocket] Connected to WebSocket server');
                 this.reconnectAttempts = 0;
                 this.subscribeToIssueUpdates();
                 resolve();
@@ -73,14 +85,62 @@ class IssueWebSocketService {
         this.client.subscribe('/topic/issues/status-change', (message: IMessage) => {
             try {
                 const issue = JSON.parse(message.body);
-                console.log('📬 [IssueWebSocket] Issue status changed:', issue.id);
                 this.notifySubscribers(issue.id, issue);
             } catch (error) {
                 console.error('❌ [IssueWebSocket] Error parsing issue update:', error);
             }
         });
+        // Subscribe to user-specific notifications if userId is set
+        this.setupUserNotificationSubscription();
+    }
 
-        console.log('✅ [IssueWebSocket] Subscribed to issue updates');
+    /**
+     * Setup user-specific notification subscription (internal)
+     */
+    private setupUserNotificationSubscription() {
+        if (!this.client?.connected) {
+            console.warn('⚠️ [IssueWebSocket] Cannot subscribe to user notifications - not connected');
+            return;
+        }
+        
+        if (!this.userId) {
+            return;
+        }
+
+        // Subscribe to user-specific notifications
+        this.client.subscribe(`/topic/user/${this.userId}/notifications`, (message: IMessage) => {
+            try {
+                const notification = JSON.parse(message.body);
+                // Notify all registered callbacks
+                this.userNotificationCallbacks.forEach(callback => {
+                    try {
+                        callback(notification);
+                    } catch (error) {
+                        console.error('❌ [IssueWebSocket] Error in user notification callback:', error);
+                    }
+                });
+            } catch (error) {
+                console.error('❌ [IssueWebSocket] Error parsing user notification:', error);
+            }
+        });
+    }
+
+    /**
+     * Subscribe to user-specific notifications
+     * @param callback Function to call when notification is received
+     * @returns Unsubscribe function
+     */
+    subscribeToUserNotifications(callback: UserNotificationCallback): () => void {
+        this.userNotificationCallbacks.push(callback);
+        
+
+        // Return unsubscribe function
+        return () => {
+            const index = this.userNotificationCallbacks.indexOf(callback);
+            if (index > -1) {
+                this.userNotificationCallbacks.splice(index, 1);
+            }
+        };
     }
 
     /**
@@ -97,7 +157,7 @@ class IssueWebSocketService {
         const callbacks = this.subscribers.get(issueId)!;
         callbacks.push(callback);
 
-        console.log(`📡 [IssueWebSocket] Subscribed to issue ${issueId} (${callbacks.length} subscribers)`);
+        
 
         // Return unsubscribe function
         return () => {
@@ -111,8 +171,6 @@ class IssueWebSocketService {
                 if (callbacks.length === 0) {
                     this.subscribers.delete(issueId);
                 }
-                
-                console.log(`📡 [IssueWebSocket] Unsubscribed from issue ${issueId}`);
             }
         };
     }
@@ -122,15 +180,13 @@ class IssueWebSocketService {
      * Supports both specific issue ID subscribers and wildcard subscribers
      */
     private notifySubscribers(issueId: string, issue: any) {
-        console.log(`📤 [IssueWebSocket] Checking subscribers for issue ${issueId}`);
-        console.log(`📋 [IssueWebSocket] Current subscribers:`, Array.from(this.subscribers.keys()));
+        
         
         let notifiedCount = 0;
         
         // Notify specific issue ID subscribers
         const callbacks = this.subscribers.get(issueId);
         if (callbacks && callbacks.length > 0) {
-            console.log(`📤 [IssueWebSocket] Notifying ${callbacks.length} specific subscribers for issue ${issueId}`);
             callbacks.forEach(callback => {
                 try {
                     callback(issue);
@@ -144,7 +200,6 @@ class IssueWebSocketService {
         // Notify ALL wildcard/global subscribers (those with keys starting with '*')
         this.subscribers.forEach((wildcardCallbacks, key) => {
             if (key.startsWith('*') || key.startsWith('order-')) {
-                console.log(`📤 [IssueWebSocket] Notifying ${wildcardCallbacks.length} wildcard subscribers with key ${key}`);
                 wildcardCallbacks.forEach(callback => {
                     try {
                         callback(issue);
@@ -164,7 +219,6 @@ class IssueWebSocketService {
             });
             window.dispatchEvent(event);
         } else {
-            console.log(`✅ [IssueWebSocket] Notified ${notifiedCount} total subscribers`);
         }
     }
 
@@ -173,7 +227,7 @@ class IssueWebSocketService {
      */
     private handleReconnect() {
         this.reconnectAttempts++;
-        console.log(`🔄 [IssueWebSocket] Attempting to reconnect (attempt #${this.reconnectAttempts})...`);
+        
         
         // Exponential backoff with max 30 seconds
         const delay = Math.min(this.reconnectDelay * Math.min(this.reconnectAttempts, 6), 30000);
@@ -194,7 +248,6 @@ class IssueWebSocketService {
             this.client.deactivate();
             this.client = null;
             this.subscribers.clear();
-            console.log('✅ [IssueWebSocket] Disconnected from WebSocket server');
         }
     }
 

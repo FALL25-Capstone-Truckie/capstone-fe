@@ -67,8 +67,6 @@ const RouteMapWithRealTimeTracking: React.FC<RouteMapWithRealTimeTrackingProps> 
     const isNowTracking = shouldShowRealTimeTracking;
 
     if (wasNotTracking && isNowTracking && !hasShownTrackingNotification) {
-      console.log('[RouteMapWithRealTimeTracking] 🚀 Tracking activated! Showing notification...');
-      
       // Show toast notification
       message.success({
         content: (
@@ -97,8 +95,6 @@ const RouteMapWithRealTimeTracking: React.FC<RouteMapWithRealTimeTrackingProps> 
             top: offsetPosition,
             behavior: 'smooth'
           });
-          
-          console.log('[RouteMapWithRealTimeTracking] 📍 Scrolled to map section');
         }
       }, 1200); // Delay to allow tab switch animation
     }
@@ -131,15 +127,6 @@ const RouteMapWithRealTimeTracking: React.FC<RouteMapWithRealTimeTrackingProps> 
 
   // Log state changes in effect to avoid triggering re-renders
   useEffect(() => {
-    console.log('[RouteMapWithRealTimeTracking] STATE:', {
-      isConnected,
-      isConnecting,
-      vehicleCount: vehicleLocations.length,
-      validVehicleCount: validVehicles.length,
-      hasMap: !!mapInstance,
-      shouldShowRealTimeTracking,
-      isInitializingTracking
-    });
   }, [isConnected, isConnecting, vehicleLocations.length, validVehicles.length, mapInstance, shouldShowRealTimeTracking, isInitializingTracking]);
 
   // Callback khi map được khởi tạo - MEMOIZED to prevent marker recreation
@@ -199,7 +186,7 @@ const RouteMapWithRealTimeTracking: React.FC<RouteMapWithRealTimeTrackingProps> 
   // useEffect(() => {
   //   if (vehicleLocations.length === 1 && mapInstance && !selectedVehicleId && !hasFocusedSingleVehicle.current) {
   //     const vehicle = vehicleLocations[0];
-  //     console.log('[RouteMapWithRealTimeTracking] 🎯 Auto-focus:', vehicle.licensePlateNumber);
+  //     
   //     mapInstance.flyTo({
   //       center: [vehicle.longitude, vehicle.latitude],
   //       zoom: 15,
@@ -223,7 +210,7 @@ const RouteMapWithRealTimeTracking: React.FC<RouteMapWithRealTimeTrackingProps> 
 
     // Only focus ONCE when vehicle is first selected
     if (!hasInitialFocusRef.current) {
-      console.log('[RouteMapWithRealTimeTracking] 🎯 Initial focus on selected vehicle (one-time)');
+      
       hasInitialFocusRef.current = true;
       
       // One-time smooth focus
@@ -244,14 +231,12 @@ const RouteMapWithRealTimeTracking: React.FC<RouteMapWithRealTimeTrackingProps> 
   // Auto-scroll to map when tracking becomes active
   useEffect(() => {
     if (shouldShowRealTimeTracking && isConnected) {
-      console.log('[RouteMapWithRealTimeTracking] 🎯 Tracking active! Notifying parent...');
       // Notify parent to switch to journey tab (if needed)
       onTrackingActive?.();
       
       // Then scroll to center map vertically in viewport
       // Need longer delay to wait for tab switch animation to complete
       if (mapContainerRef.current) {
-        console.log('[RouteMapWithRealTimeTracking] 📜 Scrolling to map...');
         setTimeout(() => {
           if (!mapContainerRef.current) return; // Double check after delay
           
@@ -271,8 +256,6 @@ const RouteMapWithRealTimeTracking: React.FC<RouteMapWithRealTimeTrackingProps> 
             top: window.pageYOffset + scrollOffset,
             behavior: 'smooth'
           });
-          
-          console.log('[CustomerRouteMap] 📍 Scrolled to center map in viewport');
         }, 1500); // Longer delay to ensure layout is stable after any re-renders
       }
     }
@@ -280,7 +263,6 @@ const RouteMapWithRealTimeTracking: React.FC<RouteMapWithRealTimeTrackingProps> 
 
   // Callback khi click vào marker xe
   const handleVehicleMarkerClick = useCallback((vehicle: VehicleLocationMessage) => {
-    console.log('[RouteMapWithRealTimeTracking] 🖱️ Marker clicked:', vehicle.licensePlateNumber);
     setSelectedVehicleId(vehicle.vehicleId);
     
     // Smooth focus on selected vehicle with easeTo

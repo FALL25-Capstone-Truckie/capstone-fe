@@ -62,7 +62,10 @@ export interface ReturnShippingIssue {
     unit?: string;
   }>;
   
-  // Return delivery images
+  // Issue images (photos when driver confirms return delivery)
+  issueImages?: string[];
+  
+  // Return delivery images (deprecated - use issueImages)
   returnDeliveryImages?: string[];
 }
 

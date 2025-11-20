@@ -69,16 +69,6 @@ const ReturnRoutePlanning: React.FC<ReturnRoutePlanningProps> = ({
     
     useEffect(() => {
         renderCount.current += 1;
-        console.log(`[ReturnRoutePlanning] Render #${renderCount.current}`, {
-            issueId,
-            issueChanged: lastIssueId.current !== issueId,
-            apiCalls: apiCallCount.current,
-            callbacksChanged: {
-                onRouteGenerated: !!onRouteGenerated,
-                onFeeCalculated: !!onFeeCalculated,
-                onAdjustedFeeChange: !!onAdjustedFeeChange
-            }
-        });
         lastIssueId.current = issueId;
     });
     const [loading, setLoading] = useState<boolean>(true);
@@ -109,8 +99,6 @@ const ReturnRoutePlanning: React.FC<ReturnRoutePlanningProps> = ({
             if (!issueId) return;
             
             apiCallCount.current += 1;
-            console.log(`[API Call #${apiCallCount.current}] fetchRoutePoints for issueId:`, issueId);
-            
             try {
                 setLoading(true);
                 globalCustomPoints.length = 0;
@@ -357,7 +345,6 @@ const ReturnRoutePlanning: React.FC<ReturnRoutePlanningProps> = ({
 
             // Call API to get suggested route
             apiCallCount.current += 1;
-            console.log(`[API Call #${apiCallCount.current}] suggestRoute with ${coordinates.length} points`);
             const response = await routeService.suggestRoute(requestData);
 
             if (response && response.segments) {

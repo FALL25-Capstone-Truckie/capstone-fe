@@ -28,8 +28,8 @@ const OrderLiveTrackingOnly: React.FC<OrderLiveTrackingOnlyProps> = ({
   shouldShowRealTimeTracking,
   vehicleAssignments = []
 }) => {
-  // console.log('🎯 [OrderLiveTrackingOnly] COMPONENT RENDERED');
-  // console.log('Props:', { orderId, shouldShowRealTimeTracking });
+  // 
+  // 
   
   const [mapInstance, setMapInstance] = useState<any>(null);
   const [mapStyle, setMapStyle] = useState<any>(null);
@@ -50,6 +50,7 @@ const OrderLiveTrackingOnly: React.FC<OrderLiveTrackingOnlyProps> = ({
     vehicleLocations,
     isConnected,
     isConnecting,
+    disconnect: disconnectTracking,
   } = useVehicleTracking({
     orderId: shouldShowRealTimeTracking ? orderId : undefined,
     autoConnect: shouldShowRealTimeTracking,
@@ -85,7 +86,6 @@ const OrderLiveTrackingOnly: React.FC<OrderLiveTrackingOnlyProps> = ({
             const parsed = JSON.parse(cachedStyle);
             // Validate cache: check if it has required properties
             if (parsed && typeof parsed === 'object' && parsed.version) {
-              console.log('[OrderLiveTrackingOnly] ✅ Using cached map style');
               setMapStyle(parsed);
               return;
             } else {
@@ -97,11 +97,8 @@ const OrderLiveTrackingOnly: React.FC<OrderLiveTrackingOnlyProps> = ({
             localStorage.removeItem('vietmap_style_cache');
           }
         }
-
-        console.log('[OrderLiveTrackingOnly] 🔄 Fetching map style from API...');
         const result = await getMapStyle();
         if (result.success && result.style) {
-          console.log('[OrderLiveTrackingOnly] ✅ Map style fetched successfully');
           // Cache the style
           localStorage.setItem('vietmap_style_cache', JSON.stringify(result.style));
           setMapStyle(result.style);
@@ -125,8 +122,6 @@ const OrderLiveTrackingOnly: React.FC<OrderLiveTrackingOnlyProps> = ({
     if (!mapContainerRef.current || !window.vietmapgl || !mapStyle || mapInitializedRef.current) {
       return;
     }
-
-    console.log('[OrderLiveTrackingOnly] Initializing map...');
     mapInitializedRef.current = true;
 
     let map: any = null;
@@ -174,7 +169,6 @@ const OrderLiveTrackingOnly: React.FC<OrderLiveTrackingOnlyProps> = ({
 
         map.on('load', () => {
           if (isDestroyed) return;
-          console.log('[OrderLiveTrackingOnly] Map loaded successfully');
           setMapInstance(map);
         });
 
@@ -197,7 +191,6 @@ const OrderLiveTrackingOnly: React.FC<OrderLiveTrackingOnlyProps> = ({
       isDestroyed = true;
       if (map && map.remove) {
         try {
-          console.log('[OrderLiveTrackingOnly] Cleaning up map...');
           map.remove();
         } catch (error) {
           console.warn('[OrderLiveTrackingOnly] Error removing map:', error);
@@ -217,8 +210,6 @@ const OrderLiveTrackingOnly: React.FC<OrderLiveTrackingOnlyProps> = ({
     const isNowTracking = shouldShowRealTimeTracking;
 
     if (wasNotTracking && isNowTracking && !hasShownTrackingNotification) {
-      console.log('[OrderLiveTrackingOnly] 🚀 Tracking activated!');
-      
       playImportantNotificationSound();
       setHasShownTrackingNotification(true);
       
@@ -245,6 +236,35 @@ const OrderLiveTrackingOnly: React.FC<OrderLiveTrackingOnlyProps> = ({
 
     previousTrackingStateRef.current = shouldShowRealTimeTracking;
   }, [shouldShowRealTimeTracking, hasShownTrackingNotification]);
+
+  // Auto-disconnect GPS tracking for Staff (extended permissions)
+  // Disconnect when: All OrderDetails in final states OR All VehicleAssignments COMPLETED
+  useEffect(() => {
+    if (!vehicleAssignments || vehicleAssignments.length === 0) return;
+    
+    // Define final states for OrderDetails
+    const FINAL_STATES = ['DELIVERED', 'COMPENSATION', 'IN_TROUBLES', 'RETURNED', 'CANCELLED', 'SUCCESSFUL'];
+    
+    // Check if all OrderDetails across all vehicle assignments are in final states
+    const allOrderDetailsInFinalState = vehicleAssignments.every((va: any) => {
+      const vaOrderDetails = va.orderDetails || [];
+      if (vaOrderDetails.length === 0) return false;
+      return vaOrderDetails.every((od: any) => FINAL_STATES.includes(od.status));
+    });
+    
+    // Check if all vehicle assignments have COMPLETED status (Staff extended permission)
+    const allTripsCompleted = vehicleAssignments.every((va: any) => va.status === 'COMPLETED');
+    
+    // Disconnect GPS tracking if either condition is met
+    const shouldDisconnect = allOrderDetailsInFinalState || allTripsCompleted;
+    
+    if (shouldDisconnect && isConnected && disconnectTracking) {
+      const reason = allTripsCompleted 
+        ? 'All VehicleAssignments COMPLETED (staff extended view)' 
+        : 'All OrderDetails in final states';
+      disconnectTracking();
+    }
+  }, [vehicleAssignments, isConnected, disconnectTracking]);
 
   // Handle initializing state - Cải thiện UX bằng cách giảm thời gian hiển thị loading
   useEffect(() => {
@@ -275,8 +295,6 @@ const OrderLiveTrackingOnly: React.FC<OrderLiveTrackingOnlyProps> = ({
   // Focus vehicles before rendering markers to avoid "jumping"
   useEffect(() => {
     if (mapInstance && validVehicles.length > 0 && !hasInitialFocus) {
-      console.log('[OrderLiveTrackingOnly] 🎯 Initial map focus for', validVehicles.length, 'vehicles');
-      
       // For single vehicle: focus on the vehicle with higher zoom
       if (validVehicles.length === 1) {
         const vehicle = validVehicles[0];
@@ -386,7 +404,6 @@ const OrderLiveTrackingOnly: React.FC<OrderLiveTrackingOnlyProps> = ({
   // Auto-fit when vehicles first load - ONLY ONCE - Fixed dependency
   useEffect(() => {
     if (vehicleLocations.length > 0 && mapInstance && !hasInitialFitBoundsRef.current) {
-      console.log('[OrderLiveTrackingOnly] 🎯 Initial fit bounds for', vehicleLocations.length, 'vehicles');
       hasInitialFitBoundsRef.current = true;
       const timeoutId = setTimeout(() => {
         if (mapInstance && mapInstanceRef.current === mapInstance) {
@@ -408,7 +425,6 @@ const OrderLiveTrackingOnly: React.FC<OrderLiveTrackingOnlyProps> = ({
     const previousCount = lastVehicleCountRef.current;
     
     if (currentCount > 1 && previousCount <= 1 && !hasInitialMultiVehicleFitRef.current) {
-      console.log('[OrderLiveTrackingOnly] Vehicle count changed to', currentCount, '- fit bounds once');
       hasInitialMultiVehicleFitRef.current = true;
       hasInitialFitBoundsRef.current = false;
       hasFocusedSingleVehicle.current = false;
@@ -439,7 +455,6 @@ const OrderLiveTrackingOnly: React.FC<OrderLiveTrackingOnlyProps> = ({
     if (vehicleLocations.length === 1 && mapInstance && hasInitialFocus && !selectedVehicleId) {
       const vehicle = vehicleLocations[0];
       if (vehicle.latitude !== null && vehicle.longitude !== null && !hasFocusedSingleVehicle.current) {
-        console.log('[OrderLiveTrackingOnly] 🎯 Auto-focusing on single vehicle:', vehicle.vehicleId);
         mapInstance.flyTo({
           center: [vehicle.longitude, vehicle.latitude],
           zoom: 15,
@@ -463,9 +478,6 @@ const OrderLiveTrackingOnly: React.FC<OrderLiveTrackingOnlyProps> = ({
 
     const vehicle = vehicleLocations.find(v => v.vehicleId === selectedVehicleId);
     if (!vehicle || vehicle.latitude === null || vehicle.longitude === null) return;
-
-    console.log('[OrderLiveTrackingOnly] 🎯 Focusing on selected vehicle:', selectedVehicleId);
-    
     mapInstance.flyTo({
       center: [vehicle.longitude, vehicle.latitude],
       zoom: 15,
@@ -488,8 +500,6 @@ const OrderLiveTrackingOnly: React.FC<OrderLiveTrackingOnlyProps> = ({
     if (vehicleLocations.length === 1 && !selectedVehicleId) {
       const vehicle = vehicleLocations[0];
       if (vehicle.latitude !== null && vehicle.longitude !== null) {
-        console.log('[OrderLiveTrackingOnly] 🎯 Auto-following single vehicle update:', vehicle.vehicleId);
-        
         // Use easeTo for smooth following (less dramatic than flyTo)
         mapInstance.easeTo({
           center: [vehicle.longitude, vehicle.latitude],
@@ -502,7 +512,6 @@ const OrderLiveTrackingOnly: React.FC<OrderLiveTrackingOnlyProps> = ({
 
   // Callback khi click vào marker xe
   const handleVehicleMarkerClick = useCallback((vehicle: VehicleLocationMessage) => {
-    console.log('[OrderLiveTrackingOnly] Vehicle marker clicked:', vehicle);
     setSelectedVehicleId(vehicle.vehicleId);
     
     if (mapInstance && vehicle.latitude !== null && vehicle.longitude !== null) {

@@ -175,12 +175,8 @@ const RouteMarkersRenderer: React.FC<RouteMarkersRendererProps> = ({
                           !Array.from(newMarkerIds).every(id => existingMarkerIds.has(id));
 
     if (!needsRecreate) {
-      console.log('[RouteMarkersRenderer] Markers unchanged, skipping recreation');
       return;
     }
-
-    console.log('[RouteMarkersRenderer] Recreating markers');
-
     // Clear previous markers
     markerDataRef.current.forEach(({ marker }) => {
       try {
@@ -233,8 +229,6 @@ const RouteMarkersRenderer: React.FC<RouteMarkersRendererProps> = ({
 
         markersRef.current.push(vietMarker);
         markerDataRef.current.set(marker.id, { marker: vietMarker, vaIndex: marker.vaIndex });
-
-        console.log(`[RouteMarkersRenderer] Marker ${marker.id} created`);
       } catch (error) {
         console.error(`[RouteMarkersRenderer] Error rendering marker ${marker.id}:`, error);
       }

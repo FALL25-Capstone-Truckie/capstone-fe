@@ -60,9 +60,7 @@ export const useOrderCreation = () => {
   // Create order
   const createOrder = useCallback(async (orderData: OrderCreateRequest) => {
     try {
-      console.log('[useOrderCreation] Creating order:', orderData);
       const response = await orderService.createOrder(orderData);
-      console.log('[useOrderCreation] Order created successfully:', response);
       return response;
     } catch (err: any) {
       console.error('[useOrderCreation] Error creating order:', err);

@@ -75,14 +75,6 @@ const OrderDetailPage: React.FC = () => {
 
   // Tự động load contract data khi order status là CONTRACT_DRAFT
   useEffect(() => {
-    console.log(
-      "Order status:",
-      order?.status,
-      "ID:",
-      id,
-      "Contract data:",
-      contractData
-    );
     if (order?.status === "CONTRACT_DRAFT") {
       // Tự động chuyển sang tab contract
       if (activeTab !== "contract") {
@@ -90,7 +82,6 @@ const OrderDetailPage: React.FC = () => {
       }
       // Tự động load contract data nếu chưa có
       if (id && !contractData && !loadingContractData) {
-        console.log("Auto-loading contract data...");
         handlePreviewContract();
       }
     }
@@ -125,16 +116,12 @@ const OrderDetailPage: React.FC = () => {
 
   const handlePreviewContract = async () => {
     if (!id) return;
-
-    console.log("handlePreviewContract called with ID:", id);
     setLoadingContractData(true);
     try {
       const response = await contractService.getContractPdfData(id);
-      console.log("Contract PDF data response:", response);
       if (response.success) {
         setContractData(response.data);
         setContractPreviewVisible(true);
-        console.log("Contract data set SUCCESSFUL");
       } else {
         messageApi.error(response.message);
         console.error("Contract service returned error:", response.message);

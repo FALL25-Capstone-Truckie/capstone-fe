@@ -125,9 +125,6 @@ const VehicleAssignmentSection: React.FC<VehicleAssignmentSectionProps> = ({
     const va = currentGroup.vehicleAssignment;
 
     // Debug log for seals
-    console.log('[VehicleAssignmentSection] Vehicle Assignment:', va);
-    console.log('[VehicleAssignmentSection] Seals:', va.seals);
-
     return (
         <div className="vehicle-assignment-section border-2 border-blue-200 rounded-xl bg-blue-50 p-6 shadow-md">
             {/* Header - Tab chọn chuyến xe */}
@@ -660,14 +657,16 @@ const VehicleAssignmentSection: React.FC<VehicleAssignmentSectionProps> = ({
                                             {/* Issue images - for all issue types */}
                                             {issue.issueImages && issue.issueImages.length > 0 && (
                                                 <div className="mb-3 p-2 bg-white rounded">
-                                                    <div className="text-sm text-gray-600 font-medium mb-2">Hình ảnh sự cố:</div>
+                                                    <div className="text-sm text-gray-600 font-medium mb-2">
+                                                        {isOrderRejection ? 'Ảnh xác nhận trả hàng:' : 'Hình ảnh sự cố:'}
+                                                    </div>
                                                     <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                                                         <Image.PreviewGroup>
                                                             {issue.issueImages.map((url: string, idx: number) => (
                                                                 <Image
                                                                     key={idx}
                                                                     src={url}
-                                                                    alt={`Issue image ${idx + 1}`}
+                                                                    alt={isOrderRejection ? `Ảnh xác nhận trả hàng ${idx + 1}` : `Issue image ${idx + 1}`}
                                                                     className="rounded"
                                                                     width="100%"
                                                                     style={{maxHeight: '200px', objectFit: 'cover'}}

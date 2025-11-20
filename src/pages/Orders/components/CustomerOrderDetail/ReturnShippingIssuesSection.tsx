@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Tag, Button, Spin, Alert, Badge, Statistic, Row, Col, Descriptions } from 'antd';
+import { Card, Tag, Button, Spin, Alert, Badge, Statistic, Row, Col, Descriptions, Image } from 'antd';
 import { 
   ExclamationCircleOutlined, 
   DollarOutlined, 
@@ -35,6 +35,7 @@ const ReturnShippingIssuesSection: React.FC<ReturnShippingIssuesSectionProps> = 
   const [mappedIssues, setMappedIssues] = useState<ReturnShippingIssue[]>([]);
   const [loading, setLoading] = useState(true);
   const [processingPayment, setProcessingPayment] = useState<string | null>(null);
+  const [expiredIssues, setExpiredIssues] = useState<Set<string>>(new Set()); // Track expired issues
   const { message } = App.useApp();
 
   // Map issues from new format to ReturnShippingIssue format
@@ -64,7 +65,9 @@ const ReturnShippingIssuesSection: React.FC<ReturnShippingIssuesSectionProps> = 
       paymentDeadline: issue.paymentDeadline,
       affectedOrderDetails: issue.affectedOrderDetails || [],
       returnTransaction: paidTransaction || transactions[transactions.length - 1], // Use latest transaction
-      transactions: transactions // Add transactions array
+      transactions: transactions, // Add transactions array
+      issueImages: issue.issueImages || [], // Issue images (return delivery confirmation photos)
+      returnDeliveryImages: issue.returnDeliveryImages || issue.issueImages || [] // Backward compatibility
     };
   };
 
@@ -428,6 +431,14 @@ const ReturnShippingIssuesSection: React.FC<ReturnShippingIssuesSectionProps> = 
                                 suffix={
                                   <span className="text-sm text-gray-500 ml-2">phút:giây</span>
                                 }
+                                onFinish={() => {
+                                  // When countdown reaches 0, mark issue as expired and force re-render
+                                  setExpiredIssues(prev => new Set(prev).add(issue.issueId));
+                                  message.warning({
+                                    content: 'Hết thời gian thanh toán! Các kiện hàng sẽ bị hủy.',
+                                    duration: 8
+                                  });
+                                }}
                               />
                             )}
                           </div>
@@ -472,27 +483,54 @@ const ReturnShippingIssuesSection: React.FC<ReturnShippingIssuesSectionProps> = 
                 </Card>
               )}
 
-              {/* Action Buttons */}
-              {issue.status === 'IN_PROGRESS' && (!issue.returnTransaction || issue.returnTransaction?.status === 'PENDING') && (
-                <Button
-                  type="primary"
-                  icon={<DollarOutlined />}
-                  onClick={() => handlePaymentClick(issue)}
-                  block
-                  size="large"
-                  disabled={isDeadlinePassed(issue.paymentDeadline)}
-                  loading={processingPayment === issue.issueId}
-                  danger={!isDeadlinePassed(issue.paymentDeadline)}
-                  className="font-semibold"
-                  style={{ height: '48px' }}
-                >
-                  {isDeadlinePassed(issue.paymentDeadline) ? (
-                    <span>Đã hết hạn thanh toán</span>
-                  ) : (
-                    <span>Thanh toán ngay qua PayOS</span>
-                  )}
-                </Button>
+              {/* Issue Images - Show return delivery confirmation photos */}
+              {issue.issueImages && issue.issueImages.length > 0 && (
+                <Card size="small" className="mb-4 bg-white">
+                  <h4 className="text-sm font-semibold mb-3 text-gray-700">Ảnh xác nhận trả hàng</h4>
+                  <Image.PreviewGroup>
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                      {issue.issueImages.map((imageUrl: string, index: number) => (
+                        <div key={index} className="border rounded-lg overflow-hidden hover:shadow-lg transition-shadow">
+                          <Image
+                            src={imageUrl} 
+                            alt={`Ảnh xác nhận trả hàng ${index + 1}`}
+                            className="w-full h-48 object-cover rounded-lg"
+                            style={{ cursor: 'pointer' }}
+                          />
+                          <div className="p-2 bg-gray-50 text-center text-sm text-gray-600">
+                            Ảnh {index + 1}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </Image.PreviewGroup>
+                </Card>
               )}
+
+              {/* Action Buttons */}
+              {issue.status === 'IN_PROGRESS' && (!issue.returnTransaction || issue.returnTransaction?.status === 'PENDING') && (() => {
+                const isExpired = isDeadlinePassed(issue.paymentDeadline) || expiredIssues.has(issue.issueId);
+                return (
+                  <Button
+                    type="primary"
+                    icon={<DollarOutlined />}
+                    onClick={() => handlePaymentClick(issue)}
+                    block
+                    size="large"
+                    disabled={isExpired}
+                    loading={processingPayment === issue.issueId}
+                    danger={!isExpired}
+                    className="font-semibold"
+                    style={{ height: '48px' }}
+                  >
+                    {isExpired ? (
+                      <span>Đã hết hạn thanh toán</span>
+                    ) : (
+                      <span>Thanh toán ngay qua PayOS</span>
+                    )}
+                  </Button>
+                );
+              })()}
 
               {/* Payment Overdue Status */}
               {issue.status === 'PAYMENT_OVERDUE' && (

@@ -45,7 +45,6 @@ export default function CreateOrder() {
 
   // Cập nhật giá trị form từ state khi component mount
   useEffect(() => {
-    console.log("Setting form values from state:", formValues);
     form.setFieldsValue(formValues);
   }, [form, formValues]);
 
@@ -76,7 +75,6 @@ export default function CreateOrder() {
   // Note: Hook will auto-refetch, but keep this for manual refresh if needed
   const refreshAddresses = async () => {
     // Hook handles address fetching, no manual refresh needed
-    console.log("Addresses will be refreshed by hook on next render");
   };
 
   // Handle receiver details loaded from suggestion
@@ -124,7 +122,6 @@ export default function CreateOrder() {
     setIsSubmitting(true);
     try {
       const currentFormValues = form.getFieldsValue(true);
-      console.log("Current form values:", currentFormValues);
       let formattedEstimateStartTime;
       if (currentFormValues.estimateStartTime) {
         if (currentFormValues.estimateStartTime._isAMomentObject || dayjs.isDayjs(currentFormValues.estimateStartTime)) {
@@ -209,8 +206,6 @@ export default function CreateOrder() {
       };
 
       // Log để debug
-      console.log("Order request:", orderRequest);
-
       // Kiểm tra dữ liệu trước khi gửi
       if (
         !orderRequest.orderRequest.receiverName ||
@@ -331,8 +326,6 @@ export default function CreateOrder() {
         // Lấy lại giá trị form mới nhất trước khi hiển thị trang tóm tắt
         const currentFormValues = form.getFieldsValue(true);
         const updatedFormValues = { ...formValues, ...currentFormValues };
-        console.log("Summary step - Updated form values:", updatedFormValues);
-
         return (
           <OrderSummaryStep
             formValues={updatedFormValues}

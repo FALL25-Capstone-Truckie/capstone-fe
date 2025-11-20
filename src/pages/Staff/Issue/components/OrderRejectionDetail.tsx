@@ -92,6 +92,7 @@ const OrderRejectionDetail: React.FC<OrderRejectionDetailProps> = ({ issue, onUp
     const [detailInfo, setDetailInfo] = useState<OrderRejectionInfo | null>(null);
     const [adjustedFee, setAdjustedFee] = useState<number | null>(null);
     const [processing, setProcessing] = useState(false);
+    const [isDeadlineExpired, setIsDeadlineExpired] = useState(false); // Track if deadline has expired
     const [routingModalVisible, setRoutingModalVisible] = useState(false);
     const [routingLoading, setRoutingLoading] = useState(false);
     const [routeSegments, setRouteSegments] = useState<Array<{
@@ -181,21 +182,13 @@ const globalCustomPoints: RoutePoint[] = [];
     // Subscribe to WebSocket notifications for this issue
     useEffect(() => {
         if (!issue?.id) return;
-
-        console.log('📡 [OrderRejectionDetail] Subscribing to issue updates:', issue.id);
-        
         // Subscribe to issue updates via WebSocket
         const unsubscribe = issueWebSocket.subscribeToIssue(issue.id, (updatedIssue) => {
-            console.log('🔄 [OrderRejectionDetail] Received issue update:', updatedIssue);
-            console.log('   - Issue status:', updatedIssue.status);
-            console.log('   - Transaction:', updatedIssue.transaction);
-            
             // Check if transaction status changed to PAID (customer paid successfully)
             const transactionPaid = updatedIssue.transaction?.status === 'PAID';
             
             // If transaction paid OR issue resolved, refetch detail
             if (transactionPaid || updatedIssue.status === 'RESOLVED') {
-                console.log('✅ [OrderRejectionDetail] Payment successful or issue resolved, refetching detail...');
                 message.success('Khách hàng đã thanh toán thành công!');
                 fetchRejectionDetail();
             }
@@ -204,10 +197,7 @@ const globalCustomPoints: RoutePoint[] = [];
         // Listen to global return payment success event from IssuesContext
         const handleRefetchEvent = (event: any) => {
             const { issueId } = event.detail || {};
-            console.log('📢 [OrderRejectionDetail] Received refetch event for issueId:', issueId);
-            
             if (issueId === issue.id) {
-                console.log('✅ [OrderRejectionDetail] Refetching issue detail...');
                 fetchRejectionDetail();
             }
         };
@@ -215,7 +205,6 @@ const globalCustomPoints: RoutePoint[] = [];
         window.addEventListener('refetch-issue-detail', handleRefetchEvent);
         
         return () => {
-            console.log('📡 [OrderRejectionDetail] Unsubscribing from issue:', issue.id);
             unsubscribe();
             window.removeEventListener('refetch-issue-detail', handleRefetchEvent);
         };
@@ -223,9 +212,7 @@ const globalCustomPoints: RoutePoint[] = [];
 
     const fetchFeeCalculation = async (actualDistanceKm?: number) => {
         try {
-            console.log("💰 Calculating return fee...");
             if (actualDistanceKm) {
-                console.log("📏 Using actual route distance:", actualDistanceKm, "km");
             }
             
             // Use real API only - no mock data
@@ -261,18 +248,11 @@ const globalCustomPoints: RoutePoint[] = [];
 
     // Generate route from points
     const generateRouteFromPoints = async (basePoints: RoutePoint[], customPts: RoutePoint[]) => {
-        console.log("🔄 generateRouteFromPoints called with:", {
-            basePoints: basePoints.length,
-            customPts: customPts.length
-        });
-        
         if (basePoints.length < 2) {
             console.error("❌ Not enough points:", basePoints.length);
             message.error('Cần ít nhất 2 điểm để tạo tuyến đường');
             return;
         }
-
-        console.log("🚀 Starting route generation...");
         setIsGeneratingRoute(true);
         setIsAnimatingRoute(true);
 
@@ -302,28 +282,18 @@ const globalCustomPoints: RoutePoint[] = [];
                 pointTypes: uniquePointTypes,
                 vehicleTypeId: null // Use null instead of invalid UUID
             };
-
-            console.log("📡 ROUTE GEN - Request data:", requestData);
-
             // Call API to get suggested route
-            console.log("📞 Calling route service...");
-            
             // Try route service first, but use fallback for now
             let routeSuccess = false;
             try {
                 const response = await routeService.suggestRoute(requestData);
-                console.log("📨 Route service response:", response);
-
                 if (response && response.segments) {
-                    console.log("✅ Got segments from API:", response.segments.length);
                     // Process segments cho VietMapMap
                     const processedSegments = response.segments.map(segment => ({
                         ...segment,
                         tolls: segment.tolls || [],
                         distance: segment.distance || 0
                     }));
-                    
-                    console.log("🗺️ Setting segments for VietMapMap:", processedSegments);
                     setSegments(processedSegments); // For VietMapMap
                     
                     // Note: routeSegments will be set by handleRouteGenerated callback
@@ -334,17 +304,14 @@ const globalCustomPoints: RoutePoint[] = [];
                     // Calculate return fee AFTER route is created successfully
                     // Get actual distance of segment 1 (Delivery → Pickup) from route
                     const deliveryToPickupDistance = response.segments.length > 0 ? response.segments[0].distance : 0;
-                    console.log("✅ Route created, calculating return fee with actual distance:", deliveryToPickupDistance, "km");
                     setTimeout(() => {
                         fetchFeeCalculation(deliveryToPickupDistance);
                     }, 500);
                 }
             } catch (apiError) {
-                console.log("⚠️ Route API failed, using fallback:", apiError);
             }
 
             if (!routeSuccess) {
-                console.log("❌ Route API failed, no fallback available");
                 message.error('Không thể tạo tuyến đường. Vui lòng thử lại.');
                 setSegments([]);
                 setRouteSegments([]);
@@ -367,20 +334,13 @@ const globalCustomPoints: RoutePoint[] = [];
         setRoutingLoading(true);
         try {
             // Get real route points from API - tương tự RoutePlanningStep
-            console.log("🔍 Fetching return route points for issue:", issue.id);
-            
             const response = await routeService.getIssuePoints(issue.id);
-            console.log("📡 Return route points response:", response);
-
             // Truy cập đúng cấu trúc response - API trả về trực tiếp points
             const points = response.points || [];
             if (points.length === 0) {
                 message.error('Không tìm thấy điểm đường đi cho lộ trình trả hàng');
                 return;
             }
-
-            console.log("✅ Got full journey route points:", points.length);
-            
             // Convert API response to RoutePoint format (full 5 points for journey history)
             const fullJourneyPoints: RoutePoint[] = points.map(point => ({
                 addressId: point.addressId || '',
@@ -393,10 +353,6 @@ const globalCustomPoints: RoutePoint[] = [];
 
             // Return route uses last 3 points: Delivery → Pickup (Return) → Carrier (Return)
             const returnRoutePoints = fullJourneyPoints.slice(2);
-            
-            console.log("📍 Full journey points:", fullJourneyPoints.length);
-            console.log("📍 Return route points for display:", returnRoutePoints.length);
-
             // Save full journey points for submission later
             setFullJourneyPoints(fullJourneyPoints);
             
@@ -415,16 +371,11 @@ const globalCustomPoints: RoutePoint[] = [];
                     lng: firstPoint.lng
                 });
             }
-            
-            console.log("🚀 Opening modal with return points:", returnRoutePoints.length);
-            console.log("🗺️ Created markers:", allMarkers.length);
-            
             setRoutingModalVisible(true);
             
             // Generate route after modal opens - with return points
             if (returnRoutePoints.length >= 2) {
                 setTimeout(() => {
-                    console.log("⏰ Starting route generation with return points...");
                     generateRouteFromPoints(returnRoutePoints, []);
                 }, 500);
             }
@@ -443,7 +394,6 @@ const globalCustomPoints: RoutePoint[] = [];
         }
 
         // Simply open modal - let ReturnRoutePlanning handle everything
-        console.log("🚪 Opening return routing modal for issue:", issue.id);
         setRoutingModalVisible(true);
     };
 
@@ -533,16 +483,6 @@ const globalCustomPoints: RoutePoint[] = [];
         setRoutingLoading(true);
         try {
             // Log request data for debugging
-            console.log('🚀 [OrderRejectionDetail] Submitting processOrderRejection with:', {
-                issueId: issue.id,
-                adjustedReturnFee: adjustedFee || undefined,
-                routeSegmentsCount: routeSegments.length,
-                routeSegments: routeSegments,
-                totalTollFee: 0,
-                totalTollCount: 0,
-                totalDistance: feeInfo.distanceKm,
-            });
-            
             // Create journey history + transaction
             await issueService.processOrderRejection({
                 issueId: issue.id,
@@ -824,6 +764,18 @@ const globalCustomPoints: RoutePoint[] = [];
                                         suffix={
                                             <span className="text-sm text-gray-500 ml-2">phút:giây</span>
                                         }
+                                        onFinish={() => {
+                                            // When countdown reaches 0, refetch issue detail to update UI
+                                            setIsDeadlineExpired(true);
+                                            message.warning({
+                                                content: 'Hết thời gian thanh toán! Đang cập nhật trạng thái...',
+                                                duration: 5
+                                            });
+                                            // Refetch after a short delay to allow backend to process
+                                            setTimeout(() => {
+                                                fetchRejectionDetail();
+                                            }, 2000);
+                                        }}
                                     />
                                 )}
                             </div>
@@ -995,15 +947,42 @@ const globalCustomPoints: RoutePoint[] = [];
 
             {issue.status === 'RESOLVED' && (
                 <>
-                    <Alert
-                        message="Đã hoàn tất"
-                        description="Khách hàng đã thanh toán và tài xế sẽ tiến hành trả hàng về điểm lấy hàng."
-                        type="success"
-                        showIcon
-                    />
+                    {/* Case 1: Customer paid successfully */}
+                    {detailInfo?.returnTransaction?.status === 'PAID' ? (
+                        <Alert
+                            message="Đã hoàn tất"
+                            description="Khách hàng đã thanh toán và tài xế sẽ tiến hành trả hàng về điểm lấy hàng."
+                            type="success"
+                            showIcon
+                        />
+                    ) : (
+                        /* Case 2: Payment timeout - customer didn't pay */
+                        <Alert
+                            icon={<WarningOutlined />}
+                            message={
+                                <div className="font-semibold text-lg">⏰ Đã xử lý xong - Khách hàng không thanh toán</div>
+                            }
+                            description={
+                                <div className="space-y-2">
+                                    <p className="text-base">
+                                        Khách hàng đã quá thời gian thanh toán cước phí trả hàng. Kiện hàng đã được hủy và tài xế tiếp tục lộ trình ban đầu.
+                                    </p>
+                                    <Divider className="my-3" />
+                                    <div className="bg-orange-50 p-3 rounded border border-orange-200">
+                                        <p className="text-sm text-orange-700">
+                                            <strong>📦 Trạng thái kiện hàng:</strong> Đã hủy do không thanh toán cước trả hàng
+                                        </p>
+                                    </div>
+                                </div>
+                            }
+                            type="warning"
+                            showIcon
+                            className="mb-4"
+                        />
+                    )}
                     
-                    {/* Return Delivery Images */}
-                    {detailInfo?.returnDeliveryImages && detailInfo.returnDeliveryImages.length > 0 && (
+                    {/* Return Delivery Images - Only show if customer paid */}
+                    {detailInfo?.returnTransaction?.status === 'PAID' && detailInfo?.returnDeliveryImages && detailInfo.returnDeliveryImages.length > 0 && (
                         <div className="mt-4">
                             <h3 className="text-lg font-semibold mb-3">Ảnh xác nhận trả hàng</h3>
                             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">

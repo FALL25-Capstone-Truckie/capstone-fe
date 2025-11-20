@@ -69,8 +69,6 @@ export const useOrderDetailStatusTracking = (
   const handleStatusChangeMessage = useCallback((message: IMessage) => {
     try {
       const statusChange: OrderDetailStatusChangeMessage = JSON.parse(message.body);
-      console.log('[OrderDetailStatusTracking] 📦 Package status change received:', statusChange);
-      
       // Check for duplicate message
       if (lastMessageRef.current) {
         const isDuplicate = 
@@ -79,7 +77,6 @@ export const useOrderDetailStatusTracking = (
           lastMessageRef.current.timestamp === statusChange.timestamp;
         
         if (isDuplicate) {
-          console.log('[OrderDetailStatusTracking] 🔄 Duplicate message detected, ignoring...');
           return;
         }
       }
@@ -89,7 +86,6 @@ export const useOrderDetailStatusTracking = (
       
       // Call onStatusChange callback if provided
       if (onStatusChangeRef.current) {
-        console.log('[OrderDetailStatusTracking] Calling onStatusChange callback...');
         onStatusChangeRef.current(statusChange);
       }
       
@@ -103,13 +99,11 @@ export const useOrderDetailStatusTracking = (
   // Connect to WebSocket
   const connect = useCallback(() => {
     if (clientRef.current?.connected || isConnecting) {
-      console.log('[OrderDetailStatusTracking] Already connected or connecting');
       return;
     }
 
     // Clean up any existing connection
     if (clientRef.current) {
-      console.log('[OrderDetailStatusTracking] Cleaning up existing connection...');
       try {
         if (subscriptionRef.current) {
           subscriptionRef.current.unsubscribe();
@@ -134,8 +128,6 @@ export const useOrderDetailStatusTracking = (
       setError('Cần cung cấp orderId');
       return;
     }
-
-    console.log('[OrderDetailStatusTracking] 🔌 Connecting for order:', config.orderId);
     setIsConnecting(true);
     setError(null);
 
@@ -157,7 +149,6 @@ export const useOrderDetailStatusTracking = (
 
     // Connection success handler
     client.onConnect = (_frame) => {
-      console.log('[OrderDetailStatusTracking] ✅ Connected');
       setIsConnected(true);
       setIsConnecting(false);
       setError(null);
@@ -165,8 +156,6 @@ export const useOrderDetailStatusTracking = (
       try {
         // Subscribe to order detail status changes
         const topicPath = `/topic/orders/${config.orderId}/order-details/status`;
-        console.log(`[OrderDetailStatusTracking] 🔗 Subscribing to: ${topicPath}`);
-        
         const subscription = client.subscribe(
           topicPath,
           handleStatusChangeMessage
@@ -188,7 +177,7 @@ export const useOrderDetailStatusTracking = (
       // Auto-reconnect with exponential backoff
       reconnectAttemptRef.current++;
       const delay = Math.min(5000 * Math.pow(2, Math.min(reconnectAttemptRef.current - 1, 3)), 30000);
-      console.log(`[OrderDetailStatusTracking] 🔄 Attempting reconnect (attempt #${reconnectAttemptRef.current}) in ${delay}ms`);
+      
       setTimeout(() => {
         connect();
       }, delay);
@@ -204,7 +193,7 @@ export const useOrderDetailStatusTracking = (
       // Auto-reconnect with exponential backoff
       reconnectAttemptRef.current++;
       const delay = Math.min(5000 * Math.pow(2, Math.min(reconnectAttemptRef.current - 1, 3)), 30000);
-      console.log(`[OrderDetailStatusTracking] 🔄 Attempting reconnect (attempt #${reconnectAttemptRef.current}) in ${delay}ms`);
+      
       setTimeout(() => {
         connect();
       }, delay);
@@ -212,7 +201,6 @@ export const useOrderDetailStatusTracking = (
 
     // Disconnection handler
     client.onDisconnect = (_frame) => {
-      console.log('[OrderDetailStatusTracking] 🔌 Disconnected');
       setIsConnected(false);
       setIsConnecting(false);
       subscriptionRef.current = null;
@@ -227,8 +215,6 @@ export const useOrderDetailStatusTracking = (
 
   // Disconnect from WebSocket
   const disconnect = useCallback(() => {
-    console.log('[OrderDetailStatusTracking] 🔌 Disconnecting...');
-    
     // Unsubscribe
     if (subscriptionRef.current) {
       try {

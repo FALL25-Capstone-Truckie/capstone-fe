@@ -18,8 +18,8 @@ const IssueModal: React.FC = () => {
 
   const handleViewDetail = () => {
     if (newIssueForModal) {
-      navigate(`/staff/issues/${newIssueForModal.id}`);
       hideNewIssueModal();
+      navigate(`/staff/issues/${newIssueForModal.id}`);
     }
   };
 
@@ -30,16 +30,6 @@ const IssueModal: React.FC = () => {
   if (!newIssueForModal) return null;
 
   // Debug log to check issue data
-  console.log('🔍 [IssueModal] newIssueForModal:', {
-    id: newIssueForModal.id,
-    issueCategory: newIssueForModal.issueCategory,
-    issueImages: newIssueForModal.issueImages,
-    sealRemovalImage: newIssueForModal.sealRemovalImage,
-    orderDetail: newIssueForModal.orderDetail
-  });
-
-  console.log(newIssueForModal);
-
   return (
     <Modal
       open={!!newIssueForModal}

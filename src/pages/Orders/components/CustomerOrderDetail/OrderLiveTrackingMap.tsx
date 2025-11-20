@@ -57,14 +57,12 @@ const OrderLiveTrackingMap: React.FC<OrderLiveTrackingMapProps> = ({
         // Check cache first
         const cachedStyle = localStorage.getItem('vietmap_style_cache');
         if (cachedStyle) {
-          console.log('[OrderLiveTrackingMap] Using cached map style');
           setMapStyle(JSON.parse(cachedStyle));
           return;
         }
 
         const result = await getMapStyle();
         if (result.success && result.style) {
-          console.log('[OrderLiveTrackingMap] Map style fetched successfully');
           // Cache the style
           localStorage.setItem('vietmap_style_cache', JSON.stringify(result.style));
           setMapStyle(result.style);
@@ -86,9 +84,6 @@ const OrderLiveTrackingMap: React.FC<OrderLiveTrackingMapProps> = ({
     if (!mapContainerRef.current || mapInstance || !window.vietmapgl || !mapStyle) {
       return;
     }
-
-    console.log('[OrderLiveTrackingMap] Initializing map...');
-
     let map: any = null;
     const initializeMap = () => {
       try {
@@ -117,7 +112,6 @@ const OrderLiveTrackingMap: React.FC<OrderLiveTrackingMapProps> = ({
         });
 
         map.on('load', () => {
-          console.log('[OrderLiveTrackingMap] Map loaded successfully');
           setMapInstance(map);
         });
 
@@ -134,7 +128,6 @@ const OrderLiveTrackingMap: React.FC<OrderLiveTrackingMapProps> = ({
     // Cleanup function
     return () => {
       if (map) {
-        console.log('[OrderLiveTrackingMap] Cleaning up map...');
         map.remove();
         setMapInstance(null);
       }

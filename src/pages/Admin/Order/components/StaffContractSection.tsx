@@ -74,10 +74,8 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
     const fetchContractSettings = async () => {
       try {
         const response = await contractSettingService().getContractSettings();
-        console.log("[Staff] Contract settings response:", response);
         // API returns array, take first element as it's always unique
         if (response.data && response.data.length > 0) {
-          console.log("[Staff] Setting contract settings:", response.data[0]);
           setContractSettings(response.data[0]);
         }
       } catch (error) {
@@ -108,14 +106,10 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
 
   const handlePreviewContract = async () => {
     if (!contract?.id) return;
-
-    console.log("handlePreviewContract called with contractId:", contract.id);
     try {
       const response = await getContractPdfData(contract.id);
-      console.log("Contract PDF data response:", response);
       if (response.success) {
         setContractData(response.data);
-        console.log("Contract data set SUCCESSFUL");
       } else {
         messageApi.error(response.message);
         console.error("Contract service returned error:", response.message);
@@ -143,8 +137,6 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
         attachFileUrl: values.attachFileUrl || "",
         orderId: orderId, // Using the orderId prop
       };
-
-      console.log("Creating contract with data:", contractData);
       const response = await createContractForCustomer(contractData);
 
       if (response.success) {
@@ -374,8 +366,6 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
       formData.append("description", values.description as string);
 
       const uploadResponse = await uploadContract(formData);
-      console.log("Upload response:", uploadResponse);
-
       // Handle response safely
       if (uploadResponse && typeof uploadResponse === 'object' && 'data' in uploadResponse) {
         const response = uploadResponse as { success: boolean; message?: string; data?: unknown };

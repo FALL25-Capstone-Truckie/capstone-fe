@@ -112,7 +112,7 @@ export const OrderDetailStatusMetadata: Record<
     textColor: 'text-orange-700',
   },
   [OrderDetailStatusEnum.RETURNED]: {
-    label: 'Đã hoàn trả',
+    label: 'Đã trả hàng',
     color: 'bg-orange-100 text-orange-700',
     bgColor: 'bg-orange-100',
     textColor: 'text-orange-700',

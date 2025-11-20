@@ -25,14 +25,14 @@ class SoundManager {
     // Enable audio on first user interaction
     const enableAudio = async () => {
       if (!this.isEnabled) {
-        console.log('🔊 [SoundUtils] Enabling audio on user interaction');
+
         this.initAudioContext();
         
         // Try to resume audio context immediately
         if (this.audioContext && this.audioContext.state === 'suspended') {
           try {
             await this.audioContext.resume();
-            console.log('✅ [SoundUtils] Audio context auto-resumed on interaction');
+
           } catch (err) {
             console.warn('⚠️ [SoundUtils] Failed to auto-resume:', err);
           }
@@ -50,7 +50,7 @@ class SoundManager {
   private initAudioContext() {
     try {
       this.audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-      console.log('🔊 [SoundUtils] Audio context initialized:', this.audioContext.state);
+
     } catch (error) {
       console.warn('Audio context not supported:', error);
     }
@@ -68,7 +68,7 @@ class SoundManager {
     if (this.audioContext && this.audioContext.state === 'suspended') {
       try {
         await this.audioContext.resume();
-        console.log('✅ [SoundUtils] Audio context manually resumed');
+
       } catch (err) {
         console.error('❌ [SoundUtils] Failed to resume audio context:', err);
         throw err;
@@ -90,10 +90,9 @@ class SoundManager {
    */
   async playSound(type: SoundType, volume: number = 0.5) {
     try {
-      console.log('🔊 [SoundUtils] Attempting to play sound:', type);
-      
+
       if (!this.audioContext) {
-        console.log('🔊 [SoundUtils] Initializing audio context...');
+
         this.initAudioContext();
       }
 
@@ -102,22 +101,19 @@ class SoundManager {
         return;
       }
 
-      console.log('🔊 [SoundUtils] Audio context state:', this.audioContext.state);
-
       // Resume audio context if suspended (required by browser policies)
       if (this.audioContext.state === 'suspended') {
-        console.log('🔊 [SoundUtils] Resuming suspended audio context...');
+
         await this.audioContext.resume();
-        console.log('🔊 [SoundUtils] Audio context resumed, new state:', this.audioContext.state);
+
       }
 
       // Generate different tones for different notification types
       const frequency = this.getFrequencyForType(type);
       const duration = this.getDurationForType(type);
 
-      console.log('🔊 [SoundUtils] Playing tone:', { frequency, duration, volume });
       await this.playTone(frequency, duration, volume);
-      console.log('✅ [SoundUtils] Sound played successfully');
+
     } catch (error) {
       console.error('❌ [SoundUtils] Error playing sound:', error);
     }

@@ -31,12 +31,6 @@ const OrderSummaryStep: React.FC<OrderSummaryStepProps> = ({
   addresses,
 }) => {
   // Log để debug
-  console.log("OrderSummaryStep - formValues:", formValues);
-  console.log(
-    "OrderSummaryStep - orderDetailsList:",
-    formValues.orderDetailsList
-  );
-
   // Xử lý giá trị pickupAddressId và deliveryAddressId (có thể là object hoặc string)
   const getAddressId = (addressField: any) => {
     if (!addressField) return null;

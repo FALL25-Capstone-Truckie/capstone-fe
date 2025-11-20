@@ -98,9 +98,7 @@ const issueService = {
     getIssueById: async (id: string): Promise<Issue> => {
         try {
             const response = await httpClient.get<IssueResponse>(`/issues/${id}`);
-            console.log('🔍 [issueService] Raw API response:', response.data.data);
             const mappedIssue = mapApiResponseToIssue(response.data.data);
-            console.log('🔍 [issueService] Mapped issue:', mappedIssue);
             return mappedIssue;
         } catch (error: any) {
             console.error(`Error fetching issue ${id}:`, error);
@@ -267,26 +265,13 @@ const issueService = {
      * @returns Promise with updated issue
      */
     assignNewSeal: async (issueId: string, newSealId: string, staffId: string): Promise<Issue> => {
-        console.log('[issueService] 🚀 assignNewSeal called with:', {
-            issueId,
-            newSealId,
-            staffId
-        });
-        
         try {
-            console.log('[issueService] 📡 Making PUT request to /issues/seal-replacement/assign');
             const response = await httpClient.put<IssueResponse>('/issues/seal-replacement/assign', {
                 issueId,
                 newSealId,
                 staffId
             });
-            
-            console.log('[issueService] ✅ API response received:', response);
-            console.log('[issueService] 📊 Response data:', response.data);
-            
             const mappedIssue = mapApiResponseToIssue(response.data.data);
-            console.log('[issueService] 🔄 Mapped issue:', mappedIssue);
-            
             return mappedIssue;
         } catch (error: any) {
             console.error('[issueService] ❌ Error assigning new seal:', error);
@@ -344,17 +329,13 @@ const issueService = {
      */
     calculateReturnShippingFee: async (issueId: string, distanceKm?: number): Promise<any> => {
         try {
-            console.log('🔍 calculateReturnShippingFee called with:', { issueId, distanceKm });
-            
             let url = `/issues/order-rejection/${issueId}/return-fee`;
             
             // Use new endpoint with distance if provided
             if (distanceKm && distanceKm > 0) {
                 url = `/issues/order-rejection/${issueId}/return-fee-with-distance?distanceKm=${distanceKm}`;
-                console.log('✅ Using distance endpoint:', url);
             } else {
-                console.log('❌ Using fallback endpoint (no distance):', url);
-                console.log('❌ Distance value:', distanceKm, 'Type:', typeof distanceKm);
+                
             }
             
             const response = await httpClient.get(url);

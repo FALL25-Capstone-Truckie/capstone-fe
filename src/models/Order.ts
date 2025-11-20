@@ -269,7 +269,7 @@ export const getOrderDetailStatusText = (status: OrderDetailStatus): string => {
     RESOLVED: "Đã giải quyết",
     REJECTED: "Đã từ chối",
     RETURNING: "Đang hoàn trả",
-    RETURNED: "Đã hoàn trả",
+    RETURNED: "Đã trả hàng",
   };
   return statusMap[status] || status;
 };

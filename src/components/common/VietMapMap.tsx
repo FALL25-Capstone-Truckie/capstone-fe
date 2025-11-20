@@ -163,13 +163,11 @@ const VietMapMap: React.FC<VietMapMapProps> = ({
 
                         // Kiểm tra xem cache có còn hiệu lực không (chưa quá 1 tuần)
                         if (style && timestamp && (now - timestamp < CACHE_DURATION)) {
-                            console.log('[VietMapMap] Using cached VietMap style from localStorage');
-                            console.log('[VietMapMap] Cache age:', Math.floor((now - timestamp) / (1000 * 60 * 60)), 'hours');
+                            
                             setMapStyle(style);
                             setStyleFromCache(true);
                             return;
                         } else {
-                            console.log('[VietMapMap] Cached VietMap style expired, fetching new data');
                             // Clear expired cache
                             localStorage.removeItem(VIETMAP_STYLE_CACHE_KEY);
                         }
@@ -181,12 +179,9 @@ const VietMapMap: React.FC<VietMapMapProps> = ({
                 }
 
                 // Nếu không có cache hoặc cache hết hạn, gọi API
-                console.log('[VietMapMap] Fetching map style from backend...');
                 const result = await getMapStyle();
                 const style = result.success ? result.style : null;
                 if (style) {
-                    console.log('[VietMapMap] Successfully fetched map style from backend');
-                    
                     // Lưu style vào state
                     setMapStyle(style);
                     setStyleFromCache(false);
@@ -198,7 +193,6 @@ const VietMapMap: React.FC<VietMapMapProps> = ({
                     };
                     try {
                         localStorage.setItem(VIETMAP_STYLE_CACHE_KEY, JSON.stringify(cacheData));
-                        console.log('[VietMapMap] Cached new VietMap style in localStorage');
                     } catch (storageError) {
                         console.error('[VietMapMap] Failed to cache style in localStorage:', storageError);
                         // Continue anyway, map will still work without cache
@@ -298,7 +292,7 @@ const VietMapMap: React.FC<VietMapMapProps> = ({
             // Xử lý khi click vào bản đồ
             map.on('click', (e: any) => {
                 const { lng, lat } = e.lngLat;
-                // console.log(`Map clicked at [${lng}, ${lat}]`);
+                // 
 
                 // Reverse geocoding để lấy địa chỉ
                 reverseGeocode(lat, lng)
@@ -309,7 +303,7 @@ const VietMapMap: React.FC<VietMapMapProps> = ({
                             address = result.address || '';
                         }
 
-                        // console.log(`Found address: "${address}" for location [${lat}, ${lng}]`);
+                        // 
 
                         // Không cần cập nhật marker chính, chỉ gửi vị trí mới
                         const newLocation: MapLocation = {
@@ -381,7 +375,7 @@ const VietMapMap: React.FC<VietMapMapProps> = ({
     useEffect(() => {
         if (!mapRef.current || !mapLoaded) return;
 
-        // console.log("Updating markers with length:", markers.length);
+        // 
 
         try {
             // Xóa tất cả markers cũ khỏi map
@@ -391,7 +385,7 @@ const VietMapMap: React.FC<VietMapMapProps> = ({
             // Xóa tất cả markers cũ khỏi map
             markersToRemove.forEach(marker => {
                 if (marker) {
-                    // console.log("Removing marker from map");
+                    // 
                     marker.remove();
                 }
             });
@@ -416,12 +410,8 @@ const VietMapMap: React.FC<VietMapMapProps> = ({
 
             // Early return if no markers
             if (!markers || markers.length === 0) {
-                console.log('[VietMapMap] No markers provided, skipping');
                 return;
             }
-
-            console.log('[VietMapMap] Processing', markers.length, 'markers');
-
             // Filter out markers with invalid coordinates (exactly like Staff)
             const validMarkers = markers.filter(marker => {
                 const isValid = marker && 
@@ -435,9 +425,6 @@ const VietMapMap: React.FC<VietMapMapProps> = ({
                 }
                 return isValid;
             });
-
-            console.log('[VietMapMap] Valid markers:', validMarkers.length, 'out of', markers.length);
-
             if (validMarkers.length === 0) {
                 console.warn('[VietMapMap] No valid markers to display');
                 return;
@@ -547,13 +534,10 @@ const VietMapMap: React.FC<VietMapMapProps> = ({
             if (validMarkers.length > 1) {
                 setTimeout(() => {
                     try {
-                        console.log('[VietMapMap] Attempting fitBounds with', validMarkers.length, 'markers');
-                        
                         // WORKAROUND: Skip fitBounds if causing issues, just center on first marker
                         const SKIP_FIT_BOUNDS = false; // Set to true if still having issues
                         
                         if (SKIP_FIT_BOUNDS) {
-                            console.log('[VietMapMap] Skipping fitBounds, centering on first marker');
                             const marker = validMarkers[0];
                             mapRef.current.setCenter([marker.lng, marker.lat]);
                             mapRef.current.setZoom(12);
@@ -572,9 +556,6 @@ const VietMapMap: React.FC<VietMapMapProps> = ({
                             const marker = validMarkers[i];
                             bounds.extend([marker.lng, marker.lat]);
                         }
-
-                        console.log('[VietMapMap] Bounds ready, calling fitBounds');
-                        
                         // Validate bounds object before calling fitBounds
                         if (!bounds || !bounds._sw || !bounds._ne || 
                             bounds._sw.lng === undefined || bounds._sw.lat === undefined ||
@@ -597,8 +578,6 @@ const VietMapMap: React.FC<VietMapMapProps> = ({
                             maxZoom: 13, // Lower zoom for better overview
                             duration: 1000
                         });
-                        
-                        console.log('[VietMapMap] fitBounds completed successfully');
                     } catch (err) {
                         console.error('[VietMapMap] Error fitting bounds:', err);
                         // Fallback: center on first marker

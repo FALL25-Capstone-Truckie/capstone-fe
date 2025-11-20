@@ -60,8 +60,8 @@ export const calculateOrderStatusBreakdown = (
         'SUCCESSFUL': { label: 'Hoàn thành', color: 'bg-green-100 text-green-700' },
         'IN_TROUBLES': { label: 'Có vấn đề', color: 'bg-yellow-100 text-yellow-700' },
         'COMPENSATION': { label: 'Đã đền bù', color: 'bg-purple-100 text-purple-700' },
-        'RETURNING': { label: 'Đang hoàn trả', color: 'bg-orange-100 text-orange-700' },
-        'RETURNED': { label: 'Đã hoàn trả', color: 'bg-orange-100 text-orange-700' },
+        'RETURNING': { label: 'Đang trả hàng', color: 'bg-orange-100 text-orange-700' },
+        'RETURNED': { label: 'Đã trả hàng', color: 'bg-orange-100 text-orange-700' },
         'CANCELLED': { label: 'Đã hủy', color: 'bg-red-100 text-red-700' },
     };
 

@@ -118,7 +118,6 @@ const CustomerOrderDetail: React.FC = () => {
         );
         
         if (hasReturnIssues) {
-          console.log('[CustomerOrderDetail] 🔄 Auto-switching to returnIssues tab');
           setActiveMainTab('returnIssues');
           messageApi.warning('Có kiện hàng bị yêu cầu trả lại. Vui lòng xem chi tiết và thanh toán cước trả hàng.');
         }
@@ -162,12 +161,8 @@ const CustomerOrderDetail: React.FC = () => {
 
   // Handle order status changes via WebSocket
   const handleOrderStatusChange = useCallback((statusChange: any) => {
-    console.log('[CustomerOrderDetail] 📢 Order status changed:', statusChange);
-    
     // Check if this status change is for the current order
     if (id && statusChange.orderId === id) {
-      console.log('[CustomerOrderDetail] ✅ Order ID matched!');
-      
       // CRITICAL: Refetch for important status transitions BEFORE and including PICKING_UP
       // Also refetch for RETURNING/RETURNED to get new return journey data
       // For other status changes after PICKING_UP, just update locally to avoid disrupting live tracking
@@ -200,7 +195,6 @@ const CustomerOrderDetail: React.FC = () => {
       const isAfterPickupStatus = statusesAfterPickup.includes(statusChange.newStatus);
       
       if (shouldRefetch) {
-        console.log('[CustomerOrderDetail] 🔄 Important status change - refetching order details...');
         // Debounce refetch to avoid spike load
         setTimeout(() => {
           fetchOrderDetails(id);
@@ -209,8 +203,6 @@ const CustomerOrderDetail: React.FC = () => {
         const logMessage = isAfterPickupStatus 
           ? '[CustomerOrderDetail] ℹ️ Status after PICKING_UP - updating locally to preserve live tracking'
           : '[CustomerOrderDetail] ℹ️ Minor status change - updating status locally only';
-        console.log(logMessage);
-        
         // Just update the status locally without full refetch
         if (orderData) {
           setOrderData({
@@ -276,10 +268,6 @@ const CustomerOrderDetail: React.FC = () => {
         }, 1000);
       }
     } else {
-      console.log('[CustomerOrderDetail] ❌ Order ID did not match:', {
-        statusChangeOrderId: statusChange.orderId,
-        currentOrderId: id
-      });
     }
   }, [id, orderData]);
 
@@ -287,13 +275,11 @@ const CustomerOrderDetail: React.FC = () => {
   const handleRefreshNeeded = useCallback(() => {
     // This callback is no longer used since we handle refresh in handleOrderStatusChange
     // Keeping it for backward compatibility with useOrderStatusTracking hook
-    console.log('[CustomerOrderDetail] handleRefreshNeeded called (no-op)');
+    
   }, []);
 
   // Handle order detail (package) status changes via WebSocket
   const handleOrderDetailStatusChange = useCallback((statusChange: any) => {
-    console.log('[CustomerOrderDetail] 📦 Order detail status changed:', statusChange);
-    
     // Update local state for the specific order detail without full refetch
     if (orderData) {
       const updatedOrderData = {
@@ -375,13 +361,11 @@ const CustomerOrderDetail: React.FC = () => {
     switch (tabKey) {
       case 'liveTracking':
         if (!shouldShowLiveTracking) {
-          console.log('[CustomerOrderDetail] 🔄 Tab validation: liveTracking not available, falling back to basic');
           return 'basic';
         }
         break;
       case 'returnIssues':
         if (!shouldShowReturnIssues) {
-          console.log('[CustomerOrderDetail] 🔄 Tab validation: returnIssues not available, falling back to basic');
           return 'basic';
         }
         break;
@@ -393,7 +377,6 @@ const CustomerOrderDetail: React.FC = () => {
         break;
       default:
         // Unknown tab, fallback to basic
-        console.log('[CustomerOrderDetail] 🔄 Tab validation: unknown tab, falling back to basic');
         return 'basic';
     }
     
@@ -424,28 +407,44 @@ const CustomerOrderDetail: React.FC = () => {
     const vehicleAssignmentIds: string[] = orderData.order.vehicleAssignments.map((va: any) => va.id);
 
     if (vehicleAssignmentIds.length === 0) return;
-
-    console.log('[CustomerOrderDetail] 📡 Monitoring issues for vehicle assignments:', vehicleAssignmentIds);
-
-    // Connect to issue WebSocket if not connected
+    // Get current user ID from sessionStorage
+    const userId = sessionStorage.getItem('userId') || localStorage.getItem('userId');
+    
+    // Connect to issue WebSocket if not connected (with userId for customer notifications)
     if (!issueWebSocket.isConnected()) {
-      issueWebSocket.connect().catch(err => {
+      issueWebSocket.connect(userId || undefined).catch(err => {
         console.error('[CustomerOrderDetail] Failed to connect to issue WebSocket:', err);
       });
     }
 
+    // Subscribe to user-specific notifications (payment timeout, etc.)
+    const unsubscribeUserNotifications = userId ? issueWebSocket.subscribeToUserNotifications((notification: any) => {
+      // Handle different notification types
+      if (notification.type === 'RETURN_PAYMENT_TIMEOUT') {
+        // Show warning notification
+        message.warning({
+          content: notification.message,
+          duration: 8,
+        });
+        playNotificationSound(NotificationSoundType.WARNING);
+        
+        // Refetch order details to update UI (cancelled packages)
+        if (id) {
+          setTimeout(() => {
+            fetchOrderDetails(id, false);
+          }, 500);
+        }
+      }
+    }) : () => {};
+
     // Subscribe to global issue updates with a unique callback ID based on order
     const callbackId = `order-${id}`;
     const unsubscribe = issueWebSocket.subscribeToIssue(callbackId, (updatedIssue: any) => {
-      console.log('[CustomerOrderDetail] � Received issue update:', updatedIssue);
-      
       // Check if this issue belongs to any of our vehicle assignments
       const issueVehicleAssignmentId = updatedIssue.vehicleAssignmentEntity?.id;
       const belongsToThisOrder = issueVehicleAssignmentId && vehicleAssignmentIds.includes(issueVehicleAssignmentId);
       
       if (belongsToThisOrder) {
-        console.log('[CustomerOrderDetail] ✅ New issue belongs to this order, refetching to update markers...');
-        
         // Auto-switch to return-issues tab for ORDER_REJECTION
         const shouldSwitchToReturnIssues = updatedIssue.issueCategory === 'ORDER_REJECTION';
         
@@ -460,21 +459,17 @@ const CustomerOrderDetail: React.FC = () => {
         });
         playNotificationSound(NotificationSoundType.INFO);
       } else {
-        console.log('[CustomerOrderDetail] ℹ️ Issue does not belong to this order, ignoring');
       }
     });
     
     // Listen for fallback event (when no direct subscriber found)
     const handleFallbackEvent = (event: any) => {
       const { issueId, issue } = event.detail || {};
-      console.log('[CustomerOrderDetail] 📢 Fallback issue update received:', issueId);
-      
       // Check if this issue belongs to current order
       const issueVehicleAssignmentId = issue?.vehicleAssignmentEntity?.id;
       const belongsToThisOrder = issueVehicleAssignmentId && vehicleAssignmentIds.includes(issueVehicleAssignmentId);
       
       if (belongsToThisOrder && issue?.issueCategory === 'ORDER_REJECTION') {
-        console.log('[CustomerOrderDetail] ✅ Fallback - Issue belongs to current order, refetching...');
         setTimeout(() => {
           fetchOrderDetails(id, true); // Auto-switch to return-issues tab
         }, 500);
@@ -485,8 +480,8 @@ const CustomerOrderDetail: React.FC = () => {
 
     // Cleanup: unsubscribe when component unmounts or order changes
     return () => {
-      console.log('[CustomerOrderDetail] 📡 Unsubscribing from issue updates');
       unsubscribe();
+      unsubscribeUserNotifications();
       window.removeEventListener('issue-update-no-subscriber', handleFallbackEvent);
     };
   }, [orderData?.order?.vehicleAssignments, id, fetchOrderDetails]);
@@ -503,7 +498,6 @@ const CustomerOrderDetail: React.FC = () => {
         orderData.order.vehicleAssignments
       );
       if (validatedTab !== activeMainTab) {
-        console.log('[CustomerOrderDetail] 🔄 Initial tab validation - changing from', activeMainTab, 'to', validatedTab);
         setActiveMainTab(validatedTab);
       }
       hasValidatedInitialTab.current = true;
@@ -520,7 +514,6 @@ const CustomerOrderDetail: React.FC = () => {
         orderData.order.vehicleAssignments
       );
       if (validatedTab !== activeMainTab) {
-        console.log('[CustomerOrderDetail] 🔄 Tab validation - changing from', activeMainTab, 'to', validatedTab);
         setActiveMainTab(validatedTab);
       }
     }
@@ -546,10 +539,6 @@ const CustomerOrderDetail: React.FC = () => {
   useEffect(() => {
     if (orderData?.order?.status) {
       if (previousOrderStatus && previousOrderStatus !== orderData.order.status) {
-        console.log('[CustomerOrderDetail] Order status changed:', {
-          from: previousOrderStatus,
-          to: orderData.order.status
-        });
       }
       setPreviousOrderStatus(orderData.order.status);
     }
@@ -574,7 +563,6 @@ const CustomerOrderDetail: React.FC = () => {
     const allDetailsInFinalStatus = areAllOrderDetailsInFinalStatus(orderData?.order?.orderDetails);
     
     if (isDeliveryStatus && !allDetailsInFinalStatus && !hasAutoSwitchedRef.current) {
-      console.log('[CustomerOrderDetail] 🎯 Order status >= PICKING_UP - switching to live tracking tab');
       setActiveMainTab('liveTracking');
       hasAutoSwitchedRef.current = true;
     }
@@ -586,7 +574,6 @@ const CustomerOrderDetail: React.FC = () => {
       setTimeout(() => {
         const mapContainer = document.getElementById('customer-live-tracking-map');
         if (mapContainer) {
-          console.log('[CustomerOrderDetail] 📍 Scrolling to map');
           mapContainer.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
       }, 300);
@@ -793,7 +780,6 @@ const CustomerOrderDetail: React.FC = () => {
             
             // Force complete remount when switching TO liveTracking from another tab
             if (!wasLiveTracking && isNowLiveTracking) {
-              console.log('[CustomerOrderDetail] 🔄 Force remounting LiveTracking component');
               setLiveTrackingRemountKey(prev => prev + 1);
             }
             
@@ -802,7 +788,6 @@ const CustomerOrderDetail: React.FC = () => {
               setTimeout(() => {
                 const mapContainer = document.getElementById('customer-live-tracking-map');
                 if (mapContainer) {
-                  console.log('[CustomerOrderDetail] 📍 Scrolling to map on tab click');
                   mapContainer.scrollIntoView({ behavior: 'smooth', block: 'center' });
                 }
               }, 200);

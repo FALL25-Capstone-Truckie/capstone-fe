@@ -34,33 +34,33 @@ export enum NotificationSoundType {
  * - Drum: [,,129,.01,,.15,,,,,,,,5]
  */
 const soundPresets = {
-  // Success - Bright ascending powerup sound with shimmer
-  // Tăng dần tần số tạo cảm giác tích cực, thành công
-  success: [1.2,,261.63,.01,.15,.3,1,1.8,,,150,.05,.01,,,.05],
+  // Success - Subtle positive confirmation tone
+  // Âm thanh xác nhận nhẹ nhàng, chuyên nghiệp
+  success: [.5,,350,.01,.06,.15,1,1.2,,,30,.02],
   
-  // Info - Soft gentle blip, non-intrusive
-  // Âm thanh nhẹ nhàng, không gây phiền nhiễu
-  info: [.6,.05,520,.01,.08,.12,,,,,,,,,,,,.1],
+  // Info - Very soft notification blip
+  // Âm thanh thông báo rất nhẹ, không gây phiền nhiễu
+  info: [.3,,400,.005,.04,.08,1],
   
-  // Warning - Clear double-beep alert pattern
-  // 2 tiếng bíp ngắn rõ ràng để cảnh báo
-  warning: [1,,800,.01,.08,.15,,.8,,,,,,,,.05,,,.05],
+  // Warning - Gentle but clear alert
+  // Cảnh báo nhẹ nhàng nhưng rõ ràng
+  warning: [.6,,450,.01,.05,.12,1,1],
   
-  // Error - Harsh descending buzz for urgent attention
-  // Âm thanh giảm dần, khó chịu để thu hút sự chú ý
-  error: [1.5,,400,.02,.15,.25,,.6,,-50,-200,.05,.1],
+  // Error - Clear low tone for attention
+  // Âm thanh rõ ràng để thu hút sự chú ý
+  error: [.7,,300,.01,.08,.15,1,.8,,-20],
   
-  // Payment Success - Rewarding coin collect with rich harmonics
-  // Âm thanh phần thưởng giống thu thập coin trong game
-  payment: [1.8,,987.77,.01,.12,.25,1,2.2,,,300,.05,,,,,,.8],
+  // Payment Success - Pleasant confirmation chime
+  // Âm thanh xác nhận thanh toán dễ chịu
+  payment: [.6,,520,.01,.08,.18,1,1.5,,,40,.03],
   
-  // New Issue - Crisp notification bell with decay
-  // Chuông thông báo rõ ràng với độ vang tự nhiên
-  issue: [1.2,,659.25,.01,.15,.35,1,1.5,,,100,.05,,,,,,.6],
+  // New Issue - Soft notification ping
+  // Thông báo mới nhẹ nhàng
+  issue: [.55,,380,.01,.07,.16,1,1.2,,,25,.02],
   
-  // Seal Confirm - Satisfying mechanical click
-  // Âm click cơ học ngắn, tạo cảm giác xác nhận rõ ràng
-  seal: [.8,,220,.01,.03,.08,,,,,,,,,,,,.2],
+  // Seal Confirm - Crisp subtle click
+  // Click nhẹ, tinh tế
+  seal: [.4,,280,.005,.02,.06,1],
 };
 
 /**
@@ -69,7 +69,6 @@ const soundPresets = {
 export const playNotificationSound = (type: NotificationSoundType) => {
   // Skip if ZZFX not available
   if (!ZZFX) {
-    console.debug('ZZFX not available, skipping sound');
     return;
   }
 

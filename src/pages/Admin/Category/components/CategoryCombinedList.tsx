@@ -69,7 +69,6 @@ const CategoryCombinedList = forwardRef<
     );
     const [form] = Form.useForm();
 
-    // Expose functions to parent component
     useImperativeHandle(ref, () => ({
       showAddModal: () => showModal(),
     }));

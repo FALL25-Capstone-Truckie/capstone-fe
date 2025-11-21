@@ -1,12 +1,21 @@
-import React from "react";
-import { Button, Modal, Card, Row, Col, Empty } from "antd";
-import { TruckOutlined } from "@ant-design/icons";
+import React, { useState } from "react";
+import { Button, Modal, Card, Row, Col, Empty, Tabs, Alert } from "antd";
+import {
+  TruckOutlined,
+  ThunderboltOutlined,
+  CheckCircleOutlined,
+  EyeOutlined,
+} from "@ant-design/icons";
 import type { VehicleSuggestion } from "../../../../services/order/types";
+import Package3DVisualization from "../../../../components/common/Package3DVisualization";
 
 interface VehicleSuggestionsModalProps {
   visible: boolean;
   orderCode?: string;
-  vehicleSuggestions: VehicleSuggestion[];
+  vehicleSuggestions: {
+    optimal: VehicleSuggestion[];
+    realistic: VehicleSuggestion[];
+  };
   creatingContract: boolean;
   onCancel: () => void;
   onAccept: () => void;
@@ -20,6 +29,236 @@ const VehicleSuggestionsModal: React.FC<VehicleSuggestionsModalProps> = ({
   onCancel,
   onAccept,
 }) => {
+  const [activeTab, setActiveTab] = useState("realistic");
+  const [visualizationVisible, setVisualizationVisible] = useState(false);
+  const [selectedVehicle, setSelectedVehicle] =
+    useState<VehicleSuggestion | null>(null);
+
+  const handleVisualize = (vehicle: VehicleSuggestion) => {
+    // Map tracking codes to packed details for 3D visualization
+    if (vehicle.packedDetailDetails && vehicle.assignedDetails) {
+      const packagesWithTrackingCode = vehicle.packedDetailDetails.map(
+        (pkg) => {
+          const detail = vehicle.assignedDetails.find(
+            (d) => d.id === pkg.orderDetailId
+          );
+          return {
+            ...pkg,
+            trackingCode: detail?.trackingCode,
+          };
+        }
+      );
+
+      setSelectedVehicle({
+        ...vehicle,
+        packedDetailDetails: packagesWithTrackingCode,
+      });
+    } else {
+      setSelectedVehicle(vehicle);
+    }
+    setVisualizationVisible(true);
+  };
+
+  const renderVehicleList = (
+    suggestions: VehicleSuggestion[],
+    isOptimal: boolean = false
+  ) => {
+    if (suggestions.length === 0) {
+      return <Empty description="Không có đề xuất phân xe" />;
+    }
+
+    return (
+      <>
+        {/* Thông tin tổng quan */}
+        <div
+          className={`p-3 rounded-lg border ${
+            isOptimal
+              ? "bg-blue-50 border-blue-200"
+              : "bg-green-50 border-green-200"
+          }`}
+        >
+          <Row gutter={16}>
+            <Col span={8}>
+              <div className="text-center">
+                <div className="text-xs text-gray-600">
+                  <strong>Tổng số xe</strong>
+                </div>
+                <div
+                  className={`text-lg font-bold ${
+                    isOptimal ? "text-blue-600" : "text-green-600"
+                  }`}
+                >
+                  {suggestions.length}
+                </div>
+              </div>
+            </Col>
+            <Col span={8}>
+              <div className="text-center">
+                <div className="text-xs text-gray-600">
+                  <strong>Tổng kiện hàng</strong>
+                </div>
+                <div
+                  className={`text-lg font-bold ${
+                    isOptimal ? "text-blue-600" : "text-green-600"
+                  }`}
+                >
+                  {suggestions.reduce(
+                    (total, suggestion) =>
+                      total + suggestion.assignedDetails.length,
+                    0
+                  )}
+                </div>
+              </div>
+            </Col>
+            <Col span={8}>
+              <div className="text-center">
+                <div className="text-xs text-gray-600">
+                  <strong>Tổng tải trọng</strong>
+                </div>
+                <div
+                  className={`text-lg font-bold ${
+                    isOptimal ? "text-blue-600" : "text-green-600"
+                  }`}
+                >
+                  {suggestions.reduce(
+                    (total, suggestion) => total + suggestion.currentLoad,
+                    0
+                  )}{" "}
+                  {suggestions.length > 0 ? suggestions[0].currentLoadUnit : ""}
+                </div>
+              </div>
+            </Col>
+          </Row>
+        </div>
+
+        {/* Danh sách xe */}
+        {suggestions.map((suggestion, index) => (
+          <Card key={index} size="small" className="border">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center">
+                <div
+                  className={`w-6 h-6 text-white rounded-full flex items-center justify-center text-xs font-bold mr-2 ${
+                    isOptimal ? "bg-blue-500" : "bg-green-500"
+                  }`}
+                >
+                  {index + 1}
+                </div>
+                <div>
+                  <div
+                    className={`font-medium ${
+                      isOptimal ? "text-blue-600" : "text-green-600"
+                    }`}
+                  >
+                    {suggestion.vehicleRuleName || suggestion.sizeRuleName}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <Row gutter={12} className="mb-3">
+              <Col span={8}>
+                <div className="text-center bg-gray-50 p-2 rounded">
+                  <div className="text-xs text-gray-500">
+                    Tổng tải trọng cho xe
+                  </div>
+                  <div
+                    className={`font-semibold ${
+                      isOptimal ? "text-blue-600" : "text-green-600"
+                    }`}
+                  >
+                    {suggestion.currentLoad}
+                    {suggestion.currentLoadUnit}
+                  </div>
+                </div>
+              </Col>
+              <Col span={8}>
+                <div className="text-center bg-gray-50 p-2 rounded">
+                  <div className="text-xs text-gray-500">Kiện hàng</div>
+                  <div
+                    className={`font-semibold ${
+                      isOptimal ? "text-blue-600" : "text-green-600"
+                    }`}
+                  >
+                    {suggestion.assignedDetails.length}
+                  </div>
+                </div>
+              </Col>
+              <Col span={8}>
+                <div className="text-center">
+                  <Button
+                    type="primary"
+                    icon={<EyeOutlined />}
+                    onClick={() => handleVisualize(suggestion)}
+                    block
+                    className={isOptimal ? "bg-blue-500" : "bg-green-500"}
+                  >
+                    Trực quan 3D
+                  </Button>
+                </div>
+              </Col>
+            </Row>
+
+            <div>
+              <div className="text-xs font-semibold text-gray-700 mb-3 flex items-center">
+                <span
+                  className={`px-2 py-1 rounded ${
+                    isOptimal
+                      ? "bg-blue-100 text-blue-700"
+                      : "bg-green-100 text-green-700"
+                  }`}
+                >
+                  📦 Danh sách kiện hàng
+                </span>
+              </div>
+              <div className="space-y-2">
+                {suggestion.assignedDetails.map((detail, idx) => (
+                  <div
+                    key={idx}
+                    className={`p-3 rounded-lg border hover:shadow-md transition-shadow ${
+                      isOptimal
+                        ? "bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200"
+                        : "bg-gradient-to-r from-green-50 to-emerald-50 border-green-200"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-sm font-mono text-gray-600 bg-white px-2 py-1 rounded border">
+                            <strong>{detail.trackingCode}</strong>
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-3 mt-2">
+                          <div className="flex items-center gap-1">
+                            <span className="text-xs text-gray-500">
+                              Khối lượng:
+                            </span>
+                            <span
+                              className={`font-bold ${
+                                isOptimal ? "text-blue-700" : "text-green-700"
+                              }`}
+                            >
+                              {detail.weightBaseUnit}
+                            </span>
+                            <span
+                              className={`text-xs text-gray-600 px-2 py-0.5 rounded ${
+                                isOptimal ? "bg-blue-100" : "bg-green-100"
+                              }`}
+                            >
+                              {detail.unit}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </Card>
+        ))}
+      </>
+    );
+  };
   return (
     <Modal
       title={
@@ -46,142 +285,80 @@ const VehicleSuggestionsModal: React.FC<VehicleSuggestionsModalProps> = ({
           type="primary"
           loading={creatingContract}
           onClick={onAccept}
-          disabled={vehicleSuggestions.length === 0}
+          disabled={vehicleSuggestions.realistic.length === 0}
         >
           Tôi đồng ý với đề xuất xe hàng
         </Button>,
       ]}
-      width={700}
+      width={800}
     >
       <div className="space-y-4">
-        {vehicleSuggestions.length > 0 ? (
-          <>
-            {/* Thông tin tổng quan */}
-            <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
-              <Row gutter={16}>
-                <Col span={8}>
-                  <div className="text-center">
-                    <div className="text-xs text-gray-600">
-                      <strong>Tổng số xe</strong>
-                    </div>
-                    <div className="text-lg font-bold text-orange-600">
-                      {vehicleSuggestions.length}
-                    </div>
-                  </div>
-                </Col>
-                <Col span={8}>
-                  <div className="text-center">
-                    <div className="text-xs text-gray-600">
-                      <strong>Tổng kiện hàng</strong>
-                    </div>
-                    <div className="text-lg font-bold text-blue-600">
-                      {vehicleSuggestions.reduce(
-                        (total, suggestion) =>
-                          total + suggestion.assignedDetails.length,
-                        0
-                      )}
-                    </div>
-                  </div>
-                </Col>
-                <Col span={8}>
-                  <div className="text-center">
-                    <div className="text-xs text-gray-600">
-                      <strong>Tổng tải trọng</strong>
-                    </div>
-                    <div className="text-lg font-bold text-green-600">
-                      {vehicleSuggestions.reduce(
-                        (total, suggestion) => total + suggestion.currentLoad,
-                        0
-                      )}{" "}
-                      {vehicleSuggestions.length > 0 ? vehicleSuggestions[0].currentLoadUnit : ""}
-                    </div>
-                  </div>
-                </Col>
-              </Row>
-            </div>
-
-            {/* Danh sách xe */}
-            {vehicleSuggestions.map((suggestion, index) => (
-              <Card key={index} size="small" className="border">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center">
-                    <div className="w-6 h-6 bg-blue-500 text-white rounded-full flex items-center justify-center text-xs font-bold mr-2">
-                      {index + 1}
-                    </div>
-                    <div>
-                      <div className="font-medium text-blue-600">
-                        {suggestion.vehicleRuleName}
-                      </div>
-                    </div>
-                  </div>
+        <Tabs
+          activeKey={activeTab}
+          onChange={setActiveTab}
+          items={[
+            {
+              key: "realistic",
+              label: (
+                <span className="flex items-center gap-2">
+                  <CheckCircleOutlined />
+                  <span>Phương án thực tế (Bắt buộc)</span>
+                </span>
+              ),
+              children: (
+                <div className="space-y-4">
+                  <Alert
+                    message="Phương án bắt buộc"
+                    description="Phương án này dựa trên tình trạng sẵn có của xe và lịch trình thực tế. Đây là phương án bạn cần đặt để đảm bảo giao hàng đúng thời gian."
+                    type="success"
+                    showIcon
+                    className="mb-4"
+                  />
+                  {renderVehicleList(vehicleSuggestions.realistic, false)}
                 </div>
-
-                <Row gutter={12} className="mb-3">
-                  <Col span={12}>
-                    <div className="text-center bg-gray-50 p-2 rounded">
-                      <div className="text-xs text-gray-500">
-                        Tổng tải trọng cho xe
-                      </div>
-                      <div className="font-semibold text-green-600">
-                        {suggestion.currentLoad}{suggestion.currentLoadUnit}
-                      </div>
-                    </div>
-                  </Col>
-                  <Col span={12}>
-                    <div className="text-center bg-gray-50 p-2 rounded">
-                      <div className="text-xs text-gray-500">Kiện hàng</div>
-                      <div className="font-semibold text-blue-600">
-                        {suggestion.assignedDetails.length}
-                      </div>
-                    </div>
-                  </Col>
-                </Row>
-
-                <div>
-                  <div className="text-xs font-semibold text-gray-700 mb-3 flex items-center">
-                    <span className="bg-blue-100 text-blue-700 px-2 py-1 rounded">
-                      📦 Danh sách kiện hàng
-                    </span>
-                  </div>
-                  <div className="space-y-2">
-                    {suggestion.assignedDetails.map((detail, idx) => (
-                      <div
-                        key={idx}
-                        className="bg-gradient-to-r from-blue-50 to-indigo-50 p-3 rounded-lg border border-blue-200 hover:shadow-md transition-shadow"
-                      >
-                        <div className="flex items-center justify-between">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-1">
-                              <span className="text-sm font-mono text-gray-600 bg-white px-2 py-1 rounded border">
-                                <strong>{detail.trackingCode}</strong>
-                              </span>
-                            </div>
-                            <div className="flex items-center gap-3 mt-2">
-                              <div className="flex items-center gap-1">
-                                <span className="text-xs text-gray-500">
-                                  Khối lượng:
-                                </span>
-                                <span className="font-bold text-blue-700">
-                                  {detail.weightBaseUnit}
-                                </span>
-                                <span className="text-xs text-gray-600 bg-blue-100 px-2 py-0.5 rounded">
-                                  {detail.unit}
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+              ),
+            },
+            {
+              key: "optimal",
+              label: (
+                <span className="flex items-center gap-2">
+                  <ThunderboltOutlined />
+                  <span>Phương án tối ưu (Đề xuất)</span>
+                </span>
+              ),
+              children: (
+                <div className="space-y-4">
+                  <Alert
+                    message="Phương án đề xuất"
+                    description="Phương án này tối ưu chi phí và hiệu suất vận chuyển. Tuy nhiên, phương án này chỉ mang tính tham khảo và có thể không khả thi do lịch trình xe."
+                    type="info"
+                    showIcon
+                    className="mb-4"
+                  />
+                  {renderVehicleList(vehicleSuggestions.optimal, true)}
                 </div>
-              </Card>
-            ))}
-          </>
-        ) : (
-          <Empty description="Không có đề xuất phân xe" />
-        )}
+              ),
+            },
+          ]}
+        />
       </div>
+
+      {/* 3D Visualization Modal */}
+      {selectedVehicle && selectedVehicle.packedDetailDetails && (
+        <Package3DVisualization
+          visible={visualizationVisible}
+          onClose={() => {
+            setVisualizationVisible(false);
+            setSelectedVehicle(null);
+          }}
+          packages={selectedVehicle.packedDetailDetails}
+          vehicleName={
+            selectedVehicle.vehicleRuleName ||
+            selectedVehicle.sizeRuleName ||
+            "Xe tải"
+          }
+        />
+      )}
     </Modal>
   );
 };

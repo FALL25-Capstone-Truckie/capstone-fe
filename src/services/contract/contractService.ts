@@ -112,9 +112,32 @@ const contractService = {
     contractId: string
   ): Promise<ContractPdfResponse> => {
     try {
+      // Fetch base contract data
       const response = await httpClient.get<ContractPdfResponse>(
         `/orders/${contractId}/get-pdf-v2`
       );
+
+      // Fetch optimal and realistic assign results
+      try {
+        const assignResponse = await httpClient.get(
+          `/contracts/${contractId}/get-both-optimal-and-realistic-assign-vehicles`
+        );
+
+        if (assignResponse.data?.success && assignResponse.data?.data) {
+          // Merge optimal and realistic results into contract data
+          response.data.data.optimalAssignResult =
+            assignResponse.data.data.optimal || [];
+          response.data.data.realisticAssignResult =
+            assignResponse.data.data.realistic || [];
+        }
+      } catch (assignError) {
+        console.warn(
+          "Could not fetch optimal/realistic assign results, using legacy data:",
+          assignError
+        );
+        // Fallback: use existing assignResult if available
+      }
+
       return response.data;
     } catch (error) {
       console.error("Error fetching contract PDF data:", error);
@@ -144,9 +167,13 @@ const contractService = {
    */
   uploadContract: async (formData: FormData) => {
     try {
-      const response = await httpClient.post('/contracts/upload-contract', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
+      const response = await httpClient.post(
+        "/contracts/upload-contract",
+        formData,
+        {
+          headers: { "Content-Type": "multipart/form-data" },
+        }
+      );
       return response.data;
     } catch (error) {
       console.error("Error uploading contract:", error);

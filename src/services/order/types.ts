@@ -83,12 +83,14 @@ export interface ReceiverDetailsResponse {
 
 export interface VehicleSuggestion {
   vehicleIndex: number;
-  vehicleRuleId: string;
-  vehicleRuleName: string;
+  vehicleRuleId?: string;
+  vehicleRuleName?: string;
+  sizeRuleId?: string;
+  sizeRuleName?: string;
   currentLoad: number;
   currentLoadUnit: string;
   assignedDetails: AssignedDetail[];
-  packedDetailDetails: PackedDetail[];
+  packedDetailDetails?: PackedDetail[];
 }
 
 export interface PackedDetail {
@@ -100,6 +102,7 @@ export interface PackedDetail {
   width: number;
   height: number;
   orientation: string;
+  trackingCode?: string;
 }
 
 export interface AssignedDetail {

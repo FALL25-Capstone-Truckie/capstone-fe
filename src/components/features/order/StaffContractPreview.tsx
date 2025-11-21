@@ -1,7 +1,10 @@
 import React, { useState, useEffect } from "react";
 import dayjs from "dayjs";
 import type { ContractData } from "../../../services/contract/contractTypes";
-import type { ContractSettings } from "../../../models/Contract";
+import type {
+  ContractSettings,
+  StipulationSettings,
+} from "../../../models/Contract";
 import { formatCurrency } from "../../../utils/formatters";
 
 interface ContractCustomization {
@@ -31,6 +34,7 @@ interface StaffContractPreviewProps {
   customization?: ContractCustomization;
   content?: ContractContent;
   contractSettings?: ContractSettings;
+  stipulationSettings?: StipulationSettings;
   onCustomizationChange?: (customization: ContractCustomization) => void;
 }
 
@@ -39,6 +43,7 @@ const StaffContractPreview: React.FC<StaffContractPreviewProps> = ({
   customization,
   content,
   contractSettings,
+  stipulationSettings,
   onCustomizationChange,
 }) => {
   const currentDate = new Date().toISOString();
@@ -643,28 +648,126 @@ const StaffContractPreview: React.FC<StaffContractPreviewProps> = ({
 
       <div className="terms-section">
         <div className="terms-title">ĐIỀU 4: PHÂN CÔNG XE</div>
-        {contractData.assignResult && contractData.assignResult.length > 0 && (
-          <table className="table">
-            <thead>
-              <tr>
-                <th>Loại xe</th>
-                <th>Tải trọng hiện tại</th>
-                <th>Số chi tiết được giao</th>
-              </tr>
-            </thead>
-            <tbody>
-              {contractData.assignResult.map((assign, index) => (
-                <tr key={index}>
-                  <td>{assign.sizeRuleName}</td>
-                  <td>
-                    {assign.currentLoad} {assign.currentLoadUnit}
-                  </td>
-                  <td>{assign.assignedDetails.length}</td>
+
+        {/* Optimal Assignment */}
+        {contractData.optimalAssignResult &&
+          contractData.optimalAssignResult.length > 0 && (
+            <div style={{ marginBottom: "20px" }}>
+              <p
+                style={{
+                  fontWeight: "600",
+                  marginBottom: "10px",
+                  color: "#1890ff",
+                }}
+              >
+                4.1. Phương án tối ưu (Đề xuất):
+              </p>
+              <p
+                style={{
+                  marginLeft: "20px",
+                  marginBottom: "10px",
+                  fontStyle: "italic",
+                }}
+              >
+                Phương án này tối ưu chi phí và hiệu suất vận chuyển cho khách
+                hàng.
+              </p>
+              <table className="table">
+                <thead>
+                  <tr>
+                    <th>Loại xe</th>
+                    <th>Tải trọng hiện tại</th>
+                    <th>Số chi tiết được giao</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {contractData.optimalAssignResult.map((assign, index) => (
+                    <tr key={index}>
+                      <td>{assign.sizeRuleName}</td>
+                      <td>
+                        {assign.currentLoad} {assign.currentLoadUnit}
+                      </td>
+                      <td>{assign.assignedDetails.length}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+        {/* Realistic Assignment */}
+        {contractData.realisticAssignResult &&
+          contractData.realisticAssignResult.length > 0 && (
+            <div>
+              <p
+                style={{
+                  fontWeight: "600",
+                  marginBottom: "10px",
+                  color: "#52c41a",
+                }}
+              >
+                4.2. Phương án thực tế (Bắt buộc):
+              </p>
+              <p
+                style={{
+                  marginLeft: "20px",
+                  marginBottom: "10px",
+                  fontStyle: "italic",
+                }}
+              >
+                Phương án này dựa trên tình trạng sẵn có của xe và lịch trình
+                thực tế. Đây là phương án khách hàng cần đặt để đảm bảo giao
+                hàng đúng thời gian.
+              </p>
+              <table className="table">
+                <thead>
+                  <tr>
+                    <th>Loại xe</th>
+                    <th>Tải trọng hiện tại</th>
+                    <th>Số chi tiết được giao</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {contractData.realisticAssignResult.map((assign, index) => (
+                    <tr key={index}>
+                      <td>{assign.sizeRuleName}</td>
+                      <td>
+                        {assign.currentLoad} {assign.currentLoadUnit}
+                      </td>
+                      <td>{assign.assignedDetails.length}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+        {/* Legacy fallback */}
+        {!contractData.optimalAssignResult &&
+          !contractData.realisticAssignResult &&
+          contractData.assignResult &&
+          contractData.assignResult.length > 0 && (
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>Loại xe</th>
+                  <th>Tải trọng hiện tại</th>
+                  <th>Số chi tiết được giao</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
+              </thead>
+              <tbody>
+                {contractData.assignResult.map((assign, index) => (
+                  <tr key={index}>
+                    <td>{assign.sizeRuleName}</td>
+                    <td>
+                      {assign.currentLoad} {assign.currentLoadUnit}
+                    </td>
+                    <td>{assign.assignedDetails.length}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
       </div>
 
       <div className="terms-section">
@@ -718,6 +821,25 @@ const StaffContractPreview: React.FC<StaffContractPreviewProps> = ({
           ngày {dayjs(localCustomization.expirationDate).format("DD/MM/YYYY")}
         </p>
       </div>
+
+      {/* Custom Stipulation Terms from Settings */}
+      {stipulationSettings &&
+        stipulationSettings.contents &&
+        Object.keys(stipulationSettings.contents).length > 0 && (
+          <div className="terms-section">
+            <div className="terms-title">ĐIỀU 7: CÁC ĐIỀU KHOẢN BỔ SUNG</div>
+            {Object.entries(stipulationSettings.contents).map(
+              ([key, value], index) => (
+                <div key={key} style={{ marginBottom: "12px" }}>
+                  <div
+                    style={{ textAlign: "justify", lineHeight: "1.6" }}
+                    dangerouslySetInnerHTML={{ __html: value }}
+                  />
+                </div>
+              )
+            )}
+          </div>
+        )}
 
       {/* Signature Section */}
       <div className="signature-section">

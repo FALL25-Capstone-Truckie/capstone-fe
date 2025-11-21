@@ -32,7 +32,10 @@ import DateSelectGroup from "../../../../components/common/DateSelectGroup";
 import dayjs from "dayjs";
 import { cleanContractData } from "../../../../utils/contractUtils";
 import contractSettingService from "../../../../services/contract/contractSettingService";
-import type { ContractSettings } from "../../../../models/Contract";
+import type {
+  ContractSettings,
+  StipulationSettings,
+} from "../../../../models/Contract";
 
 interface ErrorResponse {
   response?: {
@@ -67,6 +70,8 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
   const [contractData, setContractData] = useState<ContractData | null>(null);
   const [contractSettings, setContractSettings] =
     useState<ContractSettings | null>(null);
+  const [stipulationSettings, setStipulationSettings] =
+    useState<StipulationSettings | null>(null);
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [isCreationModalOpen, setIsCreationModalOpen] =
     useState<boolean>(false);
@@ -74,23 +79,42 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
   const [form] = Form.useForm();
   const [uploadForm] = Form.useForm();
 
-  // Fetch contract settings on component mount
+  // Fetch contract settings and stipulation settings on component mount
   useEffect(() => {
-    const fetchContractSettings = async () => {
+    const fetchSettings = async () => {
       try {
-        const response = await contractSettingService().getContractSettings();
-        console.log("[Staff] Contract settings response:", response);
-        // API returns array, take first element as it's always unique
-        if (response.data && response.data.length > 0) {
-          console.log("[Staff] Setting contract settings:", response.data[0]);
-          setContractSettings(response.data[0]);
+        // Fetch contract settings
+        const contractResponse =
+          await contractSettingService().getContractSettings();
+        console.log("[Staff] Contract settings response:", contractResponse);
+        if (contractResponse.data && contractResponse.data.length > 0) {
+          console.log(
+            "[Staff] Setting contract settings:",
+            contractResponse.data[0]
+          );
+          setContractSettings(contractResponse.data[0]);
+        }
+
+        // Fetch stipulation settings
+        const stipulationResponse =
+          await contractSettingService().getStipulationSettings();
+        console.log(
+          "[Staff] Stipulation settings response:",
+          stipulationResponse
+        );
+        if (stipulationResponse.success && stipulationResponse.data) {
+          console.log(
+            "[Staff] Setting stipulation settings:",
+            stipulationResponse.data
+          );
+          setStipulationSettings(stipulationResponse.data);
         }
       } catch (error) {
-        console.error("[Staff] Error fetching contract settings:", error);
+        console.error("[Staff] Error fetching settings:", error);
       }
     };
 
-    fetchContractSettings();
+    fetchSettings();
   }, []);
 
   // Contract customization state
@@ -887,6 +911,7 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
               contractData={contractData}
               customization={contractCustomization}
               contractSettings={contractSettings ?? undefined}
+              stipulationSettings={stipulationSettings ?? undefined}
             />
           )}
         </div>
@@ -967,6 +992,7 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
                 contractData={contractData}
                 customization={contractCustomization}
                 contractSettings={contractSettings ?? undefined}
+                stipulationSettings={stipulationSettings ?? undefined}
                 onCustomizationChange={setContractCustomization}
               />
             </div>

@@ -28,6 +28,21 @@ const VIETMAP_STYLE_CACHE_KEY = 'vietmap_style_cache';
 // Thời gian cache (1 tuần tính bằng milliseconds)
 const CACHE_DURATION = 7 * 24 * 60 * 60 * 1000;
 
+// Function để dịch tên điểm từ tiếng Anh sang tiếng Việt
+const translatePointName = (name: string): string => {
+    const translations: { [key: string]: string } = {
+        'Carrier': 'Đơn vị vận chuyển',
+        'Pickup': 'Điểm lấy hàng',
+        'Delivery': 'Điểm giao hàng',
+        'Stopover': 'Điểm trung gian',
+        'Warehouse': 'Kho',
+        'Origin': 'Điểm đi',
+        'Destination': 'Điểm đến',
+    };
+    
+    return translations[name] || name;
+};
+
 // CSS cho popup
 const POPUP_STYLE = `
 .route-popup .vietmapgl-popup-content {
@@ -772,8 +787,9 @@ const VietMapMap: React.FC<VietMapMapProps> = ({
         const popupCoordinates = segment.path[midPointIndex];
 
         // Lấy tên điểm đầu và điểm cuối (loại bỏ phần khoảng cách trong ngoặc)
-        const startName = segment.startName;
-        const endName = segment.endName.split('(')[0].trim();
+        // ✅ Dịch tên từ tiếng Anh sang tiếng Việt
+        const startName = translatePointName(segment.startName);
+        const endName = translatePointName(segment.endName.split('(')[0].trim());
 
         // Tạo nội dung cho popup với cấu trúc mới
         let popupContent = `

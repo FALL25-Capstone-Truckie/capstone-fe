@@ -117,7 +117,7 @@ export const formatJourneyStatus = (status: string): string => {
 export const translatePointName = (pointName: string): string => {
     switch (pointName) {
         case 'Carrier':
-            return 'Nhà vận chuyển';
+            return 'Đơn vị vận chuyển';
         case 'Pickup':
             return 'Điểm lấy hàng';
         case 'Delivery':

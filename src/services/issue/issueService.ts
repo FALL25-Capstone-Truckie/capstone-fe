@@ -421,6 +421,21 @@ const issueService = {
             console.error('Error processing reroute:', error);
             throw new Error(error.response?.data?.message || 'Không thể xử lý tái định tuyến');
         }
+    },
+    
+    /**
+     * Get suggested alternative routes for reroute issue using Vietmap Route V3 API
+     * @param issueId Issue ID
+     * @returns Promise with suggested routes from Vietmap
+     */
+    getSuggestedRoutesForReroute: async (issueId: string): Promise<any> => {
+        try {
+            const response = await httpClient.get(`/issues/reroute/${issueId}/suggested-routes`);
+            return response.data.data;
+        } catch (error: any) {
+            console.error('Error fetching suggested routes:', error);
+            throw new Error(error.response?.data?.message || 'Không thể tải các đề xuất lộ trình');
+        }
     }
 };
 

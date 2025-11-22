@@ -35,6 +35,7 @@ import type { RouteSegment, RoutePoint } from '@/models/RoutePoint';
 import routeService from '@/services/route';
 import dayjs from 'dayjs';
 import { translatePointName } from '@/models/JourneyHistory';
+import { decodePolyline } from '../../../../utils/polyline';
 
 const { Title, Text } = Typography;
 
@@ -163,6 +164,11 @@ const RerouteDetail: React.FC<RerouteDetailProps> = ({ issue, onUpdate }) => {
         totalTollCount: 0
     });
     const [error, setError] = useState<string | null>(null);
+    
+    // ✅ NEW: Suggested routes from Vietmap Route V3 API
+    const [suggestedRoutes, setSuggestedRoutes] = useState<any[]>([]);
+    const [selectedRouteIndex, setSelectedRouteIndex] = useState<number | null>(null);
+    const [loadingSuggestedRoutes, setLoadingSuggestedRoutes] = useState(false);
 
     const selectedSegmentIndexRef = useRef<number>(0);
 
@@ -329,6 +335,137 @@ const RerouteDetail: React.FC<RerouteDetailProps> = ({ issue, onUpdate }) => {
         } finally {
             setLoading(false);
         }
+    };
+    
+    // ✅ NEW: Fetch suggested routes from Vietmap Route V3 API
+    const fetchSuggestedRoutes = async () => {
+        if (!detailInfo || !detailInfo.affectedSegment) {
+            message.error('Không có thông tin đoạn đường bị ảnh hưởng');
+            return;
+        }
+        
+        try {
+            setLoadingSuggestedRoutes(true);
+            message.loading({ content: 'Đang tải các đề xuất lộ trình...', key: 'suggested-routes', duration: 0 });
+            
+            const response = await issueService.getSuggestedRoutesForReroute(issue.id);
+            
+            if (response.code !== 'OK') {
+                throw new Error(response.messages || 'API returned non-OK status');
+            }
+            
+            if (!response.paths || response.paths.length === 0) {
+                message.warning('Không tìm thấy lộ trình thay thế phù hợp');
+                setSuggestedRoutes([]);
+                return;
+            }
+            
+            // Process and store suggested routes
+            setSuggestedRoutes(response.paths);
+            setSelectedRouteIndex(null); // Reset selection
+            
+            message.success({
+                content: `Tìm thấy ${response.paths.length} lộ trình thay thế`,
+                key: 'suggested-routes',
+                duration: 2
+            });
+            
+            console.log('🗺️ Suggested routes loaded:', response.paths.length);
+            
+        } catch (error: any) {
+            console.error('Failed to fetch suggested routes:', error);
+            message.error({
+                content: error.message || 'Không thể tải các đề xuất lộ trình',
+                key: 'suggested-routes',
+                duration: 3
+            });
+            setSuggestedRoutes([]);
+        } finally {
+            setLoadingSuggestedRoutes(false);
+        }
+    };
+    
+    // ✅ NEW: Select a suggested route
+    const handleSelectSuggestedRoute = (routeIndex: number) => {
+        const route = suggestedRoutes[routeIndex];
+        if (!route || !detailInfo?.affectedSegment) return;
+        
+        setSelectedRouteIndex(routeIndex);
+        
+        // Convert route to newRouteSegments format
+        // Route V3 API returns ENCODED polyline string when pointsEncoded: true (default)
+        const pathCoordinates = typeof route.points === 'string' 
+            ? decodePolyline(route.points) // Decode polyline string to [lat, lng][]
+            : route.points as any[]; // Fallback if already decoded
+        
+        console.log('🗺️ Route points type:', typeof route.points);
+        console.log('🗺️ Decoded coordinates count:', pathCoordinates.length);
+        console.log('🗺️ First 3 coordinates:', pathCoordinates.slice(0, 3));
+        
+        // Update route info for display
+        setRouteInfoFromAPI({
+            totalDistance: (route.distance / 1000), // meters to km
+            totalTollAmount: 0, // Route V3 doesn't provide toll info
+            totalTollCount: 0
+        });
+        
+        // Create single segment from start to end through issue location
+        const segment: RouteSegment = {
+            segmentOrder: 1,
+            startName: detailInfo.affectedSegment.startPointName,
+            endName: detailInfo.affectedSegment.endPointName,
+            path: pathCoordinates.map((coord: any[]) => [coord[1], coord[0]]), // [lat,lng] to [lng,lat]
+            distance: route.distance / 1000, // meters to km
+            tolls: [],
+            rawResponse: route
+        };
+        
+        console.log('🗺️ Created route segment:', {
+            segmentOrder: segment.segmentOrder,
+            pathLength: segment.path.length,
+            firstPoint: segment.path[0],
+            lastPoint: segment.path[segment.path.length - 1],
+            distance: segment.distance
+        });
+        
+        setNewRouteSegments([segment]);
+        
+        // Clear custom waypoints since we're using suggested route
+        setCustomPoints([]);
+        setCustomWaypoints([]);
+        
+        // Update markers to show only start, issue, end
+        if (detailInfo.affectedSegment && detailInfo.locationLatitude && detailInfo.locationLongitude) {
+            const markers: MapLocation[] = [
+                {
+                    lat: detailInfo.affectedSegment.startLatitude,
+                    lng: detailInfo.affectedSegment.startLongitude,
+                    address: detailInfo.affectedSegment.startPointName,
+                    name: 'Điểm đầu',
+                    type: 'pickup',
+                    id: 'segment-start'
+                },
+                {
+                    lat: detailInfo.locationLatitude,
+                    lng: detailInfo.locationLongitude,
+                    address: 'Vị trí báo cáo sự cố',
+                    name: 'Sự cố',
+                    type: 'stopover',
+                    id: 'issue-location'
+                },
+                {
+                    lat: detailInfo.affectedSegment.endLatitude,
+                    lng: detailInfo.affectedSegment.endLongitude,
+                    address: detailInfo.affectedSegment.endPointName,
+                    name: 'Điểm cuối',
+                    type: 'delivery',
+                    id: 'segment-end'
+                }
+            ];
+            setMarkers(markers);
+        }
+        
+        message.success(`Đã chọn lộ trình ${routeIndex + 1}: ${(route.distance / 1000).toFixed(2)} km`);
     };
 
     // Generate new route with custom waypoints
@@ -922,6 +1059,91 @@ const RerouteDetail: React.FC<RerouteDetailProps> = ({ issue, onUpdate }) => {
                                 showIcon
                                 style={{ marginBottom: 12 }}
                             />
+                        )}
+                        
+                        {/* ✅ NEW: Suggested Routes Section */}
+                        {!isResolved && (
+                            <div style={{ marginBottom: 16 }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                                    <Title level={5} style={{ margin: 0 }}>
+                                        🤖 Gợi ý lộ trình
+                                    </Title>
+                                    <Button
+                                        type="primary"
+                                        icon={<CarOutlined />}
+                                        onClick={fetchSuggestedRoutes}
+                                        loading={loadingSuggestedRoutes}
+                                        disabled={loadingSuggestedRoutes}
+                                    >
+                                        Tải gợi ý lộ trình
+                                    </Button>
+                                </div>
+                                
+                                {suggestedRoutes.length > 0 && (
+                                    <div style={{ marginTop: 16 }}>
+                                        <Alert
+                                            message={`Tìm thấy ${suggestedRoutes.length} lộ trình thay thế`}
+                                            description="Click vào lộ trình để xem chi tiết và chọn. Hoặc bạn có thể tự tạo lộ trình bằng cách click vào bản đồ."
+                                            type="success"
+                                            showIcon
+                                            style={{ marginBottom: 12 }}
+                                        />
+                                        <Row gutter={[12, 12]}>
+                                            {suggestedRoutes.map((route, index) => {
+                                                const distanceKm = (route.distance / 1000).toFixed(2);
+                                                const timeMinutes = Math.round(route.time / 60000);
+                                                const isSelected = selectedRouteIndex === index;
+                                                
+                                                return (
+                                                    <Col span={8} key={index}>
+                                                        <Card
+                                                            size="small"
+                                                            hoverable
+                                                            onClick={() => handleSelectSuggestedRoute(index)}
+                                                            style={{
+                                                                border: isSelected ? '2px solid #1890ff' : '1px solid #d9d9d9',
+                                                                backgroundColor: isSelected ? '#e6f7ff' : '#fff',
+                                                                cursor: 'pointer'
+                                                            }}
+                                                        >
+                                                            <div style={{ textAlign: 'center' }}>
+                                                                <Title level={5} style={{ margin: '0 0 8px 0', color: isSelected ? '#1890ff' : '#000' }}>
+                                                                    {isSelected && '✓ '}Lộ trình {index + 1}
+                                                                </Title>
+                                                                <Space direction="vertical" size="small" style={{ width: '100%' }}>
+                                                                    <div>
+                                                                        <CarOutlined style={{ color: '#1890ff' }} />
+                                                                        <Text strong style={{ marginLeft: 8 }}>
+                                                                            {distanceKm} km
+                                                                        </Text>
+                                                                    </div>
+                                                                    <div>
+                                                                        <ClockCircleOutlined style={{ color: '#52c41a' }} />
+                                                                        <Text style={{ marginLeft: 8 }}>
+                                                                            ~{timeMinutes} phút
+                                                                        </Text>
+                                                                    </div>
+                                                                </Space>
+                                                                {isSelected && (
+                                                                    <Tag color="blue" style={{ marginTop: 8, width: '100%' }}>
+                                                                        Đã chọn
+                                                                    </Tag>
+                                                                )}
+                                                            </div>
+                                                        </Card>
+                                                    </Col>
+                                                );
+                                            })}
+                                        </Row>
+                                        {/* <div style={{ marginTop: 12, textAlign: 'center' }}>
+                                            <Text type="secondary" style={{ fontSize: 12 }}>
+                                                💡 Lộ trình được tính toán dựa trên tải trọng xe ({detailInfo.vehicleAssignment.vehicle?.vehicleType?.vehicleTypeName || 'N/A'})
+                                                và các điểm: Đầu → Sự cố → Cuối
+                                            </Text>
+                                        </div> */}
+                                    </div>
+                                )}
+                            </div>
                         )}
 
                         {/* Custom Waypoints List - MOVED ABOVE MAP for better UX */}

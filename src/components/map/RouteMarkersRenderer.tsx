@@ -1,5 +1,20 @@
 import React, { useEffect, useRef } from 'react';
 
+// Function để dịch tên điểm từ tiếng Anh sang tiếng Việt
+const translatePointName = (name: string): string => {
+  const translations: { [key: string]: string } = {
+    'Carrier': 'Đơn vị vận chuyển',
+    'Pickup': 'Điểm lấy hàng',
+    'Delivery': 'Điểm giao hàng',
+    'Stopover': 'Điểm trung gian',
+    'Warehouse': 'Kho',
+    'Origin': 'Điểm đi',
+    'Destination': 'Điểm đến',
+  };
+  
+  return translations[name] || name;
+};
+
 interface RouteMarker {
   id: string;
   lat: number;
@@ -94,7 +109,7 @@ const RouteMarkersRenderer: React.FC<RouteMarkersRendererProps> = ({
               lat: startLat,
               lng: startLng,
               type: startType,
-              name: segment.startPointName || 'Điểm đầu',
+              name: translatePointName(segment.startPointName || 'Điểm đầu'),
               vaIndex
             });
           }
@@ -122,7 +137,7 @@ const RouteMarkersRenderer: React.FC<RouteMarkersRendererProps> = ({
                 lat: endLat,
                 lng: endLng,
                 type: endType,
-                name: segment.endPointName || 'Điểm cuối',
+                name: translatePointName(segment.endPointName || 'Điểm cuối'),
                 vaIndex
               });
             }

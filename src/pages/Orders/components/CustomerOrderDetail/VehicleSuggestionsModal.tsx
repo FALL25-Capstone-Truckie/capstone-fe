@@ -110,7 +110,7 @@ const VehicleSuggestionsModal: React.FC<VehicleSuggestionsModalProps> = ({
                     </div>
                     <div>
                       <div className="font-medium text-blue-600">
-                        {suggestion.vehicleRuleName}
+                        {suggestion.sizeRuleName}
                       </div>
                     </div>
                   </div>
@@ -123,7 +123,7 @@ const VehicleSuggestionsModal: React.FC<VehicleSuggestionsModalProps> = ({
                         Tổng tải trọng cho xe
                       </div>
                       <div className="font-semibold text-green-600">
-                        {suggestion.currentLoad}{suggestion.currentLoadUnit}
+                        {suggestion.currentLoad} {suggestion.currentLoadUnit}
                       </div>
                     </div>
                   </Col>

@@ -40,7 +40,8 @@ import AdminVehicleAssignmentPage from "../pages/Admin/VehicleAssignment";
 import AdminVehicleAssignmentDetailPage from "../pages/Admin/VehicleAssignment/VehicleAssignmentDetail";
 import StaffVehicleAssignmentPage from "../pages/Staff/VehicleAssignment";
 import StaffVehicleAssignmentDetailPage from "../pages/Staff/VehicleAssignment/VehicleAssignmentDetail";
-import VehicleRulePage from "../pages/Admin/VehicleRule";
+import SizeRulePage from "../pages/Admin/SizeRule";
+import StipulationSettings from "../pages/Admin/Stipulation";
 
 // Định nghĩa các route với bảo vệ dựa trên vai trò và trạng thái xác thực
 const router = createBrowserRouter([
@@ -379,11 +380,15 @@ const router = createBrowserRouter([
       },
       {
         path: "vehicle-rules",
-        element: <VehicleRulePage />,
+        element: <SizeRulePage />,
       },
       {
         path: "categories",
         element: <CategoryManagement />,
+      },
+      {
+        path: "stipulation-settings",
+        element: <StipulationSettings />,
       },
       {
         path: "settings",

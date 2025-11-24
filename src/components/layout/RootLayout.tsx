@@ -1,11 +1,12 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Outlet } from 'react-router-dom';
 import { useLogoutListener } from '@/hooks/useLogoutListener';
 import { useAuth } from '@/context';
-import { ChatProvider } from '@/context/ChatContext';
+import { ChatProvider, useChatContext } from '@/context/ChatContext';
 import { IssuesProvider } from '@/context/IssuesContext';
 import ChatWidget from '@/components/chat/ChatWidget';
 import StaffChatWidget from '@/components/chat/StaffChatWidget';
+import { AIChatbot } from '@/components/ai-chatbot';
 import issueWebSocket from '@/services/websocket/issueWebSocket';
 
 /**
@@ -36,9 +37,39 @@ const RootLayout: React.FC = () => {
     <ChatProvider isStaff={isStaff}>
       <IssuesProvider>
         <Outlet />
-        {isStaff ? <StaffChatWidget /> : <ChatWidget />}
+        {/* Chat Widgets with toggle logic */}
+        <ChatWidgetsManager isStaff={isStaff} />
       </IssuesProvider>
     </ChatProvider>
+  );
+};
+
+/**
+ * Manages toggle between AI chat and normal chat
+ */
+const ChatWidgetsManager: React.FC<{ isStaff: boolean }> = ({ isStaff }) => {
+  const { isOpen: isChatOpen, toggleChat } = useChatContext();
+  const [isAIChatOpen, setIsAIChatOpen] = useState(false);
+
+  // Close AI chat when normal chat opens
+  const handleChatOpen = () => {
+    setIsAIChatOpen(false);
+  };
+
+  // Close normal chat when AI chat opens  
+  const handleAIChatOpen = () => {
+    if (isChatOpen) {
+      toggleChat();
+    }
+    setIsAIChatOpen(true);
+  };
+
+  return (
+    <>
+      {isStaff ? <StaffChatWidget /> : <ChatWidget onOpen={handleChatOpen} />}
+      {/* AI Chatbot chỉ cho Customer và Guest (không phải Staff) */}
+      {!isStaff && <AIChatbot onOpen={handleAIChatOpen} />}
+    </>
   );
 };
 

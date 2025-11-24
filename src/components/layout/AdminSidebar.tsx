@@ -25,6 +25,7 @@ import {
   HddOutlined,
   TruckFilled,
   UserOutlined,
+  FileTextOutlined,
 } from "@ant-design/icons";
 import { icons } from "lucide-react";
 
@@ -131,6 +132,11 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({
           key: "/admin/categories",
           icon: <TagsOutlined />,
           label: <Link to="/admin/categories">Danh mục</Link>,
+        },
+        {
+          key: "/admin/stipulation-settings",
+          icon: <FileTextOutlined />,
+          label: <Link to="/admin/stipulation-settings">Điều khoản</Link>,
         },
         {
           key: "/admin/settings",

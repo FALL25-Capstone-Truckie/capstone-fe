@@ -172,8 +172,8 @@ const OrderSummaryStep: React.FC<OrderSummaryStepProps> = ({
           </div>
         </Card>
 
-        {/* Thông tin lô hàng */}
-        <Card title="Thông tin lô hàng" className="shadow-sm md:col-span-3" size="small">
+        {/* Thông tin kiện hàng */}
+        <Card title="Thông tin kiện hàng" className="shadow-sm md:col-span-3" size="small">
           {formValues.orderDetailsList &&
             formValues.orderDetailsList.length > 0 ? (
             <div>
@@ -189,7 +189,7 @@ const OrderSummaryStep: React.FC<OrderSummaryStepProps> = ({
                   kiện hàng
                 </Text>
                 <Text className="block text-sm text-blue-600">
-                  Từ {formValues.orderDetailsList.length} lô hàng khác nhau
+                  Từ {formValues.orderDetailsList.length} kiện hàng khác nhau
                 </Text>
               </div>
 
@@ -198,7 +198,7 @@ const OrderSummaryStep: React.FC<OrderSummaryStepProps> = ({
                   <div key={index} className="bg-gray-50 p-3 rounded-lg border border-gray-100">
                     <div className="flex items-center mb-2">
                       <Tag color="blue" className="mr-2">
-                        Lô hàng {index + 1}
+                        kiện hàng {index + 1}
                       </Tag>
                       <Text strong>Kích thước & Trọng lượng</Text>
                     </div>
@@ -245,7 +245,7 @@ const OrderSummaryStep: React.FC<OrderSummaryStepProps> = ({
             </div>
           ) : (
             <div className="text-center py-4 text-gray-500">
-              <Text>Chưa có thông tin lô hàng</Text>
+              <Text>Chưa có thông tin kiện hàng</Text>
             </div>
           )}
         </Card>

@@ -24,6 +24,7 @@ import {
   useRefreshContracts,
   useStaffContractOperations,
 } from "../../../../hooks";
+// Use jsPDF and html2canvas for PDF generation
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 import { ContractStatusTag } from "../../../../components/common/tags";
@@ -32,6 +33,7 @@ import DateSelectGroup from "../../../../components/common/DateSelectGroup";
 import dayjs from "dayjs";
 import { cleanContractData } from "../../../../utils/contractUtils";
 import contractSettingService from "../../../../services/contract/contractSettingService";
+import contractService from "../../../../services/contract/contractService";
 import type {
   ContractSettings,
   StipulationSettings,
@@ -127,6 +129,18 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
     description: "",
   });
 
+  // Wrapper function to handle customization changes
+  const handleCustomizationChange = (customization: any) => {
+    setContractCustomization({
+      effectiveDate: customization.effectiveDate || "",
+      expirationDate: customization.expirationDate || "",
+      hasAdjustedValue: customization.hasAdjustedValue || false,
+      adjustedValue: customization.adjustedValue || 0,
+      contractName: customization.contractName || "",
+      description: customization.description || "",
+    });
+  };
+
   const { refetch: refetchContracts } = useRefreshContracts(orderId);
   const {
     creatingContract,
@@ -139,14 +153,10 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
 
   const handlePreviewContract = async () => {
     if (!contract?.id) return;
-
-    console.log("handlePreviewContract called with contractId:", contract.id);
     try {
       const response = await getContractPdfData(contract.id);
-      console.log("Contract PDF data response:", response);
       if (response.success) {
         setContractData(response.data);
-        console.log("Contract data set SUCCESSFUL");
       } else {
         messageApi.error(response.message);
         console.error("Contract service returned error:", response.message);
@@ -178,8 +188,6 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
         attachFileUrl: values.attachFileUrl || "",
         orderId: orderId, // Using the orderId prop
       };
-
-      console.log("Creating contract with data:", contractData);
       const response = await createContractForCustomer(contractData);
 
       if (response.success) {
@@ -260,148 +268,24 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
     }
 
     try {
-      messageApi.loading("Đang xuất hợp đồng...", 0);
+      messageApi.loading("Đang tạo và xuất hợp đồng PDF...", 0);
 
-      const formData = new FormData();
-      // Use the hidden PDF export container instead of the visible modal content
-      const containerElement = document.querySelector(
-        "#pdf-export-container"
-      ) as HTMLElement;
-
-      if (!containerElement) {
-        messageApi.destroy();
-        messageApi.error("Không tìm thấy nội dung hợp đồng để xuất");
-        return;
-      }
-
-      // Ensure the hidden container is visible temporarily for rendering
-      const originalStyle = containerElement.style.cssText;
-      containerElement.style.cssText =
-        "position: fixed; top: 0; left: 0; width: 210mm; backgroundColor: white; z-index: -9999;";
-
-      if (containerElement) {
-        const canvas = await html2canvas(containerElement, {
-          useCORS: true,
-          allowTaint: true,
-          background: "#ffffff",
-          scale: 2,
-          logging: false,
-        });
-
-        const pdf = new jsPDF({
-          orientation: "portrait",
-          unit: "mm",
-          format: "a4",
-          compress: true,
-        });
-
-        const pageWidth = 210;
-        const pageHeight = 297;
-        const margin = 10;
-        const contentWidth = pageWidth - margin * 2;
-        const contentHeight = pageHeight - margin * 2;
-
-        const imgWidth = canvas.width;
-        const imgHeight = canvas.height;
-        const ratio = (contentWidth * 3.779527559) / imgWidth;
-        const scaledHeight = (imgHeight * ratio) / 3.779527559;
-
-        const imgData = canvas.toDataURL("image/jpeg", 0.95);
-
-        if (scaledHeight <= contentHeight) {
-          pdf.addImage(
-            imgData,
-            "JPEG",
-            margin,
-            margin,
-            contentWidth,
-            scaledHeight
-          );
-        } else {
-          const totalPages = Math.ceil(scaledHeight / contentHeight);
-          const pixelsPerPage = imgHeight / totalPages;
-
-          for (let page = 0; page < totalPages; page++) {
-            if (page > 0) pdf.addPage();
-
-            const pageCanvas = document.createElement("canvas");
-            const pageCtx = pageCanvas.getContext("2d");
-
-            if (pageCtx) {
-              pageCanvas.width = imgWidth;
-              const startY = page * pixelsPerPage;
-              const endY = Math.min(startY + pixelsPerPage, imgHeight);
-              const currentPageHeight = endY - startY;
-              pageCanvas.height = currentPageHeight;
-
-              pageCtx.drawImage(
-                canvas,
-                0,
-                startY,
-                imgWidth,
-                currentPageHeight,
-                0,
-                0,
-                imgWidth,
-                currentPageHeight
-              );
-
-              const pageImgData = pageCanvas.toDataURL("image/jpeg", 0.95);
-              const pageHeightMM = (currentPageHeight * ratio) / 3.779527559;
-
-              pdf.addImage(
-                pageImgData,
-                "JPEG",
-                margin,
-                margin,
-                contentWidth,
-                pageHeightMM
-              );
-            }
-          }
-        }
-
-        const pdfBlob = pdf.output("blob");
-        const maxSizeInBytes = 9 * 1024 * 1024;
-        const currentSize = pdfBlob.size / 1024 / 1024;
-
-        if (pdfBlob.size > maxSizeInBytes) {
-          messageApi.destroy();
-          messageApi.error(
-            `File PDF quá lớn (${currentSize.toFixed(
-              2
-            )}MB). Vui lòng giảm nội dung hợp đồng.`
-          );
-          return;
-        }
-
-        formData.append("file", pdfBlob, `hop-dong-${contract.id}.pdf`);
-      }
-
-      // Hide the container again
-      containerElement.style.cssText = originalStyle;
-
-      formData.append("contractId", contract.id);
-      formData.append("contractName", values.contractName as string);
-
+      // Format datetime for backend
       const formatDateTime = (dateString: string) => {
         return new Date(dateString).toISOString().slice(0, 19);
       };
 
-      formData.append(
-        "effectiveDate",
-        formatDateTime(values.effectiveDate as string)
-      );
-      formData.append(
-        "expirationDate",
-        formatDateTime(values.expirationDate as string)
-      );
-      formData.append("adjustedValue", (values.adjustedValue || 0).toString());
-      formData.append("description", values.description as string);
-
-      const uploadResponse = await uploadContract(formData);
-      console.log("Upload response:", uploadResponse);
-
+      // Call backend API to generate PDF (Flying Saucer handles page breaks properly - no truncation)
+      console.log("🎯 Calling backend PDF generation API...");
+      const uploadResponse = await contractService.generateAndSaveContractPdf({
+        contractId: contract.id,
+        contractName: values.contractName as string,
+        effectiveDate: formatDateTime(values.effectiveDate as string),
+        expirationDate: formatDateTime(values.expirationDate as string),
+        adjustedValue: Number(values.adjustedValue) || 0,
+        description: values.description as string,
+      });
+      console.log("✅ Backend PDF generation completed");
       // Handle response safely
       if (
         uploadResponse &&
@@ -446,27 +330,17 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
       }
     } catch (error) {
       messageApi.destroy();
-
-      // Hide the container again in case of error
-      const containerElement = document.querySelector(
-        "#pdf-export-container"
-      ) as HTMLElement;
-      if (containerElement) {
-        containerElement.style.cssText =
-          "position: fixed; top: -9999px; left: -9999px; width: 210mm; minHeight: 297mm; backgroundColor: white;";
-      }
+      console.error("❌ PDF generation error:", error);
 
       const errorResponse = error as ErrorResponse;
-      if (errorResponse.response?.status === 413) {
-        messageApi.error(
-          "File quá lớn! Vui lòng giảm nội dung hợp đồng và thử lại."
-        );
-      } else if (errorResponse.response?.status === 400) {
+      if (errorResponse.response?.status === 400) {
         messageApi.error(
           "Dữ liệu không hợp lệ. Vui lòng kiểm tra lại thông tin hợp đồng."
         );
       } else if (errorResponse.response?.status === 401) {
         messageApi.error("Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.");
+      } else if (errorResponse.response?.status === 500) {
+        messageApi.error("Lỗi server khi tạo PDF. Vui lòng thử lại sau.");
       } else {
         messageApi.error("Không thể xuất hợp đồng. Vui lòng thử lại!");
       }
@@ -993,7 +867,7 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
                 customization={contractCustomization}
                 contractSettings={contractSettings ?? undefined}
                 stipulationSettings={stipulationSettings ?? undefined}
-                onCustomizationChange={setContractCustomization}
+                onCustomizationChange={handleCustomizationChange}
               />
             </div>
           ) : (

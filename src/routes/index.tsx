@@ -20,7 +20,8 @@ import CustomerOrderDetailPage from "../pages/Orders/CustomerOrderDetailPage";
 import CreateOrder from "../pages/Orders/CreateOrder";
 import { PermissionRoute } from "../components/auth";
 import { MainLayout, AdminLayout, RootLayout } from "../components/layout";
-import ContractStipulation from "../pages/Staff/ContractStipulation";
+import StaffNotificationListPage from "../pages/Staff/notifications/NotificationListPage";
+import CustomerNotificationListPage from "../pages/customer/notifications/NotificationListPage";
 import DriverPage from "../pages/Admin/Driver";
 import DriverDetail from "../pages/Admin/Driver/DriverDetail";
 import RegisterDriver from "../pages/Admin/Driver/RegisterDriver";
@@ -41,7 +42,8 @@ import AdminVehicleAssignmentPage from "../pages/Admin/VehicleAssignment";
 import AdminVehicleAssignmentDetailPage from "../pages/Admin/VehicleAssignment/VehicleAssignmentDetail";
 import StaffVehicleAssignmentPage from "../pages/Staff/VehicleAssignment";
 import StaffVehicleAssignmentDetailPage from "../pages/Staff/VehicleAssignment/VehicleAssignmentDetail";
-import VehicleRulePage from "../pages/Admin/VehicleRule";
+import SizeRulePage from "../pages/Admin/SizeRule";
+import StipulationSettings from "../pages/Staff/StipulationSettings";
 
 // Định nghĩa các route với bảo vệ dựa trên vai trò và trạng thái xác thực
 const router = createBrowserRouter([
@@ -112,7 +114,6 @@ const router = createBrowserRouter([
               </PermissionRoute>
             ),
           },
-
           // Các trang yêu cầu đăng nhập và vai trò customer
           {
             path: "dashboard",
@@ -193,6 +194,19 @@ const router = createBrowserRouter([
             ),
           },
           {
+            path: "notifications",
+            element: (
+              <PermissionRoute
+                authenticationRequired="authenticated"
+                allowedRoles={["customer"]}
+                authRedirectPath="/auth/login"
+                roleRedirectPath="/"
+              >
+                <CustomerNotificationListPage />
+              </PermissionRoute>
+            ),
+          },
+          {
             path: "payment/return",
             element: <PaymentReturn />,
           },
@@ -252,8 +266,8 @@ const router = createBrowserRouter([
             element: <StaffVehicleAssignmentDetailPage />,
           },
           {
-            path: "contract-stipulation",
-            element: <ContractStipulation />,
+            path: "stipulation-settings",
+            element: <StipulationSettings />,
           },
           {
             path: "deliveries",
@@ -269,7 +283,7 @@ const router = createBrowserRouter([
           },
           {
             path: "notifications",
-            element: <div>Thông báo</div>, // Thay thế bằng component thực tế
+            element: <StaffNotificationListPage />,
           },
           {
             path: "profile",
@@ -279,10 +293,10 @@ const router = createBrowserRouter([
             path: "profile/:userId",
             element: <ProfilePage />,
           },
-        ],
-      },
+    ],
+  },
 
-      // Route cho admin - yêu cầu đăng nhập và vai trò admin
+  // Route cho admin - yêu cầu đăng nhập và vai trò admin
       {
         path: "/admin",
         element: (
@@ -384,7 +398,7 @@ const router = createBrowserRouter([
           },
           {
             path: "vehicle-rules",
-            element: <VehicleRulePage />,
+            element: <SizeRulePage />,
           },
           {
             path: "categories",

@@ -124,11 +124,8 @@ const contractService = {
         );
 
         if (assignResponse.data?.success && assignResponse.data?.data) {
-          // Merge optimal and realistic results into contract data
-          response.data.data.optimalAssignResult =
-            assignResponse.data.data.optimal || [];
-          response.data.data.realisticAssignResult =
-            assignResponse.data.data.realistic || [];
+          // Note: Assignment results are now handled directly in the backend API response
+          // The assignResult property contains the vehicle assignment data
         }
       } catch (assignError) {
         console.warn(
@@ -178,6 +175,32 @@ const contractService = {
     } catch (error) {
       console.error("Error uploading contract:", error);
       throw handleApiError(error, "Không thể tải lên hợp đồng");
+    }
+  },
+
+  /**
+   * Generate contract PDF on server-side and save to Cloudinary
+   * This avoids frontend PDF generation issues with page breaks/truncation
+   * @param data - Contract metadata for PDF generation
+   * @returns Promise with contract response including PDF URL
+   */
+  generateAndSaveContractPdf: async (data: {
+    contractId: string;
+    contractName: string;
+    effectiveDate: string;
+    expirationDate: string;
+    adjustedValue: number;
+    description: string;
+  }) => {
+    try {
+      const response = await httpClient.post(
+        "/contracts/generate-and-save-pdf",
+        data
+      );
+      return response.data;
+    } catch (error) {
+      console.error("Error generating contract PDF:", error);
+      throw handleApiError(error, "Không thể tạo file PDF hợp đồng");
     }
   },
 };

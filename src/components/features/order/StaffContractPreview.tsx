@@ -1,11 +1,52 @@
 import React, { useState, useEffect } from "react";
 import dayjs from "dayjs";
+import { message } from "antd";
 import type { ContractData } from "../../../services/contract/contractTypes";
 import type {
   ContractSettings,
   StipulationSettings,
 } from "../../../models/Contract";
 import { formatCurrency } from "../../../utils/formatters";
+
+// Helper function to convert number to Vietnamese words
+const numberToVietnameseWords = (num: number): string => {
+  if (num === 0) return "không đồng";
+  
+  const units = ["", "một", "hai", "ba", "bốn", "năm", "sáu", "bảy", "tám", "chín"];
+  const teens = ["mười", "mười một", "mười hai", "mười ba", "mười bốn", "mười lăm", "mười sáu", "mười bảy", "mười tám", "mười chín"];
+  
+  const convertHundreds = (n: number): string => {
+    if (n === 0) return "";
+    if (n < 10) return units[n];
+    if (n < 20) return teens[n - 10];
+    if (n < 100) {
+      const ten = Math.floor(n / 10);
+      const unit = n % 10;
+      if (unit === 0) return units[ten] + " mươi";
+      if (unit === 1) return units[ten] + " mươi mốt";
+      if (unit === 5) return units[ten] + " mươi lăm";
+      return units[ten] + " mươi " + units[unit];
+    }
+    const hundred = Math.floor(n / 100);
+    const remainder = n % 100;
+    if (remainder === 0) return units[hundred] + " trăm";
+    if (remainder < 10) return units[hundred] + " trăm lẻ " + units[remainder];
+    return units[hundred] + " trăm " + convertHundreds(remainder);
+  };
+
+  const parts: string[] = [];
+  const billion = Math.floor(num / 1000000000);
+  const million = Math.floor((num % 1000000000) / 1000000);
+  const thousand = Math.floor((num % 1000000) / 1000);
+  const remainder = Math.floor(num % 1000);
+
+  if (billion > 0) parts.push(convertHundreds(billion) + " tỷ");
+  if (million > 0) parts.push(convertHundreds(million) + " triệu");
+  if (thousand > 0) parts.push(convertHundreds(thousand) + " nghìn");
+  if (remainder > 0) parts.push(convertHundreds(remainder));
+
+  return parts.join(" ") + " đồng";
+};
 
 interface ContractCustomization {
   effectiveDate: string;
@@ -243,23 +284,27 @@ const StaffContractPreview: React.FC<StaffContractPreviewProps> = ({
         </div>
         <p>
           <strong>Tên công ty:</strong>{" "}
-          {content?.companyName || "TRUCKIE LOGISTICS"}
+          {contractData.carrierInfo?.carrierName || content?.companyName || "TRUCKIE LOGISTICS"}
         </p>
         <p>
           <strong>Địa chỉ:</strong>{" "}
-          {content?.companyAddress ||
-            "Số 123, Đường ABC, Quận XYZ, TP. Hồ Chí Minh"}
+          {contractData.carrierInfo?.carrierAddressLine || content?.companyAddress || "Số 123, Đường ABC, Quận XYZ, TP. Hồ Chí Minh"}
         </p>
         <p>
-          <strong>Điện thoại:</strong> {content?.companyPhone || "0123 456 789"}
+          <strong>Điện thoại:</strong>{" "}
+          {contractData.carrierInfo?.carrierPhone || content?.companyPhone || "0123 456 789"}
         </p>
         <p>
           <strong>Email:</strong>{" "}
-          {content?.companyEmail || "contact@truckie.vn"}
+          {contractData.carrierInfo?.carrierEmail || content?.companyEmail || "contact@truckie.vn"}
+        </p>
+        <p>
+          <strong>Mã số thuế:</strong>{" "}
+          {contractData.carrierInfo?.carrierTaxCode || "N/A"}
         </p>
         <p>
           <strong>Người đại diện:</strong>{" "}
-          {content?.representativeName || "[Tên người đại diện]"}
+          {contractData.carrierInfo?.representativeName || content?.representativeName || "[Tên người đại diện]"}
         </p>
         <p>
           <strong>Chức vụ:</strong> {content?.representativeTitle || "Giám đốc"}
@@ -360,10 +405,6 @@ const StaffContractPreview: React.FC<StaffContractPreviewProps> = ({
 
         <p>
           <strong>Danh mục hàng hóa:</strong>{" "}
-          {contractData.orderInfo.category.categoryName}
-        </p>
-        <p>
-          <strong>Mô tả danh mục:</strong>{" "}
           {contractData.orderInfo.category.description}
         </p>
 
@@ -448,192 +489,150 @@ const StaffContractPreview: React.FC<StaffContractPreviewProps> = ({
           </tbody>
         </table>
 
-        <div
-          style={{
-            marginTop: "20px",
-            border: "1px solid #d9d9d9",
-            padding: "15px",
-            borderRadius: "4px",
-            backgroundColor: "#fafafa",
-          }}
-        >
-          <div
-            style={{
-              marginBottom: "12px",
-              paddingBottom: "12px",
-              borderBottom: "1px dashed #d9d9d9",
-            }}
-          >
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "flex-start",
-              }}
-            >
-              <div style={{ flex: 1 }}>
-                <strong>Tổng tiền trước điều chỉnh:</strong>
-                <div
-                  style={{
-                    fontSize: "11px",
-                    color: "#666",
-                    marginTop: "4px",
-                    fontStyle: "italic",
-                  }}
-                >
-                  {contractData.priceDetails.steps.map((step, index) => (
-                    <span key={index}>
-                      {index > 0 && " + "}({formatCurrency(step.unitPrice)} ×{" "}
-                      {step.appliedKm.toFixed(2)} km)
-                    </span>
-                  ))}
-                </div>
-              </div>
-              <div
-                style={{
-                  textAlign: "right",
-                  fontWeight: "bold",
-                  minWidth: "150px",
-                }}
-              >
-                {formatCurrency(
-                  contractData.priceDetails.totalBeforeAdjustment
-                )}
-              </div>
-            </div>
-          </div>
+        {/* Price Breakdown Section - Professional Text-based Contract Style */}
+        <div style={{ marginTop: "20px", lineHeight: "1.8" }}>
+          <p style={{ marginBottom: "12px" }}>
+            <strong>3.1. Chi phí vận chuyển:</strong>
+          </p>
+          
+          {/* Base transport calculation */}
+          <p style={{ marginLeft: "20px", marginBottom: "8px" }}>
+            a) Cước vận chuyển cơ bản theo quãng đường {contractData.distanceKm.toFixed(2)} km:
+          </p>
+          {contractData.priceDetails.steps.map((step, index) => (
+            <p key={index} style={{ marginLeft: "40px", marginBottom: "4px" }}>
+              - {step.sizeRuleName} ({step.numOfVehicles} xe): {formatCurrency(step.unitPrice)}/km × {step.appliedKm.toFixed(2)} km = <strong>{formatCurrency(step.subtotal)}</strong>
+            </p>
+          ))}
+          
+          <p style={{ marginLeft: "40px", marginBottom: "8px" }}>
+            Tổng cước cơ bản: <strong>{formatCurrency(contractData.priceDetails.steps.reduce((sum, step) => sum + step.subtotal, 0))}</strong>
+          </p>
 
-          <div
-            style={{
-              marginBottom: "8px",
-              display: "flex",
-              justifyContent: "space-between",
-            }}
-          >
-            <span>
-              <strong>Hệ số danh mục:</strong>
-            </span>
-            <span>{contractData.priceDetails.categoryMultiplier}</span>
-          </div>
+          {/* Category multiplier */}
+          <p style={{ marginLeft: "20px", marginBottom: "8px" }}>
+            b) Hệ số danh mục hàng hóa ({contractData.orderInfo.category.description}): × {contractData.priceDetails.categoryMultiplier}
+          </p>
 
-          {/* VAT as separate row in price table */}
-          {contractSettings?.vatRate && (
-            <div
-              style={{
-                marginBottom: "8px",
-                display: "flex",
-                justifyContent: "space-between",
-              }}
-            >
-              <span>
-                <strong>
-                  VAT {(contractSettings.vatRate * 100).toFixed(1)}%:
-                </strong>
-              </span>
-              <span>
-                {formatCurrency(
-                  contractData.priceDetails.finalTotal *
-                    contractSettings.vatRate
-                )}
-              </span>
-            </div>
+          {/* Category extra fee */}
+          {contractData.priceDetails.categoryExtraFee > 0 && (
+            <p style={{ marginLeft: "20px", marginBottom: "8px" }}>
+              c) Phụ thu danh mục ({contractData.orderInfo.category.description}): + <strong>{formatCurrency(contractData.priceDetails.categoryExtraFee)}</strong>
+            </p>
           )}
 
-          <div
-            style={{
-              marginBottom: "8px",
-              display: "flex",
-              justifyContent: "space-between",
-            }}
-          >
-            <span>
-              <strong>Phí danh mục thêm:</strong>
-            </span>
-            <span>
-              {formatCurrency(contractData.priceDetails.categoryExtraFee)}
-            </span>
-          </div>
+          {/* Promotion discount */}
+          {contractData.priceDetails.promotionDiscount > 0 && (
+            <p style={{ marginLeft: "20px", marginBottom: "8px" }}>
+              d) Giảm giá khuyến mãi: - <strong>{formatCurrency(contractData.priceDetails.promotionDiscount)}</strong>
+            </p>
+          )}
 
-          <div
-            style={{
-              marginBottom: "12px",
-              display: "flex",
-              justifyContent: "space-between",
-            }}
-          >
-            <span>
-              <strong>Giảm giá khuyến mãi:</strong>
-            </span>
-            <span style={{ fontWeight: "bold" }}>
-              -{formatCurrency(contractData.priceDetails.promotionDiscount)}
-            </span>
-          </div>
+          {/* Transport subtotal */}
+          <p style={{ marginLeft: "20px", marginBottom: "16px", paddingTop: "8px", borderTop: "1px dashed #000" }}>
+            <strong>Tổng chi phí vận chuyển (A):</strong> {formatCurrency(contractData.priceDetails.steps.reduce((sum, step) => sum + step.subtotal, 0))} × {contractData.priceDetails.categoryMultiplier}
+            {contractData.priceDetails.categoryExtraFee > 0 && ` + ${formatCurrency(contractData.priceDetails.categoryExtraFee)}`}
+            {contractData.priceDetails.promotionDiscount > 0 && ` - ${formatCurrency(contractData.priceDetails.promotionDiscount)}`}
+            {" = "}<strong style={{ fontSize: "13px" }}>{formatCurrency(contractData.priceDetails.finalTotal)}</strong>
+          </p>
 
-          <div
-            className="highlight"
-            style={{
-              padding: "10px",
-              backgroundColor: "#f5f5f5",
-              border: "1px solid #000",
-              borderRadius: "4px",
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-            }}
-          >
-            <strong style={{ fontSize: "14px", color: "#000" }}>
-              TỔNG GIÁ TRỊ HỢP ĐỒNG
-              {contractSettings?.vatRate ? " (Đã bao gồm VAT)" : ""}:
+          {/* Insurance Section */}
+          {contractData.priceDetails.hasInsurance && (
+            <>
+              <p style={{ marginBottom: "12px" }}>
+                <strong>3.2. Chi phí bảo hiểm hàng hóa:</strong>
+              </p>
+              <p style={{ marginLeft: "20px", marginBottom: "8px" }}>
+                - Giá trị hàng hóa khai báo: <strong>{formatCurrency(contractData.priceDetails.totalDeclaredValue || 0)}</strong>
+              </p>
+              <p style={{ marginLeft: "20px", marginBottom: "8px" }}>
+                - Tỷ lệ phí bảo hiểm ({contractData.orderInfo.category.description}): {(contractData.priceDetails.insuranceRate || 0).toFixed(2)}%
+              </p>
+              <p style={{ marginLeft: "20px", marginBottom: "8px" }}>
+                - Thuế GTGT: {((contractData.priceDetails.vatRate || 0.1) * 100).toFixed(0)}%
+              </p>
+              <p style={{ marginLeft: "20px", marginBottom: "16px", paddingTop: "8px", borderTop: "1px dashed #000" }}>
+                <strong>Tổng chi phí bảo hiểm (B):</strong> {formatCurrency(contractData.priceDetails.totalDeclaredValue || 0)} × {(contractData.priceDetails.insuranceRate || 0).toFixed(2)}% × (1 + {((contractData.priceDetails.vatRate || 0.1) * 100).toFixed(0)}%) = <strong style={{ fontSize: "13px" }}>{formatCurrency(contractData.priceDetails.insuranceFee || 0)}</strong>
+              </p>
+            </>
+          )}
+
+          {/* No insurance notice */}
+          {!contractData.priceDetails.hasInsurance && (
+            <p style={{ marginBottom: "16px" }}>
+              <strong>3.2. Chi phí bảo hiểm hàng hóa (B):</strong> Khách hàng không đăng ký bảo hiểm = <strong>0 đ</strong>
+            </p>
+          )}
+
+          {/* Grand Total */}
+          <p style={{ 
+            marginTop: "16px", 
+            paddingTop: "12px", 
+            borderTop: "2px solid #000",
+            fontSize: "14px"
+          }}>
+            <strong>3.3. TỔNG GIÁ TRỊ HỢP ĐỒNG (A + B):</strong>{" "}
+            <strong style={{ fontSize: "16px", textDecoration: "underline" }}>
+              {formatCurrency(contractData.priceDetails.grandTotal || contractData.priceDetails.finalTotal)}
             </strong>
-            <strong style={{ fontSize: "16px", color: "#000" }}>
-              {formatCurrency(
-                contractSettings?.vatRate
-                  ? contractData.priceDetails.finalTotal *
-                      (1 + contractSettings.vatRate)
-                  : contractData.priceDetails.finalTotal
-              )}
-            </strong>
-          </div>
+            <span style={{ marginLeft: "8px" }}>
+              (Bằng chữ: {numberToVietnameseWords(contractData.priceDetails.grandTotal || contractData.priceDetails.finalTotal)})
+            </span>
+          </p>
         </div>
 
         <div style={{ marginTop: "20px" }}>
           <p>
             <strong>Điều kiện thanh toán:</strong>
           </p>
-          <p>
-            - Đặt cọc: {contractData.contractSettings.depositPercent}% (
-            {formatCurrency(
-              ((contractSettings?.vatRate
-                ? contractData.priceDetails.finalTotal *
-                  (1 + contractSettings.vatRate)
-                : contractData.priceDetails.finalTotal) *
-                contractData.contractSettings.depositPercent) /
-                100
-            )}
-            ) trong vòng {contractData.contractSettings.expiredDepositDate} ngày
-          </p>
-          <p>
-            - Thanh toán còn lại:{" "}
-            {formatCurrency(
-              (contractSettings?.vatRate
-                ? contractData.priceDetails.finalTotal *
-                  (1 + contractSettings.vatRate)
-                : contractData.priceDetails.finalTotal) -
-                ((contractSettings?.vatRate
-                  ? contractData.priceDetails.finalTotal *
-                    (1 + contractSettings.vatRate)
-                  : contractData.priceDetails.finalTotal) *
-                  contractData.contractSettings.depositPercent) /
-                  100
-            )}{" "}
-            khi hoàn thành dịch vụ
-          </p>
+          {(() => {
+            const grandTotal = contractData.priceDetails.grandTotal || contractData.priceDetails.finalTotal;
+            const depositAmount = (grandTotal * contractData.contractSettings.depositPercent) / 100;
+            const remainingAmount = grandTotal - depositAmount;
+            const depositDeadlineHours = contractData.contractSettings.depositDeadlineHours || 24;
+            const signingDeadlineHours = contractData.contractSettings.signingDeadlineHours || 24;
+            
+            // Get estimated pickup date from first order detail
+            const firstOrderDetail = contractData.orderInfo.orderDetails?.[0];
+            const estimatedPickupDate = firstOrderDetail?.estimatedStartTime 
+              ? new Date(firstOrderDetail.estimatedStartTime) 
+              : null;
+            
+            // Calculate payment deadline (1 day before pickup)
+            const paymentDeadlineDate = estimatedPickupDate 
+              ? new Date(estimatedPickupDate.getTime() - 24 * 60 * 60 * 1000)
+              : null;
+            
+            return (
+              <>
+                <p>
+                  - Thời hạn ký hợp đồng: {signingDeadlineHours} giờ kể từ khi nhận được hợp đồng
+                </p>
+                <p>
+                  - Đặt cọc: {contractData.contractSettings.depositPercent}% ({formatCurrency(depositAmount)}) - Thanh toán trong vòng {depositDeadlineHours} giờ kể từ khi ký hợp đồng
+                </p>
+                <p>
+                  - Thanh toán còn lại: {formatCurrency(remainingAmount)} - Thanh toán trước ngày lấy hàng dự kiến 1 ngày
+                  {paymentDeadlineDate && (
+                    <span style={{ marginLeft: "8px", color: "#666" }}>
+                      (trước ngày {paymentDeadlineDate.toLocaleDateString('vi-VN', { 
+                        day: '2-digit', 
+                        month: '2-digit', 
+                        year: 'numeric' 
+                      })})
+                    </span>
+                  )}
+                </p>
+              </>
+            );
+          })()}
           <p>
             - Phương thức thanh toán: {content?.paymentMethod || "Chuyển khoản"}
           </p>
           <p>
-            - Phí bảo hiểm: {contractData.contractSettings.insuranceRate}% giá
-            trị hàng hóa
+            - Quy định bảo hiểm: Hàng thông thường {(contractData.contractSettings.insuranceRateNormal || 0.08).toFixed(2)}%, 
+            hàng dễ vỡ {(contractData.contractSettings.insuranceRateFragile || 0.15).toFixed(2)}% giá trị khai báo 
+            (đã bao gồm 10% VAT)
           </p>
           {localCustomization.hasAdjustedValue &&
             localCustomization.adjustedValue > 0 && (
@@ -650,8 +649,8 @@ const StaffContractPreview: React.FC<StaffContractPreviewProps> = ({
         <div className="terms-title">ĐIỀU 4: PHÂN CÔNG XE</div>
 
         {/* Optimal Assignment */}
-        {contractData.optimalAssignResult &&
-          contractData.optimalAssignResult.length > 0 && (
+        {contractData.assignResult &&
+          contractData.assignResult.length > 0 && (
             <div style={{ marginBottom: "20px" }}>
               <p
                 style={{
@@ -681,7 +680,7 @@ const StaffContractPreview: React.FC<StaffContractPreviewProps> = ({
                   </tr>
                 </thead>
                 <tbody>
-                  {contractData.optimalAssignResult.map((assign, index) => (
+                  {contractData.assignResult.map((assign, index) => (
                     <tr key={index}>
                       <td>{assign.sizeRuleName}</td>
                       <td>
@@ -696,8 +695,8 @@ const StaffContractPreview: React.FC<StaffContractPreviewProps> = ({
           )}
 
         {/* Realistic Assignment */}
-        {contractData.realisticAssignResult &&
-          contractData.realisticAssignResult.length > 0 && (
+        {contractData.assignResult &&
+          contractData.assignResult.length > 0 && (
             <div>
               <p
                 style={{
@@ -728,7 +727,7 @@ const StaffContractPreview: React.FC<StaffContractPreviewProps> = ({
                   </tr>
                 </thead>
                 <tbody>
-                  {contractData.realisticAssignResult.map((assign, index) => (
+                  {contractData.assignResult.map((assign, index) => (
                     <tr key={index}>
                       <td>{assign.sizeRuleName}</td>
                       <td>
@@ -742,32 +741,7 @@ const StaffContractPreview: React.FC<StaffContractPreviewProps> = ({
             </div>
           )}
 
-        {/* Legacy fallback */}
-        {!contractData.optimalAssignResult &&
-          !contractData.realisticAssignResult &&
-          contractData.assignResult &&
-          contractData.assignResult.length > 0 && (
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>Loại xe</th>
-                  <th>Tải trọng hiện tại</th>
-                  <th>Số chi tiết được giao</th>
-                </tr>
-              </thead>
-              <tbody>
-                {contractData.assignResult.map((assign, index) => (
-                  <tr key={index}>
-                    <td>{assign.sizeRuleName}</td>
-                    <td>
-                      {assign.currentLoad} {assign.currentLoadUnit}
-                    </td>
-                    <td>{assign.assignedDetails.length}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
+        {/* End of assignment sections */}
       </div>
 
       <div className="terms-section">

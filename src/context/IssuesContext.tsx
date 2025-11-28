@@ -1,15 +1,24 @@
-import React, { createContext, useContext, useState, useRef, useCallback, useEffect } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 import type { ReactNode } from 'react';
 import { Client } from '@stomp/stompjs';
 import type { IMessage } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
+import { App } from 'antd';
 import { API_BASE_URL } from '@/config/env';
 import type { Issue } from '@/models/Issue';
 import issueService from '@/services/issue/issueService';
-import { message as antdMessage, Modal } from 'antd';
 import { useAuth } from '@/context';
-import { SoundType, playNotificationSound, playMultipleBeeps } from '@/utils/soundUtils';
+import { playNotificationSound, NotificationSoundType } from '@/utils/notificationSound';
 import SealConfirmationModal from '@/components/modals/SealConfirmationModal';
+import CombinedIssueModal from '@/components/issues/CombinedIssueModal';
+
+interface QueuedIssue {
+  id: string;
+  issue: Issue;
+  priority: 'HIGH' | 'MEDIUM' | 'LOW';
+  receivedAt: Date;
+  showModal: boolean; // Whether to show modal immediately (high priority)
+}
 
 interface IssuesContextType {
   issues: Issue[];
@@ -26,6 +35,17 @@ interface IssuesContextType {
   showNewIssueModal: (issue: Issue) => void;
   hideNewIssueModal: () => void;
   newIssueForModal: Issue | null;
+  groupedIssuesForModal: Issue[] | null;
+  
+  // Queue functionality
+  queuedIssues: QueuedIssue[];
+  isQueueOpen: boolean;
+  toggleQueue: () => void;
+  addToQueue: (issue: Issue, priority: 'HIGH' | 'MEDIUM' | 'LOW', showModal?: boolean) => void;
+  removeFromQueue: (issueId: string) => void;
+  markAsProcessed: (issueId: string) => void;
+  getQueueCount: () => number;
+  getHighPriorityCount: () => number;
 }
 
 const IssuesContext = createContext<IssuesContextType | undefined>(undefined);
@@ -50,13 +70,27 @@ export const IssuesProvider: React.FC<IssuesProviderProps> = ({ children }) => {
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'OPEN' | 'IN_PROGRESS' | 'RESOLVED'>('ALL');
   const [error, setError] = useState<string | null>(null);
   const [newIssueForModal, setNewIssueForModal] = useState<Issue | null>(null);
+  const [groupedIssuesForModal, setGroupedIssuesForModal] = useState<Issue[] | null>(null);
+  
+  // Queue state
+  const [queuedIssues, setQueuedIssues] = useState<QueuedIssue[]>([]);
+  const [isQueueOpen, setIsQueueOpen] = useState(false);
   const [sealConfirmationData, setSealConfirmationData] = useState<any>(null);
 
   const { user, isAuthenticated } = useAuth();
+  
+  // Get App instance for modal/message/notification
+  const { modal, message, notification } = App.useApp();
+  
   const clientRef = useRef<Client | null>(null);
+  const pendingIssuesRef = useRef<Map<string, Issue[]>>(new Map()); // orderId -> issues
+  const groupingTimerRef = useRef<Map<string, NodeJS.Timeout>>(new Map()); // orderId -> timer
   const subscriptionNewRef = useRef<any>(null);
   const subscriptionStatusRef = useRef<any>(null);
   const subscriptionUserMessagesRef = useRef<any>(null);
+  const subscriptionReturnPaymentRef = useRef<any>(null);
+  const subscriptionReturnPaymentTimeoutRef = useRef<any>(null);
+  const shownPaymentNotificationsRef = useRef<Set<string>>(new Set());
 
   // Fetch issues from API
   const fetchIssues = useCallback(async () => {
@@ -68,48 +102,118 @@ export const IssuesProvider: React.FC<IssuesProviderProps> = ({ children }) => {
       // Sort by reportedAt (newest first) - assuming we add reportedAt to Issue model
       const sorted = data.sort((a, b) => {
         // For now, sort by status priority: OPEN > IN_PROGRESS > RESOLVED
-        const statusPriority = { OPEN: 3, IN_PROGRESS: 2, RESOLVED: 1 };
-        return statusPriority[b.status] - statusPriority[a.status];
+        const statusPriority: Record<string, number> = {
+          OPEN: 3,
+          IN_PROGRESS: 2,
+          RESOLVED: 1,
+          PAYMENT_OVERDUE: 4, // Highest priority
+        };
+        const priorityA = statusPriority[a.status] ?? 0;
+        const priorityB = statusPriority[b.status] ?? 0;
+        return priorityB - priorityA;
       });
       
       setIssues(sorted);
     } catch (err: any) {
       console.error('Error fetching issues:', err);
       setError(err.message || 'Không thể tải danh sách sự cố');
-      antdMessage.error('Không thể tải danh sách sự cố');
+      message.error('Không thể tải danh sách sự cố');
     } finally {
       setIsLoading(false);
     }
+  }, [message]);
+
+  // ============= Queue Management Functions =============
+
+  // Determine issue priority based on issueCategory
+  const getIssuePriority = useCallback((issue: Issue): 'HIGH' | 'MEDIUM' | 'LOW' => {
+    switch (issue.issueCategory) {
+      case 'ORDER_REJECTION':
+      case 'SEAL_REPLACEMENT':
+        return 'HIGH';
+      case 'DAMAGE':
+      case 'REROUTE':
+        return 'MEDIUM';
+      case 'PENALTY':
+        return 'LOW';
+      default:
+        return 'MEDIUM';
+    }
   }, []);
 
-  // Handle new issue from WebSocket
-  const handleNewIssue = useCallback((msg: Issue) => {
-    console.log('🆕 New issue received via WebSocket:', msg);
-    console.log('🔍 Issue details:', {
-      id: msg.id,
-      issueCategory: msg.issueCategory,
-      description: msg.description,
-      orderDetail: msg.orderDetail
+  // Add issue to queue with priority and sorting
+  const addToQueue = useCallback((issue: Issue, priority: 'HIGH' | 'MEDIUM' | 'LOW', showModal: boolean = false) => {
+    const queuedIssue: QueuedIssue = {
+      id: `${issue.id}-${Date.now()}`,
+      issue,
+      priority,
+      receivedAt: new Date(),
+      showModal
+    };
+
+    setQueuedIssues(prev => {
+      const updated = [...prev, queuedIssue];
+      // Sort by priority first, then by received time (newest first within same priority)
+      return updated.sort((a, b) => {
+        const priorityOrder = { HIGH: 0, MEDIUM: 1, LOW: 2 };
+        const priorityDiff = priorityOrder[a.priority] - priorityOrder[b.priority];
+        if (priorityDiff !== 0) return priorityDiff;
+        return b.receivedAt.getTime() - a.receivedAt.getTime();
+      });
     });
-    
+
+    // Show modal immediately for high priority issues
+    if (showModal && priority === 'HIGH') {
+      setNewIssueForModal(issue);
+    }
+
+    // Play appropriate notification sound
+    if (priority === 'HIGH') {
+      playNotificationSound(NotificationSoundType.URGENT);
+    } else {
+      playNotificationSound(NotificationSoundType.NEW_ISSUE);
+    }
+
+    console.log(`📋 Issue added to queue: ${issue.issueCategory} (${priority})`);
+  }, []); // Remove showNewIssueModal dependency to fix declaration order
+
+  // Remove issue from queue
+  const removeFromQueue = useCallback((issueId: string) => {
+    setQueuedIssues(prev => prev.filter(qi => qi.id !== issueId));
+  }, []);
+
+  // Mark issue as processed (remove from queue and refresh list)
+  const markAsProcessed = useCallback((issueId: string) => {
+    removeFromQueue(issueId);
+    fetchIssues();
+  }, [removeFromQueue, fetchIssues]);
+
+  // Get queue count
+  const getQueueCount = useCallback(() => {
+    return queuedIssues.length;
+  }, [queuedIssues]);
+
+  // Get high priority count
+  const getHighPriorityCount = useCallback(() => {
+    return queuedIssues.filter(qi => qi.priority === 'HIGH').length;
+  }, [queuedIssues]);
+
+  // Toggle queue visibility
+  const toggleQueue = useCallback(() => {
+    setIsQueueOpen(prev => !prev);
+  }, []);
+
+  // Handle new issue from WebSocket with queue integration
+  const handleNewIssue = useCallback((msg: Issue) => {
     // Debug orderDetail specifically for package info
     if (msg.orderDetail) {
-      console.log('📦 OrderDetail found:', {
-        trackingCode: msg.orderDetail.trackingCode,
-        description: msg.orderDetail.description,
-        weightBaseUnit: msg.orderDetail.weightBaseUnit,
-        unit: msg.orderDetail.unit,
-        allFields: msg.orderDetail
-      });
     } else {
-      console.log('❌ No orderDetail found in issue');
     }
     
     setIssues((prev) => {
       // Check if issue already exists to avoid duplicates
       const exists = prev.some(issue => issue.id === msg.id);
       if (exists) {
-        console.log('Issue already exists, skipping duplicate');
         return prev;
       }
       
@@ -117,48 +221,206 @@ export const IssuesProvider: React.FC<IssuesProviderProps> = ({ children }) => {
       return [msg, ...prev];
     });
     
-    // Play notification sound for new issue
-    playMultipleBeeps(SoundType.NEW_ISSUE, 2, 300);
+    // Determine issue priority
+    const priority = getIssuePriority(msg);
     
-    // Show modal for urgent notification
-    console.log('🚨 Showing new issue modal for:', msg.issueCategory);
-    showNewIssueModal(msg);
+    // Add to queue with priority
+    const shouldShowModal = priority === 'HIGH'; // Only show modal immediately for high priority
+    addToQueue(msg, priority, shouldShowModal);
     
-    antdMessage.warning({
-      content: `Sự cố mới: ${msg.description}`,
-      duration: 5,
-    });
-  }, []);
+    // Smart Grouping Logic: Group issues by orderId within 5 second window
+    // Get orderId from orderDetailEntity (for DAMAGE/ORDER_REJECTION issues)
+    const orderId = msg.orderDetailEntity?.orderId || msg.orderDetail?.orderId;
+    
+    if (orderId) {
+      // Get or initialize pending issues for this order
+      const pendingIssues = pendingIssuesRef.current.get(orderId) || [];
+      pendingIssues.push(msg);
+      pendingIssuesRef.current.set(orderId, pendingIssues);
+      // Clear existing timer if any
+      const existingTimer = groupingTimerRef.current.get(orderId);
+      if (existingTimer) {
+        clearTimeout(existingTimer);
+      }
+      
+      // Set new timer - 7 seconds window to catch both damage and rejection issues
+      // Timer resets on each new issue, so actual wait is 7s after LAST issue
+      const timer = setTimeout(() => {
+        const issues = pendingIssuesRef.current.get(orderId);
+        if (issues && issues.length > 0) {
+          
+          // Only show combined modal if all issues are high priority
+          const allHighPriority = issues.every(issue => getIssuePriority(issue) === 'HIGH');
+          
+          if (issues.length > 1 && allHighPriority) {
+            // Multiple high-priority issues - show combined modal
+            setGroupedIssuesForModal(issues);
+            setNewIssueForModal(null); // Clear single issue modal
+          } else if (issues.length === 1 && allHighPriority) {
+            // Single high-priority issue - modal already shown by queue
+            // No additional action needed
+          } else {
+            // Mixed priorities or medium/low only - no modal, rely on queue
+            console.log(`📋 Issues for order ${orderId} added to queue: ${issues.map(i => i.issueCategory).join(', ')}`);
+          }
+          
+          // Cleanup
+          pendingIssuesRef.current.delete(orderId);
+          groupingTimerRef.current.delete(orderId);
+        }
+      }, 7000); // 7 second window - timer resets on each new issue for same orderId
+      
+      groupingTimerRef.current.set(orderId, timer);
+    } else {
+      // No orderId - handle based on priority
+      if (priority === 'HIGH') {
+        setNewIssueForModal(msg);
+        setGroupedIssuesForModal(null);
+      }
+    }
+  }, [getIssuePriority, addToQueue]);
 
   // Handle issue status change from WebSocket
   const handleIssueStatusChange = useCallback((msg: Issue) => {
-    console.log('📊 Issue status changed via WebSocket:', msg);
-    
     setIssues((prev) =>
       prev.map((issue) =>
         issue.id === msg.id ? msg : issue
       )
     );
     
-    antdMessage.info({
+    message.info({
       content: `Sự cố ${msg.description.substring(0, 20)}... đã cập nhật`,
       duration: 3,
     });
-  }, []);
+  }, [message]);
+
+  // Handle return payment timeout notification
+  const handleReturnPaymentTimeout = useCallback((messageData: any) => {
+    // Check if we already shown modal for this issue to prevent duplicate notifications
+    const notificationKey = `${messageData.issueId}_timeout`;
+    if (shownPaymentNotificationsRef.current.has(notificationKey)) {
+      return;
+    }
+    
+    // Mark this notification as shown
+    shownPaymentNotificationsRef.current.add(notificationKey);
+    
+    // Play notification sound for payment timeout
+    try {
+      playNotificationSound(NotificationSoundType.WARNING);
+    } catch (error) {
+      console.error('Failed to play notification sound:', error);
+    }
+    
+    // Show antd notification (persistent)
+    // Convert HTML message to React element with proper line breaks
+    const messageLines = messageData.message.split('\n').map((line: string, index: number) => (
+      <div key={index} dangerouslySetInnerHTML={{ __html: line }} />
+    ));
+    
+    notification.warning({
+      message: '⏰ Khách hàng không thanh toán',
+      description: <div>{messageLines}</div>,
+      duration: 10,
+      placement: 'topRight',
+    });
+    
+    // Refresh issues list to get updated status
+    fetchIssues();
+    
+    // Emit event for issue detail page to refetch
+    window.dispatchEvent(new CustomEvent('refetch-issue-detail', {
+      detail: { issueId: messageData.issueId }
+    }));
+    
+    // Emit event for customer order detail page to refetch order (cancelled packages)
+    if (messageData.orderId) {
+      window.dispatchEvent(new CustomEvent('refetch-order-detail', {
+        detail: { orderId: messageData.orderId }
+      }));
+    }
+    
+    // Show browser notification if supported
+    if ('Notification' in window && Notification.permission === 'granted') {
+      new Notification('⏰ Khách hàng không thanh toán', {
+        body: messageData.message,
+        icon: '/favicon.ico'
+      });
+    }
+  }, [fetchIssues, notification]);
+
+  // Handle return payment success notification
+  const handleReturnPaymentSuccess = useCallback((messageData: any) => {
+    // Check if we already shown modal for this issue to prevent duplicate notifications
+    const notificationKey = `${messageData.issueId}_${messageData.transactionId || 'payment'}`;
+    if (shownPaymentNotificationsRef.current.has(notificationKey)) {
+      return;
+    }
+    
+    // Mark this notification as shown
+    shownPaymentNotificationsRef.current.add(notificationKey);
+    
+    // Play notification sound for payment success
+    try {
+      playNotificationSound(NotificationSoundType.PAYMENT_SUCCESS);
+    } catch (error) {
+      console.error('Failed to play notification sound:', error);
+    }
+    
+    // Show notification modal - only once
+    // modal.success({
+    //   title: '✅ Khách hàng đã thanh toán cước trả hàng',
+    //   content: messageData.message,
+    //   okText: 'Đã hiểu',
+    //   width: 500,
+    // });
+    
+    // Show antd notification (persistent)
+    // Convert HTML message to React element with proper line breaks
+    const messageLines = messageData.message.split('\n').map((line: string, index: number) => (
+      <div key={index} dangerouslySetInnerHTML={{ __html: line }} />
+    ));
+    
+    notification.success({
+      message: '💰 Thanh toán thành công',
+      description: <div>{messageLines}</div>,
+      duration: 10,
+      placement: 'topRight',
+    });
+    
+    // Refresh issues list to get updated status
+    fetchIssues();
+    
+    // Emit event for issue detail page to refetch
+    window.dispatchEvent(new CustomEvent('refetch-issue-detail', {
+      detail: { issueId: messageData.issueId }
+    }));
+    
+    // Emit event for customer order detail page to refetch order (to get ACTIVE journey history)
+    if (messageData.orderId) {
+      window.dispatchEvent(new CustomEvent('refetch-order-detail', {
+        detail: { orderId: messageData.orderId }
+      }));
+    }
+    
+    // Show browser notification if supported
+    if ('Notification' in window && Notification.permission === 'granted') {
+      new Notification('💰 Thanh toán thành công', {
+        body: messageData.message,
+        icon: '/favicon.ico'
+      });
+    }
+  }, [fetchIssues, modal, notification]);
 
   // Handle staff-specific messages from WebSocket
   const handleStaffMessage = useCallback((messageData: any) => {
-    console.log('📬 [IssuesContext] Handle staff message:', messageData);
-    
     switch (messageData.type) {
       case 'SEAL_CONFIRMATION':
-        console.log('🔔 Showing SEAL_CONFIRMATION modal and notification');
-        
         // Play notification sound for seal confirmation
-        playNotificationSound(SoundType.SEAL_CONFIRMATION, 0.7);
+        playNotificationSound(NotificationSoundType.SEAL_CONFIRM);
         
         // Show antd message first
-        antdMessage.success({
+        message.success({
           content: `✅ Driver ${messageData.driverName} đã gắn seal ${messageData.newSealCode} thành công`,
           duration: 8,
         });
@@ -199,7 +461,6 @@ export const IssuesProvider: React.FC<IssuesProviderProps> = ({ children }) => {
         break;
         
       default:
-        console.log('❓ Unknown staff message type:', messageData.type);
     }
   }, []);
 
@@ -207,17 +468,13 @@ export const IssuesProvider: React.FC<IssuesProviderProps> = ({ children }) => {
   const connectWebSocket = useCallback(() => {
     // Only allow STAFF role to connect to issue WebSocket
     if (!isAuthenticated || !user || user.role !== 'staff') {
-      console.log('❌ Issue WebSocket connection denied - User is not staff:', user?.role);
       setError('Chỉ nhân viên mới có thể kết nối đến Issue WebSocket');
       return;
     }
 
     if (clientRef.current?.connected) {
-      console.log('✅ Issue WebSocket already connected for staff user');
       return;
     }
-
-    console.log('🔌 Connecting to Issues WebSocket for staff user...');
     setIsConnected(false);
 
     const sockJsUrl = `${API_BASE_URL}/vehicle-tracking-browser`;
@@ -226,12 +483,13 @@ export const IssuesProvider: React.FC<IssuesProviderProps> = ({ children }) => {
       webSocketFactory: () => {
         return new SockJS(sockJsUrl);
       },
-      reconnectDelay: 5000,
-      // debug: (str) => console.log('STOMP Debug:', str),
+      reconnectDelay: 5000, // Auto-reconnect every 5 seconds - unlimited retries
+      heartbeatIncoming: 4000,
+      heartbeatOutgoing: 4000,
+      // debug: (str) => ,
     });
 
     client.onConnect = () => {
-      console.log('✅ Issues WebSocket connected for staff user');
       setIsConnected(true);
       setError(null);
 
@@ -267,7 +525,6 @@ export const IssuesProvider: React.FC<IssuesProviderProps> = ({ children }) => {
         (message: IMessage) => {
           try {
             const messageData = JSON.parse(message.body);
-            console.log('📬 Staff received user-specific message:', messageData);
             handleStaffMessage(messageData);
           } catch (error) {
             console.error('Error parsing staff message:', error);
@@ -275,7 +532,31 @@ export const IssuesProvider: React.FC<IssuesProviderProps> = ({ children }) => {
         }
       );
 
-      console.log('✅ Staff user subscribed to issues topics and user messages');
+      // Subscribe to return payment success notifications (broadcast to all staff)
+      subscriptionReturnPaymentRef.current = client.subscribe(
+        '/topic/issues/return-payment-success',
+        (message: IMessage) => {
+          try {
+            const messageData = JSON.parse(message.body);
+            handleReturnPaymentSuccess(messageData);
+          } catch (error) {
+            console.error('Error parsing return payment message:', error);
+          }
+        }
+      );
+
+      // Subscribe to return payment timeout notifications (broadcast to all staff)
+      subscriptionReturnPaymentTimeoutRef.current = client.subscribe(
+        '/topic/issues/return-payment-timeout',
+        (message: IMessage) => {
+          try {
+            const messageData = JSON.parse(message.body);
+            handleReturnPaymentTimeout(messageData);
+          } catch (error) {
+            console.error('Error parsing return payment timeout message:', error);
+          }
+        }
+      );
     };
 
     client.onWebSocketError = (event) => {
@@ -299,12 +580,10 @@ export const IssuesProvider: React.FC<IssuesProviderProps> = ({ children }) => {
 
     client.activate();
     clientRef.current = client;
-  }, [isAuthenticated, user, handleNewIssue, handleIssueStatusChange, handleStaffMessage]);
+  }, [isAuthenticated, user, handleNewIssue, handleIssueStatusChange, handleStaffMessage, handleReturnPaymentSuccess, handleReturnPaymentTimeout]);
 
   // Disconnect WebSocket
   const disconnectWebSocket = useCallback(() => {
-    console.log('🔌 Disconnecting Issues WebSocket...');
-
     if (subscriptionNewRef.current) {
       subscriptionNewRef.current.unsubscribe();
       subscriptionNewRef.current = null;
@@ -320,10 +599,19 @@ export const IssuesProvider: React.FC<IssuesProviderProps> = ({ children }) => {
       subscriptionUserMessagesRef.current = null;
     }
 
+    if (subscriptionReturnPaymentRef.current) {
+      subscriptionReturnPaymentRef.current.unsubscribe();
+      subscriptionReturnPaymentRef.current = null;
+    }
+
+    if (subscriptionReturnPaymentTimeoutRef.current) {
+      subscriptionReturnPaymentTimeoutRef.current.unsubscribe();
+      subscriptionReturnPaymentTimeoutRef.current = null;
+    }
+
     if (clientRef.current) {
       try {
         clientRef.current.deactivate();
-        console.log('✅ Issues WebSocket disconnected');
       } catch (error) {
         console.error('Error disconnecting WebSocket:', error);
       } finally {
@@ -343,9 +631,10 @@ export const IssuesProvider: React.FC<IssuesProviderProps> = ({ children }) => {
     setNewIssueForModal(issue);
   }, []);
 
-  // Hide new issue modal
+  // Hide new issue modal (both single and grouped)
   const hideNewIssueModal = useCallback(() => {
     setNewIssueForModal(null);
+    setGroupedIssuesForModal(null);
   }, []);
 
   // Hide seal confirmation modal
@@ -357,10 +646,8 @@ export const IssuesProvider: React.FC<IssuesProviderProps> = ({ children }) => {
   useEffect(() => {
     // Only connect if user is authenticated and has staff role
     if (isAuthenticated && user && user.role === 'staff') {
-      console.log('🔑 Staff user detected, connecting to Issue WebSocket...');
       connectWebSocket();
     } else {
-      console.log('🚫 Non-staff user detected, skipping Issue WebSocket connection:', user?.role);
     }
     
     return () => {
@@ -383,6 +670,17 @@ export const IssuesProvider: React.FC<IssuesProviderProps> = ({ children }) => {
     showNewIssueModal,
     hideNewIssueModal,
     newIssueForModal,
+    groupedIssuesForModal,
+    
+    // Queue functionality
+    queuedIssues,
+    isQueueOpen,
+    toggleQueue,
+    addToQueue,
+    removeFromQueue,
+    markAsProcessed,
+    getQueueCount,
+    getHighPriorityCount,
   };
 
   return (
@@ -394,6 +692,10 @@ export const IssuesProvider: React.FC<IssuesProviderProps> = ({ children }) => {
           data={sealConfirmationData}
           onClose={hideSealConfirmationModal}
         />
+      )}
+      {/* Combined Issue Modal for multiple issues */}
+      {groupedIssuesForModal && groupedIssuesForModal.length > 0 && (
+        <CombinedIssueModal issues={groupedIssuesForModal} />
       )}
     </IssuesContext.Provider>
   );

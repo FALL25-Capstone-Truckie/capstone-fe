@@ -1,0 +1,48 @@
+/* Realistic bell shake animation */
+@keyframes bellRing {
+  0%, 100% {
+    transform: rotate(0deg);
+  }
+  10% {
+    transform: rotate(-15deg);
+  }
+  20% {
+    transform: rotate(12deg);
+  }
+  30% {
+    transform: rotate(-10deg);
+  }
+  40% {
+    transform: rotate(8deg);
+  }
+  50% {
+    transform: rotate(-6deg);
+  }
+  60% {
+    transform: rotate(4deg);
+  }
+  70% {
+    transform: rotate(-2deg);
+  }
+  80% {
+    transform: rotate(1deg);
+  }
+  90% {
+    transform: rotate(-0.5deg);
+  }
+}
+
+.animate-shake {
+  animation: bellRing 0.7s ease-out;
+  /* Ensure animation completes without interruption */
+  animation-fill-mode: both;
+  /* Repeat shake 4 times within 3 seconds (0.7s × 4 = 2.8s) */
+  animation-iteration-count: 4;
+  /* Small delay between shakes */
+  animation-delay: 0s;
+}
+
+/* Make the bell pivot from the top like a real bell */
+.animate-shake svg {
+  transform-origin: top center;
+}

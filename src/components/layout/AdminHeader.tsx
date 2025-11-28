@@ -3,6 +3,9 @@ import { Layout, Menu, Button, Typography, Dropdown, Avatar } from 'antd';
 import { UserOutlined, LogoutOutlined, BellOutlined } from '@ant-design/icons';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context';
+import NotificationBell from '../notifications/NotificationBell';
+import NotificationQueueBadge from '../notifications/NotificationQueueBadge';
+import { mapToNotificationRole } from '../../utils/roleMapper';
 
 const { Header } = Layout;
 const { Title, Text } = Typography;
@@ -47,11 +50,23 @@ const AdminHeader: React.FC = () => {
             </div>
 
             <div className="flex items-center gap-4">
-                <Button
-                    type="text"
-                    icon={<BellOutlined />}
-                    className="flex items-center justify-center"
-                />
+                {user && (() => {
+                    console.log('🔍 DEBUG: AdminHeader rendering - user role:', user.role);
+                    return (
+                        <>
+                            {/* Staff Issue Queue Badge */}
+                            {user.role === 'staff' && (() => {
+                                console.log('🔍 DEBUG: Rendering NotificationQueueBadge for staff');
+                                return <NotificationQueueBadge />;
+                            })()}
+                            {/* General Notification Bell */}
+                            <NotificationBell 
+                                userId={user.id} 
+                                userRole={mapToNotificationRole(user.role)} 
+                            />
+                        </>
+                    );
+                })()}
 
                 <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
                     <div className="flex items-center cursor-pointer">

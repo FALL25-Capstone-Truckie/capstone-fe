@@ -1,5 +1,5 @@
 import React from "react";
-import { Typography, Divider, Card, Tag, Row, Col, Alert } from "antd";
+import { Typography, Divider, Card, Tag, Row, Col, Alert, Space } from "antd";
 import {
   IdcardOutlined,
   PhoneOutlined,
@@ -9,10 +9,16 @@ import {
   FileTextOutlined,
   InfoCircleOutlined,
   CheckCircleOutlined,
+  SafetyCertificateOutlined,
+  DollarOutlined,
+  InboxOutlined,
+  WarningOutlined,
 } from "@ant-design/icons";
 import type { Address } from "../../../../models/Address";
 import type { Category } from "../../../../models/Category";
 import type { OrderSize } from "../../../../models/OrderSize";
+import { CategoryName, getCategoryDisplayName, isFragileCategory } from "../../../../models/CategoryName";
+import { formatCurrency } from "../../../../utils/formatters";
 import dayjs from "dayjs";
 
 const { Title, Text, Paragraph } = Typography;
@@ -31,12 +37,6 @@ const OrderSummaryStep: React.FC<OrderSummaryStepProps> = ({
   addresses,
 }) => {
   // Log để debug
-  console.log("OrderSummaryStep - formValues:", formValues);
-  console.log(
-    "OrderSummaryStep - orderDetailsList:",
-    formValues.orderDetailsList
-  );
-
   // Xử lý giá trị pickupAddressId và deliveryAddressId (có thể là object hoặc string)
   const getAddressId = (addressField: any) => {
     if (!addressField) return null;
@@ -67,6 +67,67 @@ const OrderSummaryStep: React.FC<OrderSummaryStepProps> = ({
     }
     return dateTime;
   };
+
+  // Debug: Log formValues để kiểm tra state
+  console.log('🔍 OrderSummaryStep - formValues:', formValues);
+  console.log('🔍 hasInsurance:', formValues.hasInsurance);
+  console.log('🔍 orderDetailsList:', formValues.orderDetailsList);
+
+  // Tính tổng trọng lượng và giá trị khai báo
+  const calculateTotals = () => {
+    if (!formValues.orderDetailsList || formValues.orderDetailsList.length === 0) {
+      return {
+        totalWeight: 0,
+        totalDeclaredValue: 0,
+        totalPackages: 0
+      };
+    }
+
+    const totals = formValues.orderDetailsList.reduce(
+      (acc: any, detail: any) => {
+        const weight = parseFloat(detail.weightBaseUnit || detail.weight || 0);
+        const quantity = parseInt(detail.quantity || 1);
+        const declaredValue = parseFloat(detail.declaredValue || 0);
+
+        return {
+          totalWeight: acc.totalWeight + (weight * quantity),
+          totalDeclaredValue: acc.totalDeclaredValue + (declaredValue * quantity),
+          totalPackages: acc.totalPackages + quantity
+        };
+      },
+      { totalWeight: 0, totalDeclaredValue: 0, totalPackages: 0 }
+    );
+
+    return totals;
+  };
+
+  const totals = calculateTotals();
+
+  // Tính toán thông tin bảo hiểm
+  const calculateInsuranceInfo = () => {
+    if (!formValues.hasInsurance || !totals.totalDeclaredValue || totals.totalDeclaredValue <= 0) {
+      return {
+        hasInsurance: false,
+        totalFee: 0,
+        totalValue: 0,
+        isFragile: false
+      };
+    }
+
+    const selectedCategory = categories.find((c) => c.id === formValues.categoryId);
+    const isFragile = selectedCategory ? isFragileCategory(selectedCategory.categoryName) : false;
+    const insuranceRate = isFragile ? 0.00165 : 0.00088; // Đã bao gồm VAT 10%
+    const totalFee = totals.totalDeclaredValue * insuranceRate;
+
+    return {
+      hasInsurance: true,
+      totalFee,
+      totalValue: totals.totalDeclaredValue,
+      isFragile
+    };
+  };
+
+  const insuranceInfo = calculateInsuranceInfo();
 
   return (
     <>
@@ -109,12 +170,25 @@ const OrderSummaryStep: React.FC<OrderSummaryStepProps> = ({
 
             <div className="flex items-start">
               <ShopOutlined className="text-blue-500 mt-1 mr-2" />
-              <div>
+              <div className="flex-1">
                 <Text strong className="block text-sm">Loại hàng hóa</Text>
-                <Text>
-                  {categories.find((c) => c.id === formValues.categoryId)
-                    ?.categoryName || "Không xác định"}
-                </Text>
+                <Space>
+                  <Text>
+                    {(() => {
+                      const category = categories.find((c) => c.id === formValues.categoryId);
+                      return category ? getCategoryDisplayName(category.categoryName) : "Không xác định";
+                    })()}
+                  </Text>
+                  {/* {(() => {
+                    const category = categories.find((c) => c.id === formValues.categoryId);
+                    const isFragile = category ? isFragileCategory(category.categoryName) : false;
+                    return isFragile ? (
+                      <Tag color="orange">
+                        Dễ vỡ
+                      </Tag>
+                    ) : null;
+                  })()} */}
+                </Space>
               </div>
             </div>
           </div>
@@ -178,25 +252,51 @@ const OrderSummaryStep: React.FC<OrderSummaryStepProps> = ({
           </div>
         </Card>
 
-        {/* Thông tin lô hàng */}
-        <Card title="Thông tin lô hàng" className="shadow-sm md:col-span-3" size="small">
+        {/* Thông tin kiện hàng */}
+        <Card title="Thông tin kiện hàng" className="shadow-sm md:col-span-3" size="small">
           {formValues.orderDetailsList &&
             formValues.orderDetailsList.length > 0 ? (
             <div>
               {/* Hiển thị tổng quan */}
-              <div className="mb-3 p-2 bg-blue-50 border border-blue-200 rounded-lg">
-                <Text strong className="text-blue-700">
-                  Tổng cộng:{" "}
-                  {formValues.orderDetailsList.reduce(
-                    (total: number, detail: any) =>
-                      total + (detail.quantity || 1),
-                    0
-                  )}{" "}
-                  kiện hàng
-                </Text>
-                <Text className="block text-sm text-blue-600">
-                  Từ {formValues.orderDetailsList.length} lô hàng khác nhau
-                </Text>
+              <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                  <div>
+                    <Text strong className="block text-sm text-blue-700">Tổng số kiện</Text>
+                    <Text className="text-lg font-semibold text-blue-800">
+                      {totals.totalPackages} kiện
+                    </Text>
+                  </div>
+                  <div>
+                    <Text strong className="block text-sm text-blue-700">Tổng trọng lượng</Text>
+                    <Text className="text-lg font-semibold text-blue-800">
+                      {totals.totalWeight.toLocaleString()} kg
+                    </Text>
+                  </div>
+                  <div>
+                    <Text strong className="block text-sm text-blue-700">Tổng giá trị khai báo</Text>
+                    <Text className="text-lg font-semibold text-blue-800">
+                      {formatCurrency(totals.totalDeclaredValue)}
+                    </Text>
+                  </div>
+                  <div>
+                    <Text strong className="block text-sm text-blue-700">Loại hàng</Text>
+                    <Space>
+                      <Text className="text-lg font-semibold text-blue-800">
+                        {(() => {
+                          const category = categories.find((c) => c.id === formValues.categoryId);
+                          return category ? getCategoryDisplayName(category.categoryName) : "Không xác định";
+                        })()}
+                      </Text>
+                      {/* {(() => {
+                        const category = categories.find((c) => c.id === formValues.categoryId);
+                        const isFragile = category ? isFragileCategory(category.categoryName) : false;
+                        return isFragile ? (
+                          <Tag color="orange">Dễ vỡ</Tag>
+                        ) : null;
+                      })()} */}
+                    </Space>
+                  </div>
+                </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -204,7 +304,7 @@ const OrderSummaryStep: React.FC<OrderSummaryStepProps> = ({
                   <div key={index} className="bg-gray-50 p-3 rounded-lg border border-gray-100">
                     <div className="flex items-center mb-2">
                       <Tag color="blue" className="mr-2">
-                        Lô hàng {index + 1}
+                        Kiện hàng {index + 1}
                       </Tag>
                       <Text strong>Kích thước & Trọng lượng</Text>
                     </div>
@@ -232,6 +332,12 @@ const OrderSummaryStep: React.FC<OrderSummaryStepProps> = ({
                         </Text>
                       </Col>
                       <Col span={24}>
+                        <Text strong className="block text-sm">Giá trị khai báo</Text>
+                        <Text className="text-sm font-semibold text-green-600">
+                          {formatCurrency(detail.declaredValue || 0)}
+                        </Text>
+                      </Col>
+                      <Col span={24}>
                         <Text strong className="block text-sm">Mô tả chi tiết</Text>
                         <Paragraph
                           ellipsis={{
@@ -251,7 +357,108 @@ const OrderSummaryStep: React.FC<OrderSummaryStepProps> = ({
             </div>
           ) : (
             <div className="text-center py-4 text-gray-500">
-              <Text>Chưa có thông tin lô hàng</Text>
+              <Text>Chưa có thông tin kiện hàng</Text>
+            </div>
+          )}
+        </Card>
+
+        {/* Thông tin bảo hiểm */}
+        <Card 
+          title={
+            <Space>
+              <SafetyCertificateOutlined className="text-green-500" />
+              <span>Thông tin bảo hiểm hàng hóa</span>
+            </Space>
+          } 
+          className="shadow-sm md:col-span-3" 
+          size="small"
+        >
+          {insuranceInfo.hasInsurance ? (
+            <div>
+              <Alert
+                message="Đã đăng ký bảo hiểm hàng hóa"
+                description="Hàng hóa của bạn được bảo vệ theo chính sách bảo hiểm của chúng tôi."
+                type="success"
+                showIcon
+                className="mb-3"
+              />
+              
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="bg-green-50 p-3 rounded-lg border border-green-200">
+                  <div className="flex items-center mb-2">
+                    <InboxOutlined className="text-green-600 mr-2" />
+                    <Text strong className="text-green-700">Tổng giá trị bảo hiểm</Text>
+                  </div>
+                  <Text className="text-xl font-bold text-green-800">
+                    {formatCurrency(insuranceInfo.totalValue)}
+                  </Text>
+                </div>
+
+                <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
+                  <div className="flex items-center mb-2">
+                    <DollarOutlined className="text-blue-600 mr-2" />
+                    <Text strong className="text-blue-700">Phí bảo hiểm</Text>
+                  </div>
+                  <Text className="text-xl font-bold text-blue-800">
+                    {formatCurrency(insuranceInfo.totalFee)}
+                  </Text>
+                  <Text className="block text-xs text-blue-600 mt-1">
+                    {insuranceInfo.isFragile ? "0.165% (Hàng dễ vỡ)" : "0.088% (Hàng thường)"} - Đã bao gồm VAT
+                  </Text>
+                </div>
+
+                <div className="bg-orange-50 p-3 rounded-lg border border-orange-200">
+                  <div className="flex items-center mb-2">
+                    <WarningOutlined className="text-orange-600 mr-2" />
+                    <Text strong className="text-orange-700">Mức bồi thường tối đa</Text>
+                  </div>
+                  <Text className="text-xl font-bold text-orange-800">
+                    {formatCurrency(insuranceInfo.totalValue)}
+                  </Text>
+                  <Text className="block text-xs text-orange-600 mt-1">
+                    Khi có đầy đủ chứng từ hợp lệ
+                  </Text>
+                </div>
+              </div>
+
+              <Alert
+                message="Lưu ý quan trọng về bảo hiểm"
+                description={
+                  <div>
+                    <ul className="list-disc list-inside text-sm space-y-1">
+                      <li>Khi xảy ra sự cố, bạn cần cung cấp hóa đơn VAT hoặc chứng từ mua bán hợp pháp để chứng minh giá trị hàng hóa</li>
+                      <li>Nếu không có chứng từ hợp lệ, bảo hiểm sẽ bị vô hiệu hóa và bồi thường tối đa 10 lần cước phí vận chuyển</li>
+                      <li>Phải báo cáo sự cố ngay tại thời điểm nhận hàng</li>
+                    </ul>
+                  </div>
+                }
+                type="warning"
+                showIcon
+                className="mt-3"
+              />
+            </div>
+          ) : (
+            <div>
+              <Alert
+                message="Chưa đăng ký bảo hiểm hàng hóa"
+                description="Hàng hóa của bạn chưa được bảo hiểm. Rủi ro sẽ được giải quyết theo giới hạn pháp lý (tối đa 10 lần cước phí vận chuyển)."
+                type="warning"
+                showIcon
+                className="mb-3"
+              />
+              
+              <div className="bg-gray-50 p-3 rounded-lg border border-gray-200">
+                <div className="flex items-center mb-2">
+                  <WarningOutlined className="text-gray-600 mr-2" />
+                  <Text strong className="text-gray-700">Mức bồi thường khi không có bảo hiểm</Text>
+                </div>
+                <Text className="text-lg font-semibold text-gray-800">
+                  Tối đa 10 × Cước phí vận chuyển
+                </Text>
+                <Text className="block text-sm text-gray-600 mt-1">
+                  Theo Điều 546 Luật Thương mại 2005
+                </Text>
+              </div>
             </div>
           )}
         </Card>

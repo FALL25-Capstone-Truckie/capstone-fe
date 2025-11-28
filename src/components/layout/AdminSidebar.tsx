@@ -156,11 +156,9 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({
           label: <Link to="/staff/vehicle-assignments">Phân công xe</Link>,
         },
         {
-          key: "/staff/contract-stipulation",
+          key: "/staff/stipulation-settings",
           icon: <FileTextOutlined />,
-          label: (
-            <Link to="/staff/contract-stipulation">Điều khoản hợp đồng</Link>
-          ),
+          label: <Link to="/staff/stipulation-settings">Điều khoản</Link>,
         },
         {
           key: "/staff/penalties",

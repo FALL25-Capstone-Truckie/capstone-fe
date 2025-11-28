@@ -219,7 +219,6 @@ const orderService = {
         // Kiểm tra xem thời gian đã chọn có đủ 2 ngày không
         if (dayjs(inputDate).isBefore(minPickupTime)) {
           // Nếu không đủ 2 ngày, sử dụng thời gian mặc định thay vì báo lỗi
-          console.log("Thời gian lấy hàng đã chọn không đủ 2 ngày, sử dụng thời gian mặc định");
           finalEstimateStartTime = defaultEstimateStartTime;
         } else {
           // Nếu đủ 2 ngày, sử dụng thời gian đã chọn
@@ -239,11 +238,12 @@ const orderService = {
           unit: detail.unit || "kg",
           description: detail.description || "",
           orderSizeId: detail.orderSizeId,
+          declaredValue: detail.declaredValue, // Giá trị khai báo cho bảo hiểm
         })),
       };
 
       // Debug log
-      console.log("Request body:", JSON.stringify(apiOrderData, null, 2));
+      
 
       const response = await httpClient.post<OrderResponse>(
         "/orders",

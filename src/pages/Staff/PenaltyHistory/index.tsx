@@ -341,8 +341,10 @@ const PenaltyHistory: React.FC = () => {
     // Render loading state
     if (isLoading && !penaltiesResponse) {
         return (
-            <div className="p-6 flex justify-center items-center h-64">
-                <Spin size="large" tip="Đang tải dữ liệu..." />
+            <div className="p-6">
+                <Card>
+                    <Skeleton active paragraph={{ rows: 10 }} />
+                </Card>
             </div>
         );
     }

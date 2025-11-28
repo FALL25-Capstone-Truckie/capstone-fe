@@ -12,6 +12,9 @@ import {
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { SUPPORT_EMAIL, SUPPORT_PHONE } from "../../config";
 import { useAuth } from "../../context";
+import NotificationBell from "../notifications/NotificationBell";
+import NotificationQueueBadge from "../notifications/NotificationQueueBadge";
+import { mapToNotificationRole } from "../../utils/roleMapper";
 
 const { Header: AntHeader } = Layout;
 
@@ -141,15 +144,34 @@ const Header: React.FC = () => {
                 <Skeleton.Input active size="small" style={{ width: 120 }} />
               </div>
             ) : isAuthenticated ? (
-              <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
-                <div className="flex items-center cursor-pointer">
-                  <Avatar icon={<UserOutlined />} className="mr-2 bg-blue-600" />
-                  <span className="mr-2 text-blue-600 font-medium">
-                    Hello {user?.username}
-                  </span>
-                  <DownOutlined style={{ fontSize: "12px" }} />
-                </div>
-              </Dropdown>
+              <>
+                {user && (() => {
+                  console.log('🔍 DEBUG: Header rendering - user role:', user.role);
+                  return (
+                    <div className="flex items-center h-10 space-x-3">
+                      {/* Staff Issue Queue Badge */}
+                      {user.role === 'staff' && (() => {
+                        console.log('🔍 DEBUG: Rendering NotificationQueueBadge for staff');
+                        return <NotificationQueueBadge />;
+                      })()}
+                      {/* General Notification Bell */}
+                      <NotificationBell 
+                        userId={user.id} 
+                        userRole={mapToNotificationRole(user.role)} 
+                      />
+                    </div>
+                  );
+                })()}
+                <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
+                  <div className="flex items-center cursor-pointer h-10">
+                    <Avatar icon={<UserOutlined />} className="mr-2 bg-blue-600" size="default" />
+                    <span className="mr-2 text-blue-600 font-medium">
+                      Hello {user?.username}
+                    </span>
+                    <DownOutlined style={{ fontSize: "12px" }} />
+                  </div>
+                </Dropdown>
+              </>
             ) : (
               <>
                 <Button type="text" onClick={handleLogin}>
@@ -202,11 +224,17 @@ const Header: React.FC = () => {
                     Hello {user?.username}
                   </span>
                 </div>
+                {/* Staff Issue Queue Badge - Mobile */}
+                {user?.role === 'staff' && (
+                  <div className="py-2">
+                    <NotificationQueueBadge />
+                  </div>
+                )}
                 <Button
                   type="text"
                   icon={<UserOutlined />}
                   onClick={() => {
-                    navigate("/profile");
+                    navigate(user?.role === "staff" ? "/staff/profile" : "/profile");
                     onClose();
                   }}
                 >

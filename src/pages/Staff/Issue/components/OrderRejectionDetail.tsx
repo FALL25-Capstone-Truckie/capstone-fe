@@ -13,6 +13,7 @@ import {
     Form,
     Select,
     Space,
+    Skeleton,
     Typography,
     Statistic
 } from 'antd';
@@ -529,9 +530,7 @@ const globalCustomPoints: RoutePoint[] = [];
     if (loading) {
         return (
             <Card title="Xử lý trả hàng">
-                <div className="text-center py-8">
-                    <Spin size="large" />
-                </div>
+                <Skeleton active paragraph={{ rows: 8 }} />
             </Card>
         );
     }

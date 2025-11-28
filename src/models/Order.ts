@@ -21,6 +21,11 @@ export interface Order {
   sender?: Sender;
   orderDetails?: OrderDetail[];
 
+  // Insurance fields
+  hasInsurance?: boolean;           // Khách hàng có mua bảo hiểm hay không
+  totalInsuranceFee?: number;       // Tổng phí bảo hiểm (đã bao gồm VAT)
+  totalDeclaredValue?: number;      // Tổng giá trị khai báo của tất cả kiện hàng
+
   // New fields for enhanced order details
   depositAmount?: number;
   depositStatus?: "paid" | "pending" | "unpaid";
@@ -85,6 +90,7 @@ export interface OrderDetail {
   updatedAt: string;
   trackingCode: string;
   orderId: string;
+  declaredValue?: number;   // Giá trị khai báo của kiện hàng (VNĐ)
   orderSizeId?: {
     id: string;
     minWeight: number;
@@ -127,6 +133,7 @@ export interface OrderDetailCreateRequest {
   unit: string;
   description?: string;
   orderSizeId: string;
+  declaredValue: number;  // Giá trị khai báo của kiện hàng (VNĐ)
 }
 
 export type OrderStatus =
@@ -190,6 +197,7 @@ export interface OrderRequest {
   pickupAddressId: string;
   senderId?: string;
   categoryId: string;
+  hasInsurance?: boolean;  // Khách hàng có mua bảo hiểm hay không
 }
 
 export interface OrderCreateRequest {
@@ -220,6 +228,10 @@ export interface OrderResponse {
   pickupAddressId?: string;
   categoryId?: string;
   orderDetails?: OrderDetail[];
+  // Insurance fields
+  hasInsurance?: boolean;
+  totalInsuranceFee?: number;
+  totalDeclaredValue?: number;
 }
 
 // Chuyển đổi từ API response sang model

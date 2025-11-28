@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Form, Input, Select, Typography, Divider, App, Button, Row, Col } from "antd";
 import { PlusOutlined, EditOutlined } from "@ant-design/icons";
-import type { Category } from "../../../../models/Category";
 import type { Address } from "../../../../models/Address";
 import dayjs from "dayjs";
 import ReceiverSuggestions from "./ReceiverSuggestions";
@@ -13,14 +12,12 @@ const { Title, Text } = Typography;
 const { Option } = Select;
 
 interface ReceiverAndAddressStepProps {
-    categories: Category[];
     addresses: Address[];
     onReceiverDetailsLoaded: (data: any) => void;
     onAddressesUpdated: () => Promise<void>;
 }
 
 const ReceiverAndAddressStep: React.FC<ReceiverAndAddressStepProps> = ({
-    categories,
     addresses,
     onReceiverDetailsLoaded,
     onAddressesUpdated
@@ -246,20 +243,6 @@ const ReceiverAndAddressStep: React.FC<ReceiverAndAddressStepProps> = ({
                             ]}
                         >
                             <Input placeholder="Nhập CMND/CCCD người nhận" />
-                        </Form.Item>
-
-                        <Form.Item
-                            name="categoryId"
-                            label="Loại hàng hóa"
-                            rules={[{ required: true, message: "Vui lòng chọn loại hàng hóa" }]}
-                        >
-                            <Select placeholder="Chọn loại hàng hóa">
-                                {categories.map((category) => (
-                                    <Option key={category.id} value={category.id}>
-                                        {category.categoryName}
-                                    </Option>
-                                ))}
-                            </Select>
                         </Form.Item>
 
                         <Form.Item

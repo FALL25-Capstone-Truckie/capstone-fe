@@ -45,7 +45,7 @@ export const useOrderCreation = () => {
         setCategories(categoriesArray);
 
         // Set units from API
-        console.log('[DEBUG] Units from API:', unitsData);
+        // console.log('[DEBUG] Units from API:', unitsData);
         setUnits(unitsData);
       } catch (err: any) {
         console.error('[useOrderCreation] Error fetching initial data:', err);

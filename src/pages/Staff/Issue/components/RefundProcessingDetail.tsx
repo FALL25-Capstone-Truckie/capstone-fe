@@ -13,6 +13,7 @@ import {
     Tag,
     Space,
     Row,
+    Skeleton,
     Col,
     Divider,
     Modal,
@@ -180,9 +181,9 @@ const RefundProcessingDetail: React.FC<RefundProcessingDetailProps> = ({ issue, 
 
     if (loadingRefund) {
         return (
-            <div className="flex justify-center items-center p-8">
-                <Spin size="large" />
-            </div>
+            <Card>
+                <Skeleton active paragraph={{ rows: 8 }} />
+            </Card>
         );
     }
 

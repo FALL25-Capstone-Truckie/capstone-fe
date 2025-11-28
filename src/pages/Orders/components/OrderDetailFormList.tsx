@@ -1,13 +1,18 @@
 import React from "react";
-import { Form, Input, Button, InputNumber, Select, Card, Row, Col, Alert, Progress } from "antd";
+import { Form, Input, Button, InputNumber, Select, Card, Row, Col, Alert, Progress, Radio, Tag, Typography } from "antd";
 import type { FormInstance } from "antd";
 import { PlusOutlined, DeleteOutlined, InfoCircleOutlined } from "@ant-design/icons";
 import type { OrderSize } from "../../../models/OrderSize";
+import type { Category } from "../../../models/Category";
+import { CategoryName, getCategoryDisplayName, isFragileCategory } from "../../../models/CategoryName";
 import { convertWeightToTons, getWeightValidation, getWeightRangeLabel, calculateTotalWeight, type WeightUnit } from "../../../utils/weightUtils";
+
+const { Text } = Typography;
 
 interface OrderDetailFormListProps {
   name?: string;
   label?: string;
+  categories: Category[];
   orderSizes: OrderSize[];
   units: string[];
   form?: FormInstance;
@@ -16,6 +21,7 @@ interface OrderDetailFormListProps {
 const OrderDetailFormList: React.FC<OrderDetailFormListProps> = ({
   name = "orderDetailsList",
   label = "Danh sách kiện hàng",
+  categories,
   orderSizes,
   units = [], // Empty default array, will be populated from API
   form,
@@ -32,21 +38,61 @@ const OrderDetailFormList: React.FC<OrderDetailFormListProps> = ({
   const isValid = totalWeight >= 0.01 && totalWeight <= 50;
 
   // Convert units array to the format needed for Select component
-  console.log('[DEBUG] Available units in OrderDetailFormList:', units);
+  // console.log('[DEBUG] Available units in OrderDetailFormList:', units);
   const weightUnits = units.map((unit) => ({
     value: unit,
     label: unit === "Kí" ? "Kilogram" : unit,
   }));
 
   return (
-    <Form.Item label={
-      <span>
-        {label}
-        <span style={{ color: '#666', fontSize: '12px', marginLeft: '8px' }}>
-          (Tổng khối lượng: 0.01 - 50 tấn)
+    <>
+      {/* Category Selection */}
+      <Alert
+        message="Quy định về phân loại hàng hóa"
+        description={
+          <Text type="secondary">
+            Mỗi đơn hàng chỉ được đăng ký cho một loại hàng hóa duy nhất.
+            Vui lòng lựa chọn loại hàng phù hợp với toàn bộ kiện hàng trong đơn hàng của bạn.
+          </Text>
+        }
+        type="info"
+        showIcon
+        style={{ marginBottom: 16 }}
+      />
+
+      <Form.Item
+        name="categoryId"
+        label="Loại hàng hóa"
+        rules={[{ required: true, message: "Vui lòng chọn loại hàng hóa" }]}
+      >
+        <Radio.Group>
+          <Row gutter={[16, 8]}>
+            {categories.map((category) => (
+              <Col key={category.id} span={24}>
+                <Radio value={category.id}>
+                  <span>
+                    <Text>{getCategoryDisplayName(category.categoryName)}</Text>
+                    {/* {isFragileCategory(category.categoryName) && (
+                      <Tag color="orange">
+                        Dễ vỡ
+                      </Tag>
+                    )} */}
+                  </span>
+                </Radio>
+              </Col>
+            ))}
+          </Row>
+        </Radio.Group>
+      </Form.Item>
+
+      <Form.Item label={
+        <span>
+          {label}
+          <span style={{ color: '#666', fontSize: '12px', marginLeft: '8px' }}>
+            (Tổng khối lượng: 0.01 - 50 tấn)
+          </span>
         </span>
-      </span>
-    }>
+      }>
       <Form.List
         name={name}
         initialValue={[
@@ -83,10 +129,10 @@ const OrderDetailFormList: React.FC<OrderDetailFormListProps> = ({
                 }
                 style={{ marginBottom: 16 }}
               >
-                <Row gutter={12}>
-                  <Col span={14}>
+                <Row gutter={24}>
+                  <Col span={16}>
                     <Row gutter={12}>
-                      <Col span={5}>
+                      <Col span={6}>
                         <Form.Item
                           {...restField}
                           name={[fieldName, "quantity"]}
@@ -115,7 +161,7 @@ const OrderDetailFormList: React.FC<OrderDetailFormListProps> = ({
                           />
                         </Form.Item>
                       </Col>
-                      <Col span={19}>
+                      <Col span={18}>
                         <Form.Item
                           {...restField}
                           name={[fieldName, "orderSizeId"]}
@@ -141,7 +187,7 @@ const OrderDetailFormList: React.FC<OrderDetailFormListProps> = ({
                       </Col>
                     </Row>
                     <Row gutter={12}>
-                      <Col span={14}>
+                      <Col span={10}>
                         <Form.Item
                           {...restField}
                           name={[fieldName, "weight"]}
@@ -177,7 +223,7 @@ const OrderDetailFormList: React.FC<OrderDetailFormListProps> = ({
                           />
                         </Form.Item>
                       </Col>
-                      <Col span={10}>
+                      <Col span={6}>
                         <Form.Item
                           {...restField}
                           name={[fieldName, "unit"]}
@@ -203,13 +249,52 @@ const OrderDetailFormList: React.FC<OrderDetailFormListProps> = ({
                           </Select>
                         </Form.Item>
                       </Col>
+                      <Col span={8}>
+                        <Form.Item
+                          {...restField}
+                          name={[fieldName, "declaredValue"]}
+                          label="Giá trị khai báo (VNĐ)"
+                          rules={[
+                            {
+                              required: true,
+                              message: "Vui lòng nhập giá trị khai báo!",
+                            },
+                            {
+                              type: "number",
+                              min: 0,
+                              message: "Giá trị phải >= 0",
+                            },
+                          ]}
+                          tooltip="Giá trị hàng hóa theo hóa đơn/chứng từ - dùng để tính phí bảo hiểm"
+                          style={{ marginBottom: 16 }}
+                        >
+                          <InputNumber
+                            min={0}
+                            step={100000}
+                            formatter={(value) => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+                            parser={(value: string | undefined) => (value ? parseFloat(value.replace(/,/g, '')) : 0) as 0}
+                            placeholder="Ví dụ: 10,000,000"
+                            style={{ width: "100%" }}
+                          />
+                        </Form.Item>
+                      </Col>
                     </Row>
                   </Col>
-                  <Col span={10}>
+                  <Col span={8}>
                     <Form.Item
                       {...restField}
                       name={[fieldName, "description"]}
                       label="Mô tả chi tiết"
+                      rules={[
+                        {
+                          required: true,
+                          message: "Vui lòng nhập mô tả chi tiết về kiện hàng!",
+                        },
+                        {
+                          whitespace: true,
+                          message: "Mô tả không được để trống!",
+                        },
+                      ]}
                       style={{ marginBottom: 16 }}
                     >
                       <Input.TextArea
@@ -295,6 +380,7 @@ const OrderDetailFormList: React.FC<OrderDetailFormListProps> = ({
         )}
       </Form.List>
     </Form.Item>
+    </>
   );
 };
 

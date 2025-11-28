@@ -6,6 +6,46 @@ import type {
 } from "../../../models/Contract";
 import { formatCurrency, formatDate } from "../../../utils/formatters";
 
+// Helper function to convert number to Vietnamese words
+const numberToVietnameseWords = (num: number): string => {
+  if (num === 0) return "không đồng";
+  
+  const units = ["", "một", "hai", "ba", "bốn", "năm", "sáu", "bảy", "tám", "chín"];
+  const teens = ["mười", "mười một", "mười hai", "mười ba", "mười bốn", "mười lăm", "mười sáu", "mười bảy", "mười tám", "mười chín"];
+  
+  const convertHundreds = (n: number): string => {
+    if (n === 0) return "";
+    if (n < 10) return units[n];
+    if (n < 20) return teens[n - 10];
+    if (n < 100) {
+      const ten = Math.floor(n / 10);
+      const unit = n % 10;
+      if (unit === 0) return units[ten] + " mươi";
+      if (unit === 1) return units[ten] + " mươi mốt";
+      if (unit === 5) return units[ten] + " mươi lăm";
+      return units[ten] + " mươi " + units[unit];
+    }
+    const hundred = Math.floor(n / 100);
+    const remainder = n % 100;
+    if (remainder === 0) return units[hundred] + " trăm";
+    if (remainder < 10) return units[hundred] + " trăm lẻ " + units[remainder];
+    return units[hundred] + " trăm " + convertHundreds(remainder);
+  };
+
+  const parts: string[] = [];
+  const billion = Math.floor(num / 1000000000);
+  const million = Math.floor((num % 1000000000) / 1000000);
+  const thousand = Math.floor((num % 1000000) / 1000);
+  const remainder = Math.floor(num % 1000);
+
+  if (billion > 0) parts.push(convertHundreds(billion) + " tỷ");
+  if (million > 0) parts.push(convertHundreds(million) + " triệu");
+  if (thousand > 0) parts.push(convertHundreds(thousand) + " nghìn");
+  if (remainder > 0) parts.push(convertHundreds(remainder));
+
+  return parts.join(" ") + " đồng";
+};
+
 interface ContractContent {
   companyName: string;
   companyAddress: string;
@@ -43,14 +83,15 @@ const ContractExportContent: React.FC<ContractExportContentProps> = ({
   contractSettings,
   stipulationSettings,
 }) => {
-  // Use content customization if provided, otherwise use defaults
-  const companyName = content?.companyName || "TRUCKIE LOGISTICS";
+  // Use content customization if provided, otherwise use carrierInfo from response, then defaults
+  const companyName = contractData.carrierInfo?.carrierName || content?.companyName || "TRUCKIE LOGISTICS";
   const companyAddress =
-    content?.companyAddress || "Số 123, Đường ABC, Quận XYZ, TP. Hồ Chí Minh";
-  const companyPhone = content?.companyPhone || "0123 456 789";
-  const companyEmail = content?.companyEmail || "contact@truckie.vn";
+    contractData.carrierInfo?.carrierAddressLine || content?.companyAddress || "Số 123, Đường ABC, Quận XYZ, TP. Hồ Chí Minh";
+  const companyPhone = contractData.carrierInfo?.carrierPhone || content?.companyPhone || "0123 456 789";
+  const companyEmail = contractData.carrierInfo?.carrierEmail || content?.companyEmail || "contact@truckie.vn";
+  const carrierTaxCode = contractData.carrierInfo?.carrierTaxCode || "N/A";
   const representativeName =
-    content?.representativeName || "[Tên người đại diện]";
+    contractData.carrierInfo?.representativeName || content?.representativeName || "[Tên người đại diện]";
   const representativeTitle = content?.representativeTitle || "Giám đốc";
   const serviceDescription =
     content?.serviceDescription ||
@@ -79,12 +120,23 @@ const ContractExportContent: React.FC<ContractExportContentProps> = ({
       style={{ padding: "20px", fontFamily: "Times New Roman, serif" }}
     >
       <style>{`
+        /* Page break control for html2pdf.js */
         .contract-export-content {
           font-family: 'Times New Roman', serif !important;
           line-height: 1.5;
           color: #000;
           background: white;
           font-size: 12pt;
+        }
+        .contract-export-content .avoid-break,
+        .contract-export-content .info-box,
+        .contract-export-content .section {
+          page-break-inside: avoid;
+          break-inside: avoid;
+        }
+        .contract-export-content p {
+          orphans: 3;
+          widows: 3;
         }
         .contract-export-content .header {
           text-align: center;
@@ -249,6 +301,9 @@ const ContractExportContent: React.FC<ContractExportContentProps> = ({
         </p>
         <p>
           <strong>Email:</strong> {companyEmail}
+        </p>
+        <p>
+          <strong>Mã số thuế:</strong> {carrierTaxCode}
         </p>
         <p>
           <strong>Người đại diện:</strong> {representativeName}
@@ -430,162 +485,159 @@ const ContractExportContent: React.FC<ContractExportContentProps> = ({
           </tbody>
         </table>
 
-        <div className="price-summary">
-          <div className="price-row">
-            <div>
-              <strong>Tổng tiền trước điều chỉnh:</strong>
-              <div
-                style={{
-                  fontSize: "9pt",
-                  color: "#666",
-                  marginTop: "2pt",
-                  fontStyle: "italic",
-                }}
-              >
-                {contractData.priceDetails.steps.map((step, index) => (
-                  <span key={index}>
-                    {index > 0 && " + "}({formatCurrency(step.unitPrice)} ×{" "}
-                    {step.appliedKm.toFixed(2)} km)
-                  </span>
-                ))}
-              </div>
-            </div>
-            <div
-              style={{
-                textAlign: "right",
-                fontWeight: "bold",
-                minWidth: "120pt",
-              }}
-            >
-              {formatCurrency(contractData.priceDetails.totalBeforeAdjustment)}
-            </div>
-          </div>
+        {/* Price Breakdown Section - Professional Text-based Contract Style */}
+        <div style={{ marginTop: "15pt", lineHeight: "1.8" }}>
+          <p style={{ marginBottom: "10pt" }}>
+            <strong>3.1. Chi phí vận chuyển:</strong>
+          </p>
+          
+          {/* Base transport calculation */}
+          <p style={{ marginLeft: "15pt", marginBottom: "6pt" }}>
+            a) Cước vận chuyển cơ bản theo quãng đường {contractData.distanceKm.toFixed(2)} km:
+          </p>
+          {contractData.priceDetails.steps.map((step, index) => (
+            <p key={index} style={{ marginLeft: "30pt", marginBottom: "4pt" }}>
+              - {step.sizeRuleName} ({step.numOfVehicles} xe): {formatCurrency(step.unitPrice)}/km × {step.appliedKm.toFixed(2)} km = <strong>{formatCurrency(step.subtotal)}</strong>
+            </p>
+          ))}
+          
+          <p style={{ marginLeft: "30pt", marginBottom: "6pt" }}>
+            Tổng cước cơ bản: <strong>{formatCurrency(contractData.priceDetails.steps.reduce((sum, step) => sum + step.subtotal, 0))}</strong>
+          </p>
 
-          <div className="price-row">
-            <span>
-              <strong>Hệ số danh mục:</strong>
-            </span>
-            <span>{contractData.priceDetails.categoryMultiplier}</span>
-          </div>
+          {/* Category multiplier */}
+          <p style={{ marginLeft: "15pt", marginBottom: "6pt" }}>
+            b) Hệ số danh mục hàng hóa ({contractData.orderInfo.category.description}): × {contractData.priceDetails.categoryMultiplier}
+          </p>
 
-          {/* VAT as separate row in price table - before total */}
-          {contractSettings?.vatRate && (
-            <div className="price-row">
-              <span>
-                <strong>
-                  VAT {(contractSettings.vatRate * 100).toFixed(1)}%:
-                </strong>
-              </span>
-              <span>
-                {formatCurrency(
-                  contractData.priceDetails.finalTotal *
-                    contractSettings.vatRate
-                )}
-              </span>
-            </div>
+          {/* Category extra fee */}
+          {contractData.priceDetails.categoryExtraFee > 0 && (
+            <p style={{ marginLeft: "15pt", marginBottom: "6pt" }}>
+              c) Phụ thu danh mục ({contractData.orderInfo.category.description}): + <strong>{formatCurrency(contractData.priceDetails.categoryExtraFee)}</strong>
+            </p>
           )}
 
-          <div className="price-row">
-            <span>
-              <strong>Phí danh mục thêm:</strong>
-            </span>
-            <span>
-              {formatCurrency(contractData.priceDetails.categoryExtraFee)}
-            </span>
-          </div>
-
-          <div className="price-divider">
-            <div className="price-row">
-              <span>
-                <strong>Giảm giá khuyến mãi:</strong>
-              </span>
-              <span style={{ fontWeight: "bold" }}>
-                -{formatCurrency(contractData.priceDetails.promotionDiscount)}
-              </span>
-            </div>
-          </div>
-
-          <div className="total-section">
-            <strong style={{ fontSize: "14pt" }}>
-              TỔNG GIÁ TRỊ HỢP ĐỒNG
-              {contractSettings?.vatRate ? " (Đã bao gồm VAT)" : ""}:
-            </strong>
-            <strong style={{ fontSize: "16pt" }}>
-              {formatCurrency(
-                contractSettings?.vatRate
-                  ? contractData.priceDetails.finalTotal *
-                      (1 + contractSettings.vatRate)
-                  : contractData.priceDetails.finalTotal
-              )}
-            </strong>
-          </div>
-
-          {/* Note about pre-tax value */}
-          {contractSettings?.vatRate && (
-            <div
-              style={{
-                marginTop: "5px",
-                fontSize: "10pt",
-                color: "#666",
-                fontStyle: "italic",
-              }}
-            >
-              (Giá trị trước thuế:{" "}
-              {formatCurrency(contractData.priceDetails.finalTotal)})
-            </div>
+          {/* Promotion discount */}
+          {contractData.priceDetails.promotionDiscount > 0 && (
+            <p style={{ marginLeft: "15pt", marginBottom: "6pt" }}>
+              d) Giảm giá khuyến mãi: - <strong>{formatCurrency(contractData.priceDetails.promotionDiscount)}</strong>
+            </p>
           )}
 
-          {/* Display adjusted value if enabled - without input fields */}
+          {/* Transport subtotal */}
+          <p style={{ marginLeft: "15pt", marginBottom: "12pt", paddingTop: "6pt", borderTop: "1pt dashed #000" }}>
+            <strong>Tổng chi phí vận chuyển (A):</strong> {formatCurrency(contractData.priceDetails.steps.reduce((sum, step) => sum + step.subtotal, 0))} × {contractData.priceDetails.categoryMultiplier}
+            {contractData.priceDetails.categoryExtraFee > 0 && ` + ${formatCurrency(contractData.priceDetails.categoryExtraFee)}`}
+            {contractData.priceDetails.promotionDiscount > 0 && ` - ${formatCurrency(contractData.priceDetails.promotionDiscount)}`}
+            {" = "}<strong style={{ fontSize: "12pt" }}>{formatCurrency(contractData.priceDetails.finalTotal)}</strong>
+          </p>
+
+          {/* Insurance Section */}
+          {contractData.priceDetails.hasInsurance && (
+            <>
+              <p style={{ marginBottom: "10pt" }}>
+                <strong>3.2. Chi phí bảo hiểm hàng hóa:</strong>
+              </p>
+              <p style={{ marginLeft: "15pt", marginBottom: "6pt" }}>
+                - Giá trị hàng hóa khai báo: <strong>{formatCurrency(contractData.priceDetails.totalDeclaredValue || 0)}</strong>
+              </p>
+              <p style={{ marginLeft: "15pt", marginBottom: "6pt" }}>
+                - Tỷ lệ phí bảo hiểm ({contractData.orderInfo.category.description}): {(contractData.priceDetails.insuranceRate || 0).toFixed(2)}%
+              </p>
+              <p style={{ marginLeft: "15pt", marginBottom: "6pt" }}>
+                - Thuế GTGT: {((contractData.priceDetails.vatRate || 0.1) * 100).toFixed(0)}%
+              </p>
+              <p style={{ marginLeft: "15pt", marginBottom: "12pt", paddingTop: "6pt", borderTop: "1pt dashed #000" }}>
+                <strong>Tổng chi phí bảo hiểm (B):</strong> {formatCurrency(contractData.priceDetails.totalDeclaredValue || 0)} × {(contractData.priceDetails.insuranceRate || 0).toFixed(2)}% × (1 + {((contractData.priceDetails.vatRate || 0.1) * 100).toFixed(0)}%) = <strong style={{ fontSize: "12pt" }}>{formatCurrency(contractData.priceDetails.insuranceFee || 0)}</strong>
+              </p>
+            </>
+          )}
+
+          {/* No insurance notice */}
+          {!contractData.priceDetails.hasInsurance && (
+            <p style={{ marginBottom: "12pt" }}>
+              <strong>3.2. Chi phí bảo hiểm hàng hóa (B):</strong> Khách hàng không đăng ký bảo hiểm = <strong>0 đ</strong>
+            </p>
+          )}
+
+          {/* Display adjusted value if enabled */}
           {customization.hasAdjustedValue && adjustedValue > 0 && (
-            <div className="adjusted-value">
-              <strong>
-                Giá trị điều chỉnh (trợ giá): {formatCurrency(adjustedValue)}
-              </strong>
-            </div>
+            <p style={{ marginBottom: "12pt" }}>
+              <strong>Giá trị điều chỉnh (trợ giá):</strong> <strong>{formatCurrency(adjustedValue)}</strong>
+            </p>
           )}
+
+          {/* Grand Total */}
+          <p style={{ 
+            marginTop: "12pt", 
+            paddingTop: "10pt", 
+            borderTop: "2pt solid #000",
+            fontSize: "12pt"
+          }}>
+            <strong>3.3. TỔNG GIÁ TRỊ HỢP ĐỒNG (A + B):</strong>{" "}
+            <strong style={{ fontSize: "14pt", textDecoration: "underline" }}>
+              {formatCurrency(contractData.priceDetails.grandTotal || contractData.priceDetails.finalTotal)}
+            </strong>
+            <span style={{ marginLeft: "6pt" }}>
+              (Bằng chữ: {numberToVietnameseWords(contractData.priceDetails.grandTotal || contractData.priceDetails.finalTotal)})
+            </span>
+          </p>
         </div>
 
         <div style={{ marginTop: "20px" }}>
           <p>
             <strong>Điều kiện thanh toán:</strong>
           </p>
-          <p>
-            - Đặt cọc: {contractData.contractSettings.depositPercent}% (
-            {formatCurrency(
-              ((contractSettings?.vatRate
-                ? contractData.priceDetails.finalTotal *
-                  (1 + contractSettings.vatRate)
-                : contractData.priceDetails.finalTotal) *
-                contractData.contractSettings.depositPercent) /
-                100
-            )}
-            ) trong vòng {contractData.contractSettings.expiredDepositDate} ngày
-          </p>
-          <p>
-            - Thanh toán còn lại:{" "}
-            {formatCurrency(
-              (contractSettings?.vatRate
-                ? contractData.priceDetails.finalTotal *
-                  (1 + contractSettings.vatRate)
-                : contractData.priceDetails.finalTotal) -
-                ((contractSettings?.vatRate
-                  ? contractData.priceDetails.finalTotal *
-                    (1 + contractSettings.vatRate)
-                  : contractData.priceDetails.finalTotal) *
-                  contractData.contractSettings.depositPercent) /
-                  100
-            )}{" "}
-            khi hoàn thành dịch vụ
-          </p>
+          {(() => {
+            const grandTotal = contractData.priceDetails.grandTotal || contractData.priceDetails.finalTotal;
+            const depositAmount = (grandTotal * contractData.contractSettings.depositPercent) / 100;
+            const remainingAmount = grandTotal - depositAmount;
+            const depositDeadlineHours = contractData.contractSettings.depositDeadlineHours || 24;
+            const signingDeadlineHours = contractData.contractSettings.signingDeadlineHours || 24;
+            
+            // Get estimated pickup date from first order detail
+            const firstOrderDetail = contractData.orderInfo.orderDetails?.[0];
+            const estimatedPickupDate = firstOrderDetail?.estimatedStartTime 
+              ? new Date(firstOrderDetail.estimatedStartTime) 
+              : null;
+            
+            // Calculate payment deadline (1 day before pickup)
+            const paymentDeadlineDate = estimatedPickupDate 
+              ? new Date(estimatedPickupDate.getTime() - 24 * 60 * 60 * 1000)
+              : null;
+            
+            return (
+              <>
+                <p>
+                  - Thời hạn ký hợp đồng: {signingDeadlineHours} giờ kể từ khi nhận được hợp đồng
+                </p>
+                <p>
+                  - Đặt cọc: {contractData.contractSettings.depositPercent}% ({formatCurrency(depositAmount)}) - Thanh toán trong vòng {depositDeadlineHours} giờ kể từ khi ký hợp đồng
+                </p>
+                <p>
+                  - Thanh toán còn lại: {formatCurrency(remainingAmount)} - Thanh toán trước ngày lấy hàng dự kiến 1 ngày
+                  {paymentDeadlineDate && (
+                    <span style={{ marginLeft: "6pt", color: "#666" }}>
+                      (trước ngày {paymentDeadlineDate.toLocaleDateString('vi-VN', { 
+                        day: '2-digit', 
+                        month: '2-digit', 
+                        year: 'numeric' 
+                      })})
+                    </span>
+                  )}
+                </p>
+              </>
+            );
+          })()}
           <p>- Phương thức thanh toán: {paymentMethod}</p>
           <p>
-            - Phí bảo hiểm: {contractData.contractSettings.insuranceRate}% giá
-            trị hàng hóa
+            - Quy định bảo hiểm: Hàng thông thường {(contractData.contractSettings.insuranceRateNormal || 0.08).toFixed(2)}%, 
+            hàng dễ vỡ {(contractData.contractSettings.insuranceRateFragile || 0.15).toFixed(2)}% giá trị khai báo 
+            (đã bao gồm 10% VAT)
           </p>
           {adjustedValue > 0 && (
             <p style={{ fontWeight: "bold" }}>
-              - Giá trị điều chỉnh: {formatCurrency(adjustedValue)} (đã bao gồm
-              trong tổng giá trị hợp đồng)
+              - Giá trị điều chỉnh: {formatCurrency(adjustedValue)} (đã bao gồm trong tổng giá trị hợp đồng)
             </p>
           )}
         </div>
@@ -595,8 +647,8 @@ const ContractExportContent: React.FC<ContractExportContentProps> = ({
         <div className="terms-title">ĐIỀU 4: PHÂN CÔNG XE</div>
 
         {/* Optimal Assignment */}
-        {contractData.optimalAssignResult &&
-          contractData.optimalAssignResult.length > 0 && (
+        {contractData.assignResult &&
+          contractData.assignResult.length > 0 && (
             <div style={{ marginBottom: "20px" }}>
               <p
                 style={{
@@ -626,7 +678,7 @@ const ContractExportContent: React.FC<ContractExportContentProps> = ({
                   </tr>
                 </thead>
                 <tbody>
-                  {contractData.optimalAssignResult.map((assign, index) => (
+                  {contractData.assignResult.map((assign, index) => (
                     <tr key={index}>
                       <td>{assign.sizeRuleName}</td>
                       <td>
@@ -641,8 +693,8 @@ const ContractExportContent: React.FC<ContractExportContentProps> = ({
           )}
 
         {/* Realistic Assignment */}
-        {contractData.realisticAssignResult &&
-          contractData.realisticAssignResult.length > 0 && (
+        {contractData.assignResult &&
+          contractData.assignResult.length > 0 && (
             <div>
               <p
                 style={{
@@ -673,7 +725,7 @@ const ContractExportContent: React.FC<ContractExportContentProps> = ({
                   </tr>
                 </thead>
                 <tbody>
-                  {contractData.realisticAssignResult.map((assign, index) => (
+                  {contractData.assignResult.map((assign, index) => (
                     <tr key={index}>
                       <td>{assign.sizeRuleName}</td>
                       <td>
@@ -687,32 +739,7 @@ const ContractExportContent: React.FC<ContractExportContentProps> = ({
             </div>
           )}
 
-        {/* Legacy fallback */}
-        {!contractData.optimalAssignResult &&
-          !contractData.realisticAssignResult &&
-          contractData.assignResult &&
-          contractData.assignResult.length > 0 && (
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>Loại xe</th>
-                  <th>Tải trọng hiện tại</th>
-                  <th>Số chi tiết được giao</th>
-                </tr>
-              </thead>
-              <tbody>
-                {contractData.assignResult.map((assign, index) => (
-                  <tr key={index}>
-                    <td>{assign.sizeRuleName}</td>
-                    <td>
-                      {assign.currentLoad} {assign.currentLoadUnit}
-                    </td>
-                    <td>{assign.assignedDetails.length}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
+        {/* End of assignment sections */}
       </div>
 
       <div className="terms-section">

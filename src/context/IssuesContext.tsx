@@ -12,6 +12,14 @@ import { playNotificationSound, NotificationSoundType } from '@/utils/notificati
 import SealConfirmationModal from '@/components/modals/SealConfirmationModal';
 import CombinedIssueModal from '@/components/issues/CombinedIssueModal';
 
+interface QueuedIssue {
+  id: string;
+  issue: Issue;
+  priority: 'HIGH' | 'MEDIUM' | 'LOW';
+  receivedAt: Date;
+  showModal: boolean; // Whether to show modal immediately (high priority)
+}
+
 interface IssuesContextType {
   issues: Issue[];
   isOpen: boolean;
@@ -28,6 +36,16 @@ interface IssuesContextType {
   hideNewIssueModal: () => void;
   newIssueForModal: Issue | null;
   groupedIssuesForModal: Issue[] | null;
+  
+  // Queue functionality
+  queuedIssues: QueuedIssue[];
+  isQueueOpen: boolean;
+  toggleQueue: () => void;
+  addToQueue: (issue: Issue, priority: 'HIGH' | 'MEDIUM' | 'LOW', showModal?: boolean) => void;
+  removeFromQueue: (issueId: string) => void;
+  markAsProcessed: (issueId: string) => void;
+  getQueueCount: () => number;
+  getHighPriorityCount: () => number;
 }
 
 const IssuesContext = createContext<IssuesContextType | undefined>(undefined);
@@ -53,6 +71,10 @@ export const IssuesProvider: React.FC<IssuesProviderProps> = ({ children }) => {
   const [error, setError] = useState<string | null>(null);
   const [newIssueForModal, setNewIssueForModal] = useState<Issue | null>(null);
   const [groupedIssuesForModal, setGroupedIssuesForModal] = useState<Issue[] | null>(null);
+  
+  // Queue state
+  const [queuedIssues, setQueuedIssues] = useState<QueuedIssue[]>([]);
+  const [isQueueOpen, setIsQueueOpen] = useState(false);
   const [sealConfirmationData, setSealConfirmationData] = useState<any>(null);
 
   const { user, isAuthenticated } = useAuth();
@@ -101,7 +123,87 @@ export const IssuesProvider: React.FC<IssuesProviderProps> = ({ children }) => {
     }
   }, [message]);
 
-  // Handle new issue from WebSocket
+  // ============= Queue Management Functions =============
+
+  // Determine issue priority based on issueCategory
+  const getIssuePriority = useCallback((issue: Issue): 'HIGH' | 'MEDIUM' | 'LOW' => {
+    switch (issue.issueCategory) {
+      case 'ORDER_REJECTION':
+      case 'SEAL_REPLACEMENT':
+        return 'HIGH';
+      case 'DAMAGE':
+      case 'REROUTE':
+        return 'MEDIUM';
+      case 'PENALTY':
+        return 'LOW';
+      default:
+        return 'MEDIUM';
+    }
+  }, []);
+
+  // Add issue to queue with priority and sorting
+  const addToQueue = useCallback((issue: Issue, priority: 'HIGH' | 'MEDIUM' | 'LOW', showModal: boolean = false) => {
+    const queuedIssue: QueuedIssue = {
+      id: `${issue.id}-${Date.now()}`,
+      issue,
+      priority,
+      receivedAt: new Date(),
+      showModal
+    };
+
+    setQueuedIssues(prev => {
+      const updated = [...prev, queuedIssue];
+      // Sort by priority first, then by received time (newest first within same priority)
+      return updated.sort((a, b) => {
+        const priorityOrder = { HIGH: 0, MEDIUM: 1, LOW: 2 };
+        const priorityDiff = priorityOrder[a.priority] - priorityOrder[b.priority];
+        if (priorityDiff !== 0) return priorityDiff;
+        return b.receivedAt.getTime() - a.receivedAt.getTime();
+      });
+    });
+
+    // Show modal immediately for high priority issues
+    if (showModal && priority === 'HIGH') {
+      setNewIssueForModal(issue);
+    }
+
+    // Play appropriate notification sound
+    if (priority === 'HIGH') {
+      playNotificationSound(NotificationSoundType.URGENT);
+    } else {
+      playNotificationSound(NotificationSoundType.NEW_ISSUE);
+    }
+
+    console.log(`📋 Issue added to queue: ${issue.issueCategory} (${priority})`);
+  }, []); // Remove showNewIssueModal dependency to fix declaration order
+
+  // Remove issue from queue
+  const removeFromQueue = useCallback((issueId: string) => {
+    setQueuedIssues(prev => prev.filter(qi => qi.id !== issueId));
+  }, []);
+
+  // Mark issue as processed (remove from queue and refresh list)
+  const markAsProcessed = useCallback((issueId: string) => {
+    removeFromQueue(issueId);
+    fetchIssues();
+  }, [removeFromQueue, fetchIssues]);
+
+  // Get queue count
+  const getQueueCount = useCallback(() => {
+    return queuedIssues.length;
+  }, [queuedIssues]);
+
+  // Get high priority count
+  const getHighPriorityCount = useCallback(() => {
+    return queuedIssues.filter(qi => qi.priority === 'HIGH').length;
+  }, [queuedIssues]);
+
+  // Toggle queue visibility
+  const toggleQueue = useCallback(() => {
+    setIsQueueOpen(prev => !prev);
+  }, []);
+
+  // Handle new issue from WebSocket with queue integration
   const handleNewIssue = useCallback((msg: Issue) => {
     // Debug orderDetail specifically for package info
     if (msg.orderDetail) {
@@ -119,8 +221,12 @@ export const IssuesProvider: React.FC<IssuesProviderProps> = ({ children }) => {
       return [msg, ...prev];
     });
     
-    // Play notification sound for new issue
-    playNotificationSound(NotificationSoundType.NEW_ISSUE);
+    // Determine issue priority
+    const priority = getIssuePriority(msg);
+    
+    // Add to queue with priority
+    const shouldShowModal = priority === 'HIGH'; // Only show modal immediately for high priority
+    addToQueue(msg, priority, shouldShowModal);
     
     // Smart Grouping Logic: Group issues by orderId within 5 second window
     // Get orderId from orderDetailEntity (for DAMAGE/ORDER_REJECTION issues)
@@ -143,15 +249,19 @@ export const IssuesProvider: React.FC<IssuesProviderProps> = ({ children }) => {
         const issues = pendingIssuesRef.current.get(orderId);
         if (issues && issues.length > 0) {
           
+          // Only show combined modal if all issues are high priority
+          const allHighPriority = issues.every(issue => getIssuePriority(issue) === 'HIGH');
           
-          if (issues.length > 1) {
-            // Multiple issues - show combined modal
+          if (issues.length > 1 && allHighPriority) {
+            // Multiple high-priority issues - show combined modal
             setGroupedIssuesForModal(issues);
             setNewIssueForModal(null); // Clear single issue modal
+          } else if (issues.length === 1 && allHighPriority) {
+            // Single high-priority issue - modal already shown by queue
+            // No additional action needed
           } else {
-            // Single issue - show normal modal
-            setNewIssueForModal(issues[0]);
-            setGroupedIssuesForModal(null); // Clear grouped modal
+            // Mixed priorities or medium/low only - no modal, rely on queue
+            console.log(`📋 Issues for order ${orderId} added to queue: ${issues.map(i => i.issueCategory).join(', ')}`);
           }
           
           // Cleanup
@@ -162,11 +272,13 @@ export const IssuesProvider: React.FC<IssuesProviderProps> = ({ children }) => {
       
       groupingTimerRef.current.set(orderId, timer);
     } else {
-      // No orderId - show immediately (shouldn't happen for DAMAGE/ORDER_REJECTION)
-      setNewIssueForModal(msg);
-      setGroupedIssuesForModal(null);
+      // No orderId - handle based on priority
+      if (priority === 'HIGH') {
+        setNewIssueForModal(msg);
+        setGroupedIssuesForModal(null);
+      }
     }
-  }, []);
+  }, [getIssuePriority, addToQueue]);
 
   // Handle issue status change from WebSocket
   const handleIssueStatusChange = useCallback((msg: Issue) => {
@@ -559,6 +671,16 @@ export const IssuesProvider: React.FC<IssuesProviderProps> = ({ children }) => {
     hideNewIssueModal,
     newIssueForModal,
     groupedIssuesForModal,
+    
+    // Queue functionality
+    queuedIssues,
+    isQueueOpen,
+    toggleQueue,
+    addToQueue,
+    removeFromQueue,
+    markAsProcessed,
+    getQueueCount,
+    getHighPriorityCount,
   };
 
   return (

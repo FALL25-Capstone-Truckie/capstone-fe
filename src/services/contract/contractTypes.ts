@@ -11,11 +11,22 @@ export interface ContractData {
   contractId: string;
   message: string;
   distanceKm: number;
+  carrierInfo: CarrierInfo;
   customerInfo: CustomerInfo;
   orderInfo: OrderInfo;
   priceDetails: PriceDetails;
   assignResult: AssignResult[];
   contractSettings: ContractSettings;
+}
+
+export interface CarrierInfo {
+  id: string;
+  carrierName: string;
+  representativeName: string;
+  carrierAddressLine: string;
+  carrierEmail: string;
+  carrierPhone: string;
+  carrierTaxCode: string;
 }
 
 export interface CustomerInfo {
@@ -66,6 +77,10 @@ export interface OrderInfo {
   sender: Sender;
   category: Category;
   orderDetails: OrderDetail[];
+  // Insurance fields
+  hasInsurance?: boolean;
+  totalInsuranceFee?: number;
+  totalDeclaredValue?: number;
 }
 
 export interface Address {
@@ -144,6 +159,13 @@ export interface PriceDetails {
   finalTotal: number;
   steps: PriceStep[];
   summary: string;
+  // Insurance fields
+  totalDeclaredValue?: number;   // Tổng giá trị khai báo
+  insuranceFee?: number;         // Phí bảo hiểm (đã bao gồm VAT)
+  insuranceRate?: number;        // Tỷ lệ bảo hiểm (0.0008 hoặc 0.0015)
+  vatRate?: number;              // Tỷ lệ VAT (0.1)
+  hasInsurance?: boolean;        // Có mua bảo hiểm không
+  grandTotal?: number;           // Tổng cuối cùng (phí vận chuyển + phí bảo hiểm)
 }
 
 export interface PriceStep {
@@ -167,6 +189,10 @@ export interface AssignResult {
 export interface ContractSettings {
   id: string;
   depositPercent: number;
-  expiredDepositDate: number;
-  insuranceRate: number;
+  expiredDepositDate: number;      // Hạn thanh toán cọc (số ngày)
+  depositDeadlineHours?: number;   // Hạn thanh toán cọc (số giờ) - ưu tiên nếu có
+  signingDeadlineHours?: number;   // Hạn ký hợp đồng (số giờ)
+  insuranceRateNormal?: number;    // Tỷ lệ BH hàng thường (0.08%)
+  insuranceRateFragile?: number;   // Tỷ lệ BH hàng dễ vỡ (0.15%)
+  vatRate?: number;                // Tỷ lệ VAT (10%)
 }

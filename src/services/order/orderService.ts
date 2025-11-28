@@ -238,6 +238,7 @@ const orderService = {
           unit: detail.unit || "kg",
           description: detail.description || "",
           orderSizeId: detail.orderSizeId,
+          declaredValue: detail.declaredValue, // Giá trị khai báo cho bảo hiểm
         })),
       };
 

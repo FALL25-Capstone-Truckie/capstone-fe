@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { Button, Form, Steps, Card, Typography, App, Skeleton } from "antd";
 import { useOrderCreation } from "@/hooks";
 import type { OrderCreateRequest } from "../../models/Order";
-import { OrderDetailFormList, StipulationModal } from "./components";
+import { OrderDetailFormList, StipulationModal, InsuranceSelectionCard } from "./components";
 import OrderCreationSuccess from "./components/OrderCreationSuccess";
 import { formatToVietnamTime } from "../../utils/dateUtils";
 import { calculateTotalWeight, convertWeightToTons } from "../../utils/weightUtils";
@@ -25,6 +25,7 @@ export default function CreateOrder() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formValues, setFormValues] = useState<any>({
     orderDetailsList: [{ quantity: 1, unit: "Kí" }], // Initialize with one default item
+    hasInsurance: true, // Default to insurance selected
   });
   const [createdOrder, setCreatedOrder] = useState<{
     id: string;
@@ -34,15 +35,52 @@ export default function CreateOrder() {
 
   const [form] = Form.useForm();
 
+  // Reset createdOrder state when component mounts (for navigation back from success page)
+  useEffect(() => {
+    setCreatedOrder(null);
+    setCurrentStep(0);
+  }, []);
+
   // Function to reset form and state for retry
   const handleRetry = () => {
     form.resetFields();
-    setFormValues({
-      orderDetailsList: [{ quantity: 1, unit: units?.[0] || "Kí" }],
-    });
     setCurrentStep(0);
-    setIsSubmitting(false);
     setCreatedOrder(null);
+    setFormValues({});
+  };
+
+  // Helper function to get field display name in Vietnamese
+  const getFieldDisplayName = (fieldName: any): string => {
+    if (Array.isArray(fieldName)) {
+      // Handle Form.List fields like ['orderDetailsList', 0, 'description']
+      const fieldPath = fieldName[fieldName.length - 1]; // Get the last element (actual field name)
+      const itemIndex = fieldName[1] + 1; // Get the item index (0-based + 1)
+
+      const fieldNames: { [key: string]: string } = {
+        'description': 'Mô tả chi tiết kiện hàng',
+        'quantity': 'Số lượng',
+        'weight': 'Trọng lượng',
+        'orderSizeId': 'Kích thước',
+        'unit': 'Đơn vị',
+        'declaredValue': 'Giá trị khai báo'
+      };
+
+      return `${fieldNames[fieldPath] || fieldPath} (kiện ${itemIndex})`;
+    } else {
+      // Handle regular fields
+      const fieldNames: { [key: string]: string } = {
+        'categoryId': 'Loại hàng hóa',
+        'receiverName': 'Tên người nhận',
+        'receiverPhone': 'Số điện thoại người nhận',
+        'receiverIdentity': 'CMND/CCCD người nhận',
+        'pickupAddressId': 'Địa chỉ lấy hàng',
+        'deliveryAddressId': 'Địa chỉ giao hàng',
+        'packageDescription': 'Mô tả đơn hàng',
+        'estimateStartTime': 'Thời gian lấy hàng dự kiến'
+      };
+
+      return fieldNames[fieldName] || fieldName;
+    }
   };
 
   // Cập nhật giá trị form từ state khi component mount
@@ -89,27 +127,82 @@ export default function CreateOrder() {
 
   const next = async () => {
     try {
-      // Validate current step fields before proceeding
-      await form.validateFields();
+      // Define required fields for each step
+      const stepFields = {
+        0: ['categoryId'], // Step 0: Package info - category is required (other fields are in Form.List with their own validation)
+        1: ['receiverName', 'receiverPhone', 'receiverIdentity', 'pickupAddressId', 'deliveryAddressId', 'packageDescription'], // Step 1: Receiver and address info
+        2: ['estimateStartTime'], // Step 2: Shipping info - delivery time is required
+      };
 
-      // Lưu giá trị form hiện tại trước khi chuyển step
-      const currentValues = form.getFieldsValue(true);
-      setFormValues((prev: any) => ({ ...prev, ...currentValues }));
+      // Validate only fields for current step
+      const fieldsToValidate = stepFields[currentStep as keyof typeof stepFields];
+      if (fieldsToValidate && fieldsToValidate.length > 0) {
+        console.log('🔍 Validating fields for step', currentStep, ':', fieldsToValidate);
+        await form.validateFields(fieldsToValidate);
+      }
 
-      // Kiểm tra orderDetailsList không được rỗng khi ở step 0 (step đầu tiên)
+      // For step 0, also validate Form.List fields explicitly
       if (currentStep === 0) {
+        const currentValues = form.getFieldsValue(true);
         const orderDetailsList = currentValues.orderDetailsList || [];
+        
+        console.log('🔍 Step 0 validation - orderDetailsList:', orderDetailsList);
+        
         if (orderDetailsList.length === 0) {
           message.error(
             "Vui lòng thêm ít nhất một kiện hàng trước khi tiếp tục!"
           );
           return;
         }
+
+        // Build Form.List field paths for validation
+        const formListFields = [];
+        for (let i = 0; i < orderDetailsList.length; i++) {
+          formListFields.push(
+            ['orderDetailsList', i, 'description'],
+            ['orderDetailsList', i, 'quantity'],
+            ['orderDetailsList', i, 'weight'],
+            ['orderDetailsList', i, 'orderSizeId'],
+            ['orderDetailsList', i, 'unit'],
+            ['orderDetailsList', i, 'declaredValue']
+          );
+        }
+        
+        console.log('🔍 Validating Form.List fields:', formListFields);
+        
+        // Validate Form.List fields using Ant Design's validation
+        await form.validateFields(formListFields);
+        
+        console.log('✅ All order details validated successfully');
       }
 
+      // Lưu giá trị form hiện tại trước khi chuyển step
+      const currentValues = form.getFieldsValue(true);
+      setFormValues((prev: any) => ({ ...prev, ...currentValues }));
+
       setCurrentStep(currentStep + 1);
-    } catch (error) {
-      console.error("Validation error:", error);
+      
+      // Auto scroll to top when moving to next step
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } catch (error: any) {
+      console.error("❌ Validation error:", error);
+      
+      // Scroll to first validation error
+      if (error.errorFields && error.errorFields.length > 0) {
+        const firstErrorField = error.errorFields[0];
+        console.log('🔍 Scrolling to first error field:', firstErrorField.name);
+        
+        // Use Ant Design's scrollToField method with smooth scrolling
+        form.scrollToField(firstErrorField.name, {
+          behavior: 'smooth',
+          block: 'center',
+          inline: 'nearest'
+        });
+        
+        // Remove additional message since Ant Design already shows error under input
+      }
+      
+      // Validation errors will be displayed automatically by Ant Design Form
     }
   };
 
@@ -118,6 +211,9 @@ export default function CreateOrder() {
     const currentValues = form.getFieldsValue(true);
     setFormValues((prev: any) => ({ ...prev, ...currentValues }));
     setCurrentStep(currentStep - 1);
+    
+    // Auto scroll to top when moving to previous step
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleSubmitClick = () => {
@@ -180,12 +276,15 @@ export default function CreateOrder() {
           (!detail.weightBaseUnit && !detail.weight) ||
           !detail.orderSizeId ||
           !detail.description ||
-          !detail.quantity
+          !detail.quantity ||
+          detail.declaredValue === null ||
+          detail.declaredValue === undefined ||
+          detail.declaredValue === ""
       );
 
       if (invalidDetails.length > 0) {
         throw new Error(
-          "Một số kiện hàng thiếu thông tin. Vui lòng kiểm tra lại trọng lượng, kích thước, mô tả và số lượng."
+          "Một số kiện hàng thiếu thông tin. Vui lòng kiểm tra lại trọng lượng, kích thước, mô tả, số lượng và giá trị khai báo."
         );
       }
 
@@ -199,6 +298,9 @@ export default function CreateOrder() {
         // Use utility function for consistent conversion
         const weightInTons = convertWeightToTons(weight, unit);
         
+        // Debug: Log declaredValue
+        console.log('🔍 DEBUG: detail.declaredValue =', detail.declaredValue, 'type:', typeof detail.declaredValue);
+        
         // Tạo nhiều bản copy của item dựa trên quantity
         for (let i = 0; i < quantity; i++) {
           expandedOrderDetailsList.push({
@@ -206,9 +308,13 @@ export default function CreateOrder() {
             unit: "Tấn", // Always send as tons to backend
             description: detail.description || "",
             orderSizeId: detail.orderSizeId,
+            declaredValue: detail.declaredValue, // Giá trị khai báo - không dùng || 0 để tránh convert null thành 0
           });
         }
       });
+      
+      // Debug: Log expandedOrderDetailsList
+      console.log('🔍 DEBUG: expandedOrderDetailsList =', JSON.stringify(expandedOrderDetailsList, null, 2));
 
       // Extract orderDetailsList from formValues
       const { orderDetailsList: _, ...orderRequestData } = formattedValues;
@@ -230,10 +336,14 @@ export default function CreateOrder() {
             orderRequestData.pickupAddressId?.value ||
             orderRequestData.pickupAddressId,
           categoryId: orderRequestData.categoryId,
+          hasInsurance: orderRequestData.hasInsurance || false, // Mua bảo hiểm
         },
         orderDetails: expandedOrderDetailsList,
       };
 
+      // Debug: Log full request before sending
+      console.log('🔍 DEBUG: Full orderRequest =', JSON.stringify(orderRequest, null, 2));
+      
       // Log để debug
       // Kiểm tra dữ liệu trước khi gửi
       if (
@@ -254,6 +364,10 @@ export default function CreateOrder() {
 
       if (response && response.success === true) {
         message.success("Đơn hàng đã được tạo thành công");
+        
+        // Scroll to top to show complete success notification
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        
         if (response.data && response.data.id) {
           setCreatedOrder({
             id: response.data.id,
@@ -268,7 +382,24 @@ export default function CreateOrder() {
       }
     } catch (error: any) {
       console.error("Error creating order:", error);
-      message.error(error.message || "Có lỗi xảy ra khi tạo đơn hàng");
+      
+      // Scroll to first validation error if it's a form validation error
+      if (error.errorFields && error.errorFields.length > 0) {
+        const firstErrorField = error.errorFields[0];
+        console.log('🔍 Submit validation - Scrolling to first error field:', firstErrorField.name);
+        
+        // Use Ant Design's scrollToField method with smooth scrolling
+        form.scrollToField(firstErrorField.name, {
+          behavior: 'smooth',
+          block: 'center',
+          inline: 'nearest'
+        });
+        
+        // Remove additional message since Ant Design already shows error under input
+      } else {
+        // For other types of errors (API errors, etc.)
+        message.error(error.message || "Có lỗi xảy ra khi tạo đơn hàng");
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -282,6 +413,7 @@ export default function CreateOrder() {
           <OrderCreationSuccess
             orderId={createdOrder.id}
             orderCode={createdOrder.orderCode}
+            onCreateAnother={handleRetry}
           />
         </Card>
       </div>
@@ -334,19 +466,33 @@ export default function CreateOrder() {
 
     switch (currentStep) {
       case 0:
+        // Tính tổng giá trị khai báo từ danh sách kiện hàng
+        const orderDetailsList = form.getFieldValue("orderDetailsList") || [];
+        const totalDeclaredValue = orderDetailsList.reduce((sum: number, item: any) => {
+          const quantity = item?.quantity || 1;
+          const declaredValue = item?.declaredValue || 0;
+          return sum + (declaredValue * quantity);
+        }, 0);
+        
         return (
-          <OrderDetailFormList
-            name="orderDetailsList"
-            label="Danh sách kiện hàng"
-            orderSizes={orderSizes}
-            units={units}
-            form={form}
-          />
+          <>
+            <OrderDetailFormList
+              name="orderDetailsList"
+              label="Danh sách kiện hàng"
+              categories={categories}
+              orderSizes={orderSizes}
+              units={units}
+              form={form}
+            />
+            <InsuranceSelectionCard
+              totalDeclaredValue={totalDeclaredValue}
+              categoryName={categories.find(c => c.id === form.getFieldValue('categoryId'))?.categoryName}
+            />
+          </>
         );
       case 1:
         return (
           <ReceiverAndAddressStep
-            categories={categories}
             addresses={addresses}
             onReceiverDetailsLoaded={handleReceiverDetailsLoaded}
             onAddressesUpdated={refreshAddresses}

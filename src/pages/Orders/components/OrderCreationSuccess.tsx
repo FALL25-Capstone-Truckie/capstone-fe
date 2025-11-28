@@ -6,9 +6,10 @@ import { CheckCircleFilled } from '@ant-design/icons';
 interface OrderCreationSuccessProps {
     orderId: string;
     orderCode?: string;
+    onCreateAnother?: () => void;
 }
 
-const OrderCreationSuccess: React.FC<OrderCreationSuccessProps> = ({ orderId, orderCode }) => {
+const OrderCreationSuccess: React.FC<OrderCreationSuccessProps> = ({ orderId, orderCode, onCreateAnother }) => {
     return (
         <Result
             icon={<CheckCircleFilled className="text-green-500 text-6xl" />}
@@ -30,14 +31,16 @@ const OrderCreationSuccess: React.FC<OrderCreationSuccessProps> = ({ orderId, or
                         Xem danh sách đơn hàng
                     </Button>
                 </Link>,
-                <Link to="/orders/create" key="create-another">
-                    <Button type="link">
-                        Tạo đơn hàng khác
-                    </Button>
-                </Link>
+                <Button 
+                    type="link" 
+                    key="create-another"
+                    onClick={onCreateAnother}
+                >
+                    Tạo đơn hàng khác
+                </Button>
             ]}
         />
     );
 };
 
-export default OrderCreationSuccess; 
+export default OrderCreationSuccess;

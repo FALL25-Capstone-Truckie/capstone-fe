@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Modal, Spin, Alert, Space, Typography } from 'antd';
+import { Modal, Spin, Alert, Space, Typography, Skeleton } from 'antd';
 import { EnvironmentOutlined, HomeOutlined } from '@ant-design/icons';
 import vietmapService from '@/services/vietmap/vietmapService';
 
@@ -75,8 +75,9 @@ const LocationMapModal: React.FC<LocationMapModalProps> = ({
         >
             {/* Location Info Card */}
             {loading ? (
-                <div style={{ textAlign: 'center', padding: '20px' }}>
-                    <Spin tip="Đang tải thông tin địa chỉ..." />
+                <div style={{ padding: '20px' }}>
+                    <Skeleton active paragraph={{ rows: 3 }} />
+                    <div className="text-center text-gray-600">Đang tải thông tin địa chỉ...</div>
                 </div>
             ) : error ? (
                 <Alert

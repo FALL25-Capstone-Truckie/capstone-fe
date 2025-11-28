@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef, useMemo } from 'react';
-import { Button, Card, Spin, Typography, App, Tooltip, Tag, Row, Col, Divider, Space, Badge, Modal, InputNumber, Alert } from 'antd';
+import { Button, Card, Spin, Typography, App, Tooltip, Tag, Row, Col, Divider, Space, Badge, Modal, InputNumber, Alert, Skeleton } from 'antd';
 import routeService from '@/services/route';
 import issueService from '@/services/issue';
 import type { RoutePoint, RouteSegment, SuggestRouteRequest, RouteInfoFromAPI } from '@/models/RoutePoint';
@@ -570,10 +570,10 @@ const ReturnRoutePlanning: React.FC<ReturnRoutePlanningProps> = ({
 
     if (loading) {
         return (
-            <div className="text-center py-8">
-                <Spin size="large" />
-                <div className="mt-4 text-gray-600">Đang tạo lộ trình trả hàng...</div>
-            </div>
+            <Card>
+                <Skeleton active paragraph={{ rows: 8 }} />
+                <div className="text-center text-gray-600 mt-4">Đang tạo lộ trình trả hàng...</div>
+            </Card>
         );
     }
 

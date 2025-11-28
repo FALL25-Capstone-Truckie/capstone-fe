@@ -13,6 +13,7 @@ import {
     Row,
     Col,
     Badge,
+    Skeleton,
     Tooltip,
     Modal,
     App
@@ -917,9 +918,10 @@ const RerouteDetail: React.FC<RerouteDetailProps> = ({ issue, onUpdate }) => {
 
     if (loading) {
         return (
-            <div style={{ textAlign: 'center', padding: '50px' }}>
-                <Spin size="large" tip="Đang tải chi tiết tái định tuyến..." />
-            </div>
+            <Card>
+                <Skeleton active paragraph={{ rows: 10 }} />
+                <div className="text-center text-gray-600 mt-4">Đang tải chi tiết tái định tuyến...</div>
+            </Card>
         );
     }
 

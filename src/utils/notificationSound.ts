@@ -18,6 +18,7 @@ export enum NotificationSoundType {
   PAYMENT_SUCCESS = 'payment',
   NEW_ISSUE = 'issue',
   SEAL_CONFIRM = 'seal',
+  URGENT = 'urgent',
 }
 
 /**

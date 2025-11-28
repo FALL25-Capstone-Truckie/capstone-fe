@@ -527,8 +527,8 @@ const CustomerContractExportContent: React.FC<CustomerContractExportContentProps
           </p>
           <p>- Phương thức thanh toán: Chuyển khoản</p>
           <p>
-            - Phí bảo hiểm: {contractData.contractSettings.insuranceRate}% giá
-            trị hàng hóa
+            - Phí bảo hiểm: Hàng thông thường {(contractData.contractSettings.insuranceRateNormal || 0.0008) * 100}%, hàng dễ vỡ {(contractData.contractSettings.insuranceRateFragile || 0.0015) * 100}% giá
+            trị hàng hóa (đã bao gồm 10% VAT)
           </p>
           {adjustedValue > 0 && (
             <p style={{ fontWeight: "bold" }}>

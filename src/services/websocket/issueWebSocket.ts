@@ -1,6 +1,6 @@
 import { Client, type IMessage } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
-import { API_BASE_URL, AUTH_ACCESS_TOKEN_KEY } from '@/config/env';
+import { API_BASE_URL } from '@/config/env';
 
 type IssueUpdateCallback = (issue: any) => void;
 type UserNotificationCallback = (notification: any) => void;
@@ -17,28 +17,28 @@ class IssueWebSocketService {
      * Connect to WebSocket server
      * @param userId Optional user ID for subscribing to user-specific notifications
      */
-    connect(userId?: string): Promise<void> {
+    async connect(userId?: string): Promise<void> {
         // Store userId for user-specific subscriptions
         if (userId) {
             this.userId = userId;
         }
         
-        return new Promise((resolve, reject) => {
-            if (this.client?.connected) {
-                // If already connected but userId changed, resubscribe
-                if (userId && userId !== this.userId) {
-                    this.userId = userId;
-                    this.setupUserNotificationSubscription();
-                }
-                resolve();
-                return;
+        if (this.client?.connected) {
+            // If already connected but userId changed, resubscribe
+            if (userId && userId !== this.userId) {
+                this.userId = userId;
+                this.setupUserNotificationSubscription();
             }
+            return;
+        }
 
+        // Get JWT token from authService (in-memory storage for security)
+        const authService = await import('../auth/authService').then(module => module.default);
+        const token = authService.getAuthToken();
+
+        return new Promise<void>((resolve, reject) => {
             // Use API_BASE_URL from environment configuration
             const socket = new SockJS(`${API_BASE_URL}/ws`);
-            
-            // Get JWT token for authentication
-            const token = localStorage.getItem(AUTH_ACCESS_TOKEN_KEY);
             
             this.client = new Client({
                 webSocketFactory: () => socket as any,

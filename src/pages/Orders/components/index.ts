@@ -7,3 +7,4 @@ export { default as OrderCreationSuccess } from "./OrderCreationSuccess";
 export { default as SizeWeightExample } from './SizeWeightExample';
 export { default as CustomerOrderDetail } from './CustomerOrderDetail';
 export { default as StipulationModal } from './StipulationModal';
+export { default as InsuranceSelectionCard } from './InsuranceSelectionCard';

@@ -988,13 +988,21 @@ const CustomerOrderDetail: React.FC = () => {
                 contract={contract}
                 orderStatus={order.status}
                 depositAmount={order.depositAmount}
+                hasInsurance={order.hasInsurance}
+                totalInsuranceFee={order.totalInsuranceFee}
+                totalDeclaredValue={order.totalDeclaredValue}
                 onContractSigned={() => {
                   setActiveMainTab("contract");
                 }}
               />
 
               {/* Transaction Information */}
-              <TransactionSection transactions={transactions} />
+              <TransactionSection 
+                transactions={transactions}
+                hasInsurance={order.hasInsurance}
+                totalInsuranceFee={order.totalInsuranceFee}
+                totalDeclaredValue={order.totalDeclaredValue}
+              />
             </div>
           </TabPane>
           

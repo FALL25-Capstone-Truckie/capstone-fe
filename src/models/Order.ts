@@ -398,6 +398,10 @@ export interface CustomerOrderDetail {
   senderPhone: string;
   senderCompanyName: string;
   categoryName: string;
+  categoryDescription?: string; // Category description from backend
+  hasInsurance?: boolean; // Insurance status
+  totalInsuranceFee?: number; // Insurance fee amount
+  totalDeclaredValue?: number; // Total declared value for insurance
   orderDetails: CustomerOrderDetailItem[];
   vehicleAssignments?: CustomerVehicleAssignment[];  // Moved from orderDetail level
 }
@@ -435,6 +439,7 @@ export interface CustomerVehicleAssignment {
       model: string;
       licensePlateNumber: string;
       vehicleType: string;
+      vehicleTypeDescription?: string; // Vehicle type description from backend
     };
     primaryDriver?: {
       id: string;
@@ -535,7 +540,7 @@ export interface CustomerContract {
 export interface CustomerTransaction {
   id: string;
   paymentProvider: string;
-  orderCode: string;
+  gatewayOrderCode: string;
   amount: number;
   currencyCode: string;
   status: string;
@@ -570,6 +575,10 @@ export interface StaffOrderDetail {
   senderRepresentativePhone: string;
   senderCompanyName: string;
   categoryName: string;
+  categoryDescription?: string; // Category description from backend
+  hasInsurance?: boolean; // Insurance status
+  totalInsuranceFee?: number; // Insurance fee amount
+  totalDeclaredValue?: number; // Total declared value for insurance
   orderDetails: StaffOrderDetailItem[];
   vehicleAssignments?: StaffVehicleAssignment[];  // Moved from orderDetail level
 }
@@ -607,6 +616,7 @@ export interface StaffVehicleAssignment {
       model: string;
       licensePlateNumber: string;
       vehicleType: string;
+      vehicleTypeDescription?: string; // Vehicle type description from backend
     };
     primaryDriver?: {
       id: string | null;

@@ -8,7 +8,6 @@ export * from "./Route";
 export * from './RoutePoint';
 export * from "./Penalty";
 export * from "./Map";
-export * from "./Chat";
 export * from "./Driver";
 export * from "./Customer";
 export * from "./Device";

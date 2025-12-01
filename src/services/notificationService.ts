@@ -64,7 +64,7 @@ class NotificationService {
       );
       return response.data;
     } catch (error) {
-      console.warn('⚠️ [NotificationService] Stats endpoint not available');
+      // console.warn('⚠️ [NotificationService] Stats endpoint not available');
       return {
         totalCount: 0,
         unreadCount: 0,
@@ -123,7 +123,7 @@ class NotificationService {
 
     // Prevent multiple simultaneous connection attempts
     if (this.isConnecting) {
-      console.log('⏳ [NotificationService] Connection already in progress...');
+      // console.log('⏳ [NotificationService] Connection already in progress...');
       return;
     }
 
@@ -206,7 +206,7 @@ class NotificationService {
     this.client.subscribe(topic, (message: IMessage) => {
       try {
         const notification: Notification = JSON.parse(message.body);
-        console.log('📬 [NotificationService] Received notification:', notification.notificationType);
+        // console.log('📬 [NotificationService] Received notification:', notification.notificationType);
         
         // Notify all registered callbacks
         this.notificationCallbacks.forEach(callback => {
@@ -221,7 +221,7 @@ class NotificationService {
       }
     });
 
-    console.log(`✅ [NotificationService] Subscribed to ${topic}`);
+    // console.log(`✅ [NotificationService] Subscribed to ${topic}`);
   }
 
   /**
@@ -253,7 +253,7 @@ class NotificationService {
    */
   subscribe(callback: NotificationCallback): () => void {
     this.notificationCallbacks.push(callback);
-    console.log(`📝 [NotificationService] Callback registered (total: ${this.notificationCallbacks.length})`);
+    // console.log(`📝 [NotificationService] Callback registered (total: ${this.notificationCallbacks.length})`);
 
     // Return unsubscribe function
     return () => {

@@ -677,6 +677,42 @@ const orderService = {
       throw handleApiError(error, "Không thể hủy đơn hàng");
     }
   },
+
+  /**
+   * Staff cancel an order with a specific reason
+   * Only allowed for orders with status PROCESSING
+   * @param orderId Order ID to cancel
+   * @param cancellationReason Reason for cancellation
+   * @returns Promise with response data
+   */
+  staffCancelOrder: async (orderId: string, cancellationReason: string): Promise<any> => {
+    try {
+      const response = await httpClient.put(
+        `/orders/${orderId}/staff-cancel`,
+        { cancellationReason }
+      );
+      return response.data;
+    } catch (error) {
+      console.error(`Error staff cancelling order ${orderId}:`, error);
+      throw handleApiError(error, "Không thể hủy đơn hàng");
+    }
+  },
+
+  /**
+   * Get list of cancellation reasons for staff
+   * @returns Promise with list of cancellation reasons
+   */
+  getStaffCancellationReasons: async (): Promise<string[]> => {
+    try {
+      const response = await httpClient.get<{ data: string[] }>(
+        `/orders/cancellation-reasons/staff`
+      );
+      return response.data.data;
+    } catch (error) {
+      console.error("Error fetching staff cancellation reasons:", error);
+      throw handleApiError(error, "Không thể tải danh sách lý do hủy");
+    }
+  },
 };
 
 export default orderService;

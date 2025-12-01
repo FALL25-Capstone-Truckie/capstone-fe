@@ -151,7 +151,7 @@ const Header: React.FC = () => {
                     <div className="flex items-center h-10 space-x-3">
                       {/* Staff Issue Queue Badge */}
                       {user.role === 'staff' && (() => {
-                        console.log('🔍 DEBUG: Rendering NotificationQueueBadge for staff');
+                        // console.log('🔍 DEBUG: Rendering NotificationQueueBadge for staff');
                         return <NotificationQueueBadge />;
                       })()}
                       {/* General Notification Bell */}

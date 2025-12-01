@@ -51,12 +51,12 @@ const AdminHeader: React.FC = () => {
 
             <div className="flex items-center gap-4">
                 {user && (() => {
-                    console.log('🔍 DEBUG: AdminHeader rendering - user role:', user.role);
+                    // console.log('🔍 DEBUG: AdminHeader rendering - user role:', user.role);
                     return (
                         <>
                             {/* Staff Issue Queue Badge */}
                             {user.role === 'staff' && (() => {
-                                console.log('🔍 DEBUG: Rendering NotificationQueueBadge for staff');
+                                // console.log('🔍 DEBUG: Rendering NotificationQueueBadge for staff');
                                 return <NotificationQueueBadge />;
                             })()}
                             {/* General Notification Bell */}

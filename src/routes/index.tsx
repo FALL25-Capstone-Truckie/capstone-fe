@@ -6,7 +6,6 @@ import Dashboard from "../pages/Dashboard";
 import AdminDashboard from "../pages/Dashboard/components/AdminDashboard";
 import StaffDashboard from "../pages/Dashboard/components/StaffDashboard";
 import PenaltyHistory from "../pages/Staff/PenaltyHistory";
-import CustomerSupport from "../pages/Staff/CustomerSupport";
 import ProfilePage from "../pages/Profile";
 import { OrderList as StaffOrderList } from "../pages/Staff/Order";
 import { IssueList, IssueDetail } from "../pages/Staff/Issue";
@@ -236,10 +235,6 @@ const router = createBrowserRouter([
           {
             path: "penalties",
             element: <PenaltyHistory />,
-          },
-          {
-            path: "customer-support",
-            element: <CustomerSupport />,
           },
           {
             path: "orders",

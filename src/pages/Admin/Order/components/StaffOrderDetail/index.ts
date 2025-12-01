@@ -5,3 +5,4 @@ export { default as ContractAndPaymentTab } from './ContractAndPaymentTab';
 export { default as AdditionalNavTabs } from './AdditionalNavTabs';
 export { default as RouteMapSection } from './RouteMapSection';
 export { default as VehicleAssignmentSection } from './VehicleAssignmentSection';
+export { default as CancelOrderModal } from './CancelOrderModal';

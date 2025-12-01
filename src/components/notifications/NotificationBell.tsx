@@ -28,7 +28,7 @@ const NotificationBell: React.FC<NotificationBellProps> = ({ userId, userRole })
         // Register callbacks
         notificationManager.register(componentId.current, {
           onNewNotification: (notification) => {
-            console.log('🔔 [NotificationBell] New notification received:', notification);
+            // console.log('🔔 [NotificationBell] New notification received:', notification);
             
             // Play sound and show animation
             playNotificationSound(NotificationSoundType.INFO);
@@ -38,7 +38,7 @@ const NotificationBell: React.FC<NotificationBellProps> = ({ userId, userRole })
             // Immediately increment badge count for instant UI feedback
             setUnreadCount(prev => {
               const newCount = prev + 1;
-              console.log('🔔 [NotificationBell] Badge count incremented:', prev, '→', newCount);
+              // console.log('🔔 [NotificationBell] Badge count incremented:', prev, '→', newCount);
               return newCount;
             });
             
@@ -46,7 +46,7 @@ const NotificationBell: React.FC<NotificationBellProps> = ({ userId, userRole })
             setRefreshTrigger(prev => prev + 1);
           },
           onStatsUpdate: (stats) => {
-            console.log('🔔 [NotificationBell] Stats updated from server:', stats);
+            // console.log('🔔 [NotificationBell] Stats updated from server:', stats);
             setUnreadCount(stats.unreadCount);
           },
           onListUpdate: () => {
@@ -60,7 +60,7 @@ const NotificationBell: React.FC<NotificationBellProps> = ({ userId, userRole })
         
         // Play animation on initial load if there are unread notifications
         if (stats.unreadCount > 0) {
-          console.log('🔔 [NotificationBell] Initial load: ' + stats.unreadCount + ' unread notifications');
+          // console.log('🔔 [NotificationBell] Initial load: ' + stats.unreadCount + ' unread notifications');
           setHasNewNotification(true);
           setTimeout(() => setHasNewNotification(false), 3000);
         }
@@ -74,7 +74,7 @@ const NotificationBell: React.FC<NotificationBellProps> = ({ userId, userRole })
     initializeNotifications();
 
     return () => {
-      console.log('🔔 [NotificationBell] Cleanup: unregistering...');
+      // console.log('🔔 [NotificationBell] Cleanup: unregistering...');
       notificationManager.unregister(componentId.current);
     };
   }, [userId, userRole]);

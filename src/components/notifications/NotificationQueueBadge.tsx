@@ -17,13 +17,13 @@ const NotificationQueueBadge: React.FC = () => {
     getHighPriorityCount 
   } = useIssuesContext();
 
-  console.log('🔍 DEBUG: NotificationQueueBadge rendering');
-  console.log('🔍 DEBUG: queuedIssues count:', queuedIssues.length);
+  // console.log('🔍 DEBUG: NotificationQueueBadge rendering');
+  // console.log('🔍 DEBUG: queuedIssues count:', queuedIssues.length);
 
   const totalCount = getQueueCount();
   const highPriorityCount = getHighPriorityCount();
 
-  console.log('🔍 DEBUG: totalCount:', totalCount, 'highPriorityCount:', highPriorityCount);
+  // console.log('🔍 DEBUG: totalCount:', totalCount, 'highPriorityCount:', highPriorityCount);
 
   // TEMP: Always show badge for staff users to verify integration
   // Don't show badge if no issues in queue

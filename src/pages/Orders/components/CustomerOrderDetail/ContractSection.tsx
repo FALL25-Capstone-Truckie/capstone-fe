@@ -20,6 +20,7 @@ import {
   InfoCircleOutlined,
 } from "@ant-design/icons";
 import { ContractStatusTag } from "../../../../components/common/tags";
+import InsuranceInfo from "../../../../components/common/InsuranceInfo";
 import { ContractStatusEnum, OrderStatusEnum } from "../../../../constants/enums";
 import { useRefreshOrderDetail, useContractOperations } from "../../../../hooks";
 import type { PriceDetails } from "../../../../services/contract/contractTypes";
@@ -53,6 +54,10 @@ interface ContractProps {
   priceDetails?: PriceDetails;
   loadingPriceDetails?: boolean;
   onContractSigned?: () => void;
+  // Insurance fields
+  hasInsurance?: boolean;
+  totalInsuranceFee?: number;
+  totalDeclaredValue?: number;
 }
 
 const ContractSection: React.FC<ContractProps> = ({
@@ -62,6 +67,9 @@ const ContractSection: React.FC<ContractProps> = ({
   priceDetails,
   loadingPriceDetails = false,
   onContractSigned,
+  hasInsurance,
+  totalInsuranceFee,
+  totalDeclaredValue,
 }) => {
   const messageApi = App.useApp().message;
   const [contractSettings, setContractSettings] = useState<ContractSettings | null>(null);
@@ -201,7 +209,8 @@ const ContractSection: React.FC<ContractProps> = ({
 
 
   return (
-    <Card
+    <>
+      <Card
       title={
         <div className="flex items-center">
           <FileTextOutlined className="mr-2 text-blue-500" />
@@ -650,6 +659,14 @@ const ContractSection: React.FC<ContractProps> = ({
         <Empty description="Không có thông tin hợp đồng" />
       )}
     </Card>
+    
+    {/* Insurance Information */}
+    <InsuranceInfo
+      hasInsurance={hasInsurance}
+      totalInsuranceFee={totalInsuranceFee}
+      totalDeclaredValue={totalDeclaredValue}
+    />
+    </>
   );
 };
 

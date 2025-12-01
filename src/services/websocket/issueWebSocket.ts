@@ -12,6 +12,8 @@ class IssueWebSocketService {
     private reconnectAttempts = 0;
     private reconnectDelay = 5000; // 5 giây
     private userId: string | null = null;
+    private isConnecting: boolean = false;
+    private pendingSubscriptions: (() => void)[] = [];
 
     /**
      * Connect to WebSocket server
@@ -31,6 +33,13 @@ class IssueWebSocketService {
             }
             return;
         }
+
+        if (this.isConnecting) {
+            console.log('🔄 [IssueWebSocket] Connection already in progress, waiting...');
+            return;
+        }
+
+        this.isConnecting = true;
 
         // Get JWT token from authService (in-memory storage for security)
         const authService = await import('../auth/authService').then(module => module.default);
@@ -54,12 +63,19 @@ class IssueWebSocketService {
 
             this.client.onConnect = () => {
                 this.reconnectAttempts = 0;
+                this.isConnecting = false;
+                console.log('✅ [IssueWebSocket] Connected successfully');
+                
+                // Execute all pending subscriptions
                 this.subscribeToIssueUpdates();
+                this.processPendingSubscriptions();
+                
                 resolve();
             };
 
             this.client.onStompError = (frame) => {
                 console.error('❌ [IssueWebSocket] STOMP error:', frame);
+                this.isConnecting = false;
                 reject(new Error(frame.headers['message']));
             };
 
@@ -70,6 +86,29 @@ class IssueWebSocketService {
 
             this.client.activate();
         });
+    }
+
+    /**
+     * Process pending subscriptions after connection
+     */
+    private processPendingSubscriptions() {
+        const pending = [...this.pendingSubscriptions];
+        this.pendingSubscriptions = [];
+        
+        pending.forEach(subscription => {
+            try {
+                subscription();
+            } catch (error) {
+                console.error('❌ [IssueWebSocket] Error processing pending subscription:', error);
+            }
+        });
+    }
+
+    /**
+     * Queue a subscription to be processed when connected
+     */
+    private queueSubscription(subscription: () => void) {
+        this.pendingSubscriptions.push(subscription);
     }
 
     /**
@@ -95,11 +134,17 @@ class IssueWebSocketService {
     }
 
     /**
-     * Setup user-specific notification subscription (internal)
+     * Setup user-specific notification subscription ( internal)
      */
     private setupUserNotificationSubscription() {
         if (!this.client?.connected) {
-            console.warn('⚠️ [IssueWebSocket] Cannot subscribe to user notifications - not connected');
+            console.warn('⚠️ [IssueWebSocket] Cannot subscribe to user notifications - not connected, queuing for later');
+            // Queue the subscription for when connection is ready
+            if (this.userId) {
+                this.queueSubscription(() => {
+                    this.setupUserNotificationSubscription();
+                });
+            }
             return;
         }
         
@@ -227,7 +272,7 @@ class IssueWebSocketService {
      */
     private handleReconnect() {
         this.reconnectAttempts++;
-        
+        this.isConnecting = false; // Reset connection state
         
         // Exponential backoff with max 30 seconds
         const delay = Math.min(this.reconnectDelay * Math.min(this.reconnectAttempts, 6), 30000);
@@ -249,6 +294,11 @@ class IssueWebSocketService {
             this.client = null;
             this.subscribers.clear();
         }
+        
+        // Clear connection state and pending subscriptions
+        this.isConnecting = false;
+        this.pendingSubscriptions = [];
+        this.userId = null;
     }
 
     /**

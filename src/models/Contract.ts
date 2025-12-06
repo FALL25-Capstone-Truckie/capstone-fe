@@ -31,8 +31,14 @@ export interface ContractSettings {
   id: string;
   depositPercent: number;
   expiredDepositDate: number;
-  insuranceRate: number;
-  vatRate: number;
+  // Legacy flat insurance rate (deprecated, use insuranceRateNormal/insuranceRateFragile instead if available)
+  insuranceRate?: number;
+  // New detailed insurance & timing fields
+  insuranceRateNormal?: number;    // Tỷ lệ BH hàng thường (0.08%)
+  insuranceRateFragile?: number;   // Tỷ lệ BH hàng dễ vỡ (0.15%)
+  vatRate?: number;                // Tỷ lệ VAT (10%)
+  depositDeadlineHours?: number;   // Hạn thanh toán cọc (số giờ)
+  signingDeadlineHours?: number;   // Hạn ký hợp đồng (số giờ)
 }
 
 export interface ContractSettingsResponse {

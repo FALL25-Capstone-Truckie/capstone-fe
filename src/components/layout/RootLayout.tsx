@@ -16,7 +16,8 @@ const RootLayout: React.FC = () => {
   useLogoutListener();
   
   const { user } = useAuth();
-  const isStaff = user?.role === 'staff' || user?.role === 'admin';
+  const isStaff = user?.role === 'staff';
+  const isAdmin = user?.role === 'admin';
   
   // State to manage which chat is open
   const [isNormalChatOpen, setIsNormalChatOpen] = useState(false);
@@ -49,24 +50,24 @@ const RootLayout: React.FC = () => {
   return (
     <IssuesProvider>
       <Outlet />
-      {/* Chat Widgets - Staff or Customer/Guest */}
-      {isStaff ? (
-        <StaffUserChatWidget />
-      ) : (
-        <>
-          {/* Customer Chat Widget */}
-          <CustomerChatWidget 
-            isOpen={isNormalChatOpen}
-            onClose={handleNormalChatClose}
-            onOpen={handleNormalChatOpen}
-          />
-          {/* AI Chatbot for Customer/Guest */}
-          <AIChatbot 
-            isOpen={isAIChatOpen}
-            onClose={handleAIChatClose}
-            onOpen={handleAIChatOpen}
-          />
-        </>
+      {/* Chat Widgets - Ẩn hoàn toàn với admin, chỉ hiển thị cho staff hoặc customer/guest */}
+      {!isAdmin && (
+        isStaff ? (
+          <StaffUserChatWidget />
+        ) : (
+          <>
+            <CustomerChatWidget 
+              isOpen={isNormalChatOpen}
+              onClose={handleNormalChatClose}
+              onOpen={handleNormalChatOpen}
+            />
+            <AIChatbot 
+              isOpen={isAIChatOpen}
+              onClose={handleAIChatClose}
+              onOpen={handleAIChatOpen}
+            />
+          </>
+        )
       )}
     </IssuesProvider>
   );

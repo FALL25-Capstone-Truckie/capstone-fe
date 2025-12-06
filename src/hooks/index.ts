@@ -24,3 +24,5 @@ export { useProfileManagement } from './useProfileManagement';
 export { usePaymentWebhook } from './usePaymentWebhook';
 export { useContractOperations } from './useContractOperations';
 export { useStaffContractOperations } from './useStaffContractOperations';
+export { useCarrierSettings } from './useCarrierSettings';
+export { useInsuranceRates } from './useInsuranceRates';

@@ -12,7 +12,6 @@ export * from './UserStatusEnum';
 export * from './VehicleAssignmentEnum';
 export * from './VehicleAssignmentStatusEnum';
 export * from './VehicleStatusEnum';
-export * from './WeightUnitEnum';
 export * from './PenaltyStatusEnum';
 export * from './ConversationStatusEnum';
 export * from './CommonStatusEnum';

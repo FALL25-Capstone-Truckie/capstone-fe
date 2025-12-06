@@ -21,6 +21,7 @@ import { CategoryName, getCategoryDisplayName, isFragileCategory } from "../../.
 import { formatCurrency } from "../../../../utils/formatters";
 import { convertWeightToTons, type WeightUnit } from "../../../../utils/weightUtils";
 import dayjs from "dayjs";
+import { useInsuranceRates } from "../../../../hooks";
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -168,6 +169,7 @@ const OrderSummaryStep: React.FC<OrderSummaryStepProps> = ({
   const totalWeightDisplay = formatTotalWeight();
 
   // Tính toán thông tin bảo hiểm
+  const { rates, normalRatePercent, fragileRatePercent } = useInsuranceRates();
   const calculateInsuranceInfo = () => {
     if (!formValues.hasInsurance || !totals.totalDeclaredValue || totals.totalDeclaredValue <= 0) {
       return {
@@ -180,7 +182,7 @@ const OrderSummaryStep: React.FC<OrderSummaryStepProps> = ({
 
     const selectedCategory = categories.find((c) => c.id === formValues.categoryId);
     const isFragile = selectedCategory ? isFragileCategory(selectedCategory.categoryName) : false;
-    const insuranceRate = isFragile ? 0.00165 : 0.00088; // Đã bao gồm VAT 10%
+    const insuranceRate = isFragile ? rates.fragileRate : rates.normalRate; // Đã bao gồm VAT 10%
     const totalFee = totals.totalDeclaredValue * insuranceRate;
 
     return {
@@ -467,7 +469,9 @@ const OrderSummaryStep: React.FC<OrderSummaryStepProps> = ({
                     {formatCurrency(insuranceInfo.totalFee)}
                   </Text>
                   <Text className="block text-xs text-blue-600 mt-1">
-                    {insuranceInfo.isFragile ? "0.165% (Hàng dễ vỡ)" : "0.088% (Hàng thường)"} - Đã bao gồm VAT
+                    {insuranceInfo.isFragile
+                      ? `${fragileRatePercent.toFixed(3)}% (Hàng dễ vỡ)`
+                      : `${normalRatePercent.toFixed(3)}% (Hàng thường)`} - Đã bao gồm VAT
                   </Text>
                 </div>
 

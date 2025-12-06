@@ -4,8 +4,7 @@ import { LoginPage, RegisterPage } from "../pages/Auth";
 import { PaymentReturn } from "../pages/Payment";
 import RecipientOrderTracking from "../pages/RecipientTracking";
 import Dashboard from "../pages/Dashboard";
-import AdminDashboard from "../pages/Dashboard/components/AdminDashboard";
-import StaffDashboard from "../pages/Dashboard/components/StaffDashboard";
+import AdminDashboard from "../pages/Admin/Dashboard";
 import PenaltyHistory from "../pages/Staff/PenaltyHistory";
 import ProfilePage from "../pages/Profile";
 import { OrderList as StaffOrderList } from "../pages/Staff/Order";
@@ -44,6 +43,12 @@ import StaffVehicleAssignmentPage from "../pages/Staff/VehicleAssignment";
 import StaffVehicleAssignmentDetailPage from "../pages/Staff/VehicleAssignment/VehicleAssignmentDetail";
 import SizeRulePage from "../pages/Admin/SizeRule";
 import StipulationSettings from "../pages/Staff/StipulationSettings";
+import PricingInfoPage from "../pages/PricingInfo";
+import TransactionListPage from "../pages/Staff/Transaction";
+import ContractListPage from "../pages/Staff/Contract";
+import ContractDetailPage from "../pages/Staff/Contract/ContractDetail";
+import RefundListPage from "../pages/Staff/Refund";
+import AdminSettingsPage from "../pages/Admin/Settings";
 
 // Định nghĩa các route với bảo vệ dựa trên vai trò và trạng thái xác thực
 const router = createBrowserRouter([
@@ -214,6 +219,23 @@ const router = createBrowserRouter([
             path: "tracking",
             element: <RecipientOrderTracking />,
           },
+          {
+            path: "pricing-info",
+            element: (
+              <PermissionRoute
+                authenticationRequired="any"
+                allowedRoles={["customer"]}
+                roleRedirectPath={(auth) => {
+                  if (auth?.user?.role === "admin") return "/admin/dashboard";
+                  if (auth?.user?.role === "staff") return "/staff/dashboard";
+                  if (auth?.user?.role === "driver") return "/driver/dashboard";
+                  return "/pricing-info";
+                }}
+              >
+                <PricingInfoPage />
+              </PermissionRoute>
+            ),
+          },
         ],
       },
 
@@ -235,7 +257,7 @@ const router = createBrowserRouter([
         children: [
           {
             path: "dashboard",
-            element: <StaffDashboard />,
+            element: <Dashboard />,
           },
           {
             path: "penalties",
@@ -269,13 +291,65 @@ const router = createBrowserRouter([
             path: "stipulation-settings",
             element: <StipulationSettings />,
           },
+          // Staff: Quản lý phương tiện
           {
-            path: "deliveries",
-            element: <div>Quản lý vận chuyển</div>, // Thay thế bằng component thực tế
+            path: "vehicles",
+            element: <VehiclePage />,
           },
           {
-            path: "customers",
-            element: <div>Quản lý khách hàng</div>, // Thay thế bằng component thực tế
+            path: "vehicles/:id",
+            element: <VehicleDetailPage />,
+          },
+          // Staff: Quản lý bảo trì
+          {
+            path: "vehicle-maintenances",
+            element: <VehicleMaintenancePage />,
+          },
+          {
+            path: "vehicle-maintenances/:id",
+            element: <VehicleMaintenanceDetail />,
+          },
+          {
+            path: "vehicle-maintenances/create",
+            element: <CreateMaintenance />,
+          },
+          {
+            path: "vehicle-maintenances/edit/:id",
+            element: <EditMaintenance />,
+          },
+          // Staff: Quản lý thiết bị
+          {
+            path: "devices",
+            element: <DeviceManagement />,
+          },
+          // Staff: Quản lý bảng giá
+          {
+            path: "vehicle-rules",
+            element: <SizeRulePage />,
+          },
+          // Staff: Quản lý loại hàng
+          {
+            path: "categories",
+            element: <CategoryManagement />,
+          },
+          // Staff: Quản lý hợp đồng
+          {
+            path: "contracts",
+            element: <ContractListPage />,
+          },
+          {
+            path: "contracts/:id",
+            element: <ContractDetailPage />,
+          },
+          // Staff: Quản lý giao dịch
+          {
+            path: "transactions",
+            element: <TransactionListPage />,
+          },
+          // Staff: Quản lý hoàn tiền
+          {
+            path: "refunds",
+            element: <RefundListPage />,
           },
           {
             path: "reports",
@@ -315,18 +389,6 @@ const router = createBrowserRouter([
           {
             path: "dashboard",
             element: <AdminDashboard />,
-          },
-          {
-            path: "orders",
-            element: <AdminOrderList />,
-          },
-          {
-            path: "orders/:id",
-            element: <StaffOrderDetailPage />,
-          },
-          {
-            path: "orders/:id/edit",
-            element: <AdminOrderEdit />,
           },
           {
             path: "drivers",
@@ -406,7 +468,7 @@ const router = createBrowserRouter([
           },
           {
             path: "settings",
-            element: <div>Cài đặt hệ thống</div>, // Thay thế bằng component thực tế
+            element: <AdminSettingsPage />,
           },
           {
             path: "profile",

@@ -372,12 +372,12 @@ export const useUserChat = (options: UseUserChatOptions): UseUserChatReturn => {
 
   // Reset conversation when user type or user ID changes (login/logout)
   useEffect(() => {
-    console.log('useUserChat: User identity changed, resetting conversation', {
-      userType,
-      userId,
-      guestSessionId,
-      hasConversation: !!conversation
-    });
+    // console.log('useUserChat: User identity changed, resetting conversation', {
+    //   userType,
+    //   userId,
+    //   guestSessionId,
+    //   hasConversation: !!conversation
+    // });
     
     // Disconnect existing WebSocket
     if (stompClientRef.current) {

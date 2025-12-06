@@ -6,6 +6,7 @@ import type { OrderSize } from "../../../models/OrderSize";
 import type { Category } from "../../../models/Category";
 import { CategoryName, getCategoryDisplayName, isFragileCategory } from "../../../models/CategoryName";
 import { convertWeightToTons, getWeightValidation, getWeightRangeLabel, calculateTotalWeight, type WeightUnit } from "../../../utils/weightUtils";
+import { getWeightUnits } from "../../../config/weightUnits";
 
 const { Text } = Typography;
 
@@ -14,7 +15,6 @@ interface OrderDetailFormListProps {
   label?: string;
   categories: Category[];
   orderSizes: OrderSize[];
-  units: string[];
   form?: FormInstance;
 }
 
@@ -23,7 +23,6 @@ const OrderDetailFormList: React.FC<OrderDetailFormListProps> = ({
   label = "Danh sách kiện hàng",
   categories,
   orderSizes,
-  units = [], // Empty default array, will be populated from API
   form,
 }) => {
   // Watch all order details to calculate total weight in real-time
@@ -37,12 +36,8 @@ const OrderDetailFormList: React.FC<OrderDetailFormListProps> = ({
   const isOverMax = totalWeight > 50;
   const isValid = totalWeight >= 0.01 && totalWeight <= 50;
 
-  // Convert units array to the format needed for Select component
-  // console.log('[DEBUG] Available units in OrderDetailFormList:', units);
-  const weightUnits = units.map((unit) => ({
-    value: unit,
-    label: unit === "Kí" ? "Kilogram" : unit,
-  }));
+  // Use weight units from configuration instead of props
+  const weightUnits = getWeightUnits();
 
   return (
     <>
@@ -234,7 +229,7 @@ const OrderDetailFormList: React.FC<OrderDetailFormListProps> = ({
                               message: "Vui lòng chọn đơn vị!",
                             },
                           ]}
-                          initialValue={units.length > 0 ? units[0] : "Tấn"}
+                          initialValue={weightUnits.length > 0 ? weightUnits[0].value : "Tấn"}
                           style={{ marginBottom: 16 }}
                         >
                           <Select placeholder="Chọn đơn vị">

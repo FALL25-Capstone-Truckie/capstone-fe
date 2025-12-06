@@ -55,6 +55,7 @@ export interface CreateVehicleAssignmentForDetailsRequest {
 
 export interface VehicleAssignment {
     id: string;
+    trackingCode?: string;
     vehicleId: string;
     driver_id_1: string;
     driver_id_2?: string;

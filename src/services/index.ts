@@ -13,6 +13,7 @@ import orderSizeService from "./order-size";
 import * as customerService from "./customer";
 import { default as vehicleService } from './vehicle';
 import { transactionService } from './transaction';
+import { dashboardService } from './dashboard';
 
 // Export types
 export * from "./api/types";
@@ -40,5 +41,9 @@ export {
   orderSizeService,
   customerService,
   vehicleService,
-  transactionService
+  transactionService,
+  dashboardService
 };
+
+// Export dashboard types
+export * from './dashboard';

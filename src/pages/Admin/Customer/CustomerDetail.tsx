@@ -88,8 +88,16 @@ const CustomerDetail: React.FC = () => {
     }, [userData, id]);
 
     const updateStatusMutation = useMutation({
-        mutationFn: ({ id, status }: { id: string; status: string }) => userService.updateUserStatus(id, status),
-        onSuccess: () => {
+        mutationFn: ({ status }: { status: string }) => {
+            if (!customerData) {
+                throw new Error('Customer data not loaded');
+            }
+            return customerService.updateCustomerStatus(customerData.id, status);
+        },
+        onSuccess: (updatedCustomer: Customer) => {
+            // Cập nhật lại state local để UI phản ánh ngay trạng thái mới
+            setCustomerData(updatedCustomer);
+
             message.success('Cập nhật trạng thái khách hàng thành công');
             queryClient.invalidateQueries({ queryKey: ['user', id] });
             queryClient.invalidateQueries({ queryKey: ['customers'] });
@@ -100,15 +108,16 @@ const CustomerDetail: React.FC = () => {
     });
 
     const handleStatusChange = (newStatus: string) => {
-        if (id) {
-            updateStatusMutation.mutate({ id, status: newStatus });
-        }
+        updateStatusMutation.mutate({ status: newStatus });
     };
 
     const getStatusColor = (status: string) => {
         switch (status?.toLowerCase()) {
             case 'active':
                 return 'green';
+            case 'inactive':
+                return 'default';
+
             case 'banned':
                 return 'red';
             default:
@@ -118,9 +127,15 @@ const CustomerDetail: React.FC = () => {
 
     const getStatusText = (status: string) => {
         switch (status?.toLowerCase()) {
-            case 'active': return 'Hoạt động';
-            case 'banned': return 'Bị cấm';
-            default: return status;
+            case 'active':
+                return 'Hoạt động';
+            case 'inactive':
+                return 'Không hoạt động';
+
+            case 'banned':
+                return 'Bị cấm';
+            default:
+                return status;
         }
     };
 
@@ -216,6 +231,8 @@ const CustomerDetail: React.FC = () => {
 
     // Render skeleton loading
     const renderSkeletonLoading = () => {
+        const currentStatus = (customerData?.status || '').toLowerCase();
+
         return (
             <div className="p-6 bg-gray-50 min-h-screen">
                 {/* Breadcrumb skeleton */}
@@ -297,6 +314,8 @@ const CustomerDetail: React.FC = () => {
         );
     }
 
+    const currentStatus = (customerData?.status || userData.status || '').toLowerCase();
+
     return (
         <div className="p-6 bg-gray-50 min-h-screen">
             <div className="mb-4">
@@ -346,7 +365,7 @@ const CustomerDetail: React.FC = () => {
                                 className="mb-4 border-4 border-blue-100"
                             />
                             <Title level={3} className="mb-1">{userData.fullName}</Title>
-                            <UserStatusTag status={userData.status as UserStatusEnum} />
+                            <UserStatusTag status={(currentStatus.toUpperCase() || userData.status) as UserStatusEnum} />
                         </div>
 
                         <Divider className="my-4" />
@@ -400,17 +419,18 @@ const CustomerDetail: React.FC = () => {
                         <Divider className="my-4" />
 
                         <div className="flex justify-center">
-                            {userData.status?.toLowerCase() === 'active' ? (
+                            {currentStatus === 'active' ? (
                                 <Button
                                     danger
                                     icon={<StopOutlined />}
-                                    onClick={() => handleStatusChange('BANNED')}
+                                    onClick={() => handleStatusChange('INACTIVE')}
+
                                     size="large"
                                     className="w-full"
                                     loading={updateStatusMutation.isPending}
                                     disabled={updateStatusMutation.isPending}
                                 >
-                                    {updateStatusMutation.isPending ? 'Đang cập nhật...' : 'Cấm hoạt động'}
+                                    {updateStatusMutation.isPending ? 'Đang cập nhật...' : 'Vô hiệu hóa'}
                                 </Button>
                             ) : (
                                 <Button

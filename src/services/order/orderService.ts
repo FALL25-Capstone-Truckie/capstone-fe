@@ -424,22 +424,6 @@ const orderService = {
   },
 
   /**
-   * Get list of available units
-   * @returns Promise with array of unit strings
-   */
-  getUnitsList: async (): Promise<string[]> => {
-    try {
-      const response = await httpClient.get<UnitsListResponse>(
-        "/orders/list-unit"
-      );
-      return response.data.data;
-    } catch (error) {
-      console.error("Error fetching units list:", error);
-      throw handleApiError(error, "Không thể tải danh sách đơn vị");
-    }
-  },
-
-  /**
    * Get all orders for the current customer
    * @returns Promise with array of customer orders
    */

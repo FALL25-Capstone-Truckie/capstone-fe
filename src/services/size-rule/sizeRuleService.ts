@@ -3,32 +3,32 @@ import type { SizeRule, SizeRuleRequest, UpdateSizeRuleRequest, SizeRuleCategory
 import type { GetSizeRulesResponse, GetSizeRuleResponse, CreateSizeRuleResponse, UpdateSizeRuleResponse } from './types';
 
 const getSizeRules = async (): Promise<SizeRule[]> => {
-    const response = await httpClient.get('/vehicle-type-rules');
+    const response = await httpClient.get('/size-rules');
     return response.data.data;
 };
 
 const getSizeRulesFull = async (): Promise<SizeRule[]> => {
-    const response = await httpClient.get('/vehicle-type-rules/full');
+    const response = await httpClient.get('/size-rules/full');
     return response.data.data;
 };
 
 const getSizeRule = async (id: string): Promise<SizeRule> => {
-    const response = await httpClient.get(`/vehicle-type-rules/${id}`);
+    const response = await httpClient.get(`/size-rules/${id}`);
     return response.data.data;
 };
 
 const createSizeRule = async (sizeRule: SizeRuleRequest): Promise<SizeRule> => {
-    const response = await httpClient.post('/vehicle-type-rules', sizeRule);
+    const response = await httpClient.post('/size-rules', sizeRule);
     return response.data.data;
 };
 
 const updateSizeRule = async (sizeRule: UpdateSizeRuleRequest): Promise<SizeRule> => {
-    const response = await httpClient.put(`/vehicle-type-rules/${sizeRule.id}`, sizeRule);
+    const response = await httpClient.put(`/size-rules/${sizeRule.id}`, sizeRule);
     return response.data.data;
 };
 
 const deleteSizeRule = async (id: string): Promise<void> => {
-    await httpClient.delete(`/vehicle-type-rules/${id}`);
+    await httpClient.delete(`/size-rules/${id}`);
 };
 
 // Lấy danh sách khoảng cách
@@ -56,13 +56,13 @@ const deleteBasingPrice = async (id: string): Promise<void> => {
 
 // Lấy danh sách loại hàng
 const getCategories = async (): Promise<SizeRuleCategory[]> => {
-    const response = await httpClient.get('/vehicle-rule-categories');
+    const response = await httpClient.get('/categories');
     return response.data.data || [];
 };
 
 // Lấy danh sách loại xe
 const getVehicleTypes = async (): Promise<SizeRuleType[]> => {
-    const response = await httpClient.get('/vehicle-rule-types');
+    const response = await httpClient.get('/vehicle-types');
     return response.data.data || [];
 };
 

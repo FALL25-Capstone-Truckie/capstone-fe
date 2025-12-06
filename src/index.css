@@ -131,3 +131,18 @@ button:not(.ant-btn):focus-visible {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   padding: 12px 16px;
 }
+
+/* Logistic table header theme: blue background, white text */
+.logistic-table-header .ant-table-thead > tr > th {
+  background-color: #2563eb; /* blue-600 */
+  color: #ffffff;
+}
+
+.logistic-table-header .ant-table-thead > tr > th .ant-table-column-title {
+  color: #ffffff;
+}
+
+/* Force white text for section titles using Ant Typography inside colored headers */
+.logistic-section-title.ant-typography {
+  color: #ffffff !important;
+}

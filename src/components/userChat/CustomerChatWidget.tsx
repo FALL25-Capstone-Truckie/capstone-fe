@@ -248,20 +248,20 @@ const CustomerChatWidget: React.FC<CustomerChatWidgetProps> = ({
   // This allows WebSocket to receive messages even when widget is closed
   // Always re-initialize to fetch latest unread count from server
   useEffect(() => {
-    console.log('CustomerChatWidget: Initializing conversation for WebSocket connection');
+    // console.log('CustomerChatWidget: Initializing conversation for WebSocket connection');
     initConversation();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Only run on mount to fetch latest unread count
 
   // Debug: Log WebSocket connection status changes
-  useEffect(() => {
-    console.log('CustomerChatWidget: WebSocket connection status changed:', {
-      connected,
-      userType,
-      guestSessionId,
-      conversationId: conversation?.id
-    });
-  }, [connected, userType, guestSessionId, conversation?.id]);
+  // useEffect(() => {
+  //   console.log('CustomerChatWidget: WebSocket connection status changed:', {
+  //     connected,
+  //     userType,
+  //     guestSessionId,
+  //     conversationId: conversation?.id
+  //   });
+  // }, [connected, userType, guestSessionId, conversation?.id]);
 
   // Polling for unread count only when WebSocket is disconnected
   // This is a fallback mechanism when WebSocket connection is lost

@@ -34,10 +34,20 @@ const contractService = {
   getAllContracts: async () => {
     try {
       const response = await httpClient.get("/contracts");
-      return response.data;
+      return response.data.data || response.data;
     } catch (error) {
       console.error("Error fetching all contracts:", error);
       throw handleApiError(error, "Không thể tải danh sách hợp đồng");
+    }
+  },
+
+  getContractById: async (contractId: string) => {
+    try {
+      const response = await httpClient.get(`/contracts/${contractId}`);
+      return response.data.data || response.data;
+    } catch (error) {
+      console.error("Error fetching contract:", error);
+      throw handleApiError(error, "Không thể tải thông tin hợp đồng");
     }
   },
 

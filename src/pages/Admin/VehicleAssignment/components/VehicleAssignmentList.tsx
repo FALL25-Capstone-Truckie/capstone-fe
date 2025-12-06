@@ -76,6 +76,13 @@ const VehicleAssignmentList: React.FC<VehicleAssignmentListProps> = ({
 
     const columns: ColumnsType<VehicleAssignment> = [
         {
+            title: "Mã chuyến",
+            dataIndex: "trackingCode",
+            key: "trackingCode",
+            width: 140,
+            render: (trackingCode?: string) => trackingCode || "-",
+        },
+        {
             title: "Xe",
             dataIndex: "vehicleId",
             key: "vehicleId",
@@ -107,22 +114,6 @@ const VehicleAssignmentList: React.FC<VehicleAssignmentListProps> = ({
             },
         },
         {
-            title: "Mô tả",
-            dataIndex: "description",
-            key: "description",
-            width: 200,
-            ellipsis: {
-                showTitle: false,
-            },
-            render: (description) => (
-                <Tooltip title={description || "Không có mô tả"}>
-                    <div className="truncate max-w-[200px]">
-                        {description || "Không có mô tả"}
-                    </div>
-                </Tooltip>
-            ),
-        },
-        {
             title: "Trạng thái",
             dataIndex: "status",
             key: "status",
@@ -146,30 +137,34 @@ const VehicleAssignmentList: React.FC<VehicleAssignmentListProps> = ({
                             size="small"
                         />
                     </Tooltip>
-                    <Tooltip title="Sửa">
-                        <Button
-                            type="primary"
-                            icon={<EditOutlined />}
-                            onClick={() => onEdit(record)}
-                            size="small"
-                        />
-                    </Tooltip>
-                    <Tooltip title="Xóa">
-                        <Popconfirm
-                            title="Xác nhận xóa"
-                            description="Bạn có chắc chắn muốn xóa phân công này?"
-                            onConfirm={() => onDelete(record.id)}
-                            okText="Xóa"
-                            cancelText="Hủy"
-                        >
-                            <Button
-                                type="primary"
-                                danger
-                                icon={<DeleteOutlined />}
-                                size="small"
-                            />
-                        </Popconfirm>
-                    </Tooltip>
+                    {isAdmin && (
+                        <>
+                            <Tooltip title="Sửa">
+                                <Button
+                                    type="primary"
+                                    icon={<EditOutlined />}
+                                    onClick={() => onEdit(record)}
+                                    size="small"
+                                />
+                            </Tooltip>
+                            <Tooltip title="Xóa">
+                                <Popconfirm
+                                    title="Xác nhận xóa"
+                                    description="Bạn có chắc chắn muốn xóa phân công này?"
+                                    onConfirm={() => onDelete(record.id)}
+                                    okText="Xóa"
+                                    cancelText="Hủy"
+                                >
+                                    <Button
+                                        type="primary"
+                                        danger
+                                        icon={<DeleteOutlined />}
+                                        size="small"
+                                    />
+                                </Popconfirm>
+                            </Tooltip>
+                        </>
+                    )}
                 </Space>
             ),
         },

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Result, Button, Card, Descriptions, Spin } from "antd";
+import { useQuery } from "@tanstack/react-query";
 import {
   CheckCircleOutlined,
   CloseCircleOutlined,
@@ -9,12 +10,21 @@ import {
   FileTextOutlined,
 } from "@ant-design/icons";
 import { usePaymentWebhook } from "@/hooks";
+import carrierSettingService from "../../services/carrier/carrierSettingService";
+import type { CarrierSettingsResponse } from "../../models/Carrier";
 
 const PaymentReturn: React.FC = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const { webhookCalled, callPayOSWebhook } = usePaymentWebhook();
+
+  // Lấy thông tin carrier settings
+  const { data: carrierSettings } = useQuery<CarrierSettingsResponse | null>({
+    queryKey: ['carrierSettings'],
+    queryFn: () => carrierSettingService.getCarrierSettings(),
+    staleTime: 1000 * 60 * 30, // Cache 30 phút
+  });
 
   const code = searchParams.get("code");
   const id = searchParams.get("id");
@@ -235,24 +245,28 @@ const PaymentReturn: React.FC = () => {
           </Card>
         )}
 
-        {/* Support Information */}
+        {/* Support Information - Lấy từ carrier settings */}
         <div className="mt-8 text-center text-gray-600">
           <p className="mb-2">
             Nếu bạn có bất kỳ thắc mắc nào về giao dịch này,
           </p>
-          <p>
-            vui lòng liên hệ với chúng tôi qua email:{" "}
-            <a
-              href="mailto:support@truckie.vn"
-              className="text-blue-600 hover:underline"
-            >
-              support@truckie.vn
-            </a>{" "}
-            hoặc hotline:{" "}
-            <a href="tel:0123456789" className="text-blue-600 hover:underline">
-              0123 456 789
-            </a>
-          </p>
+          {carrierSettings ? (
+            <p>
+              vui lòng liên hệ với chúng tôi qua email:{" "}
+              <a
+                href={`mailto:${carrierSettings.carrierEmail}`}
+                className="text-blue-600 hover:underline"
+              >
+                {carrierSettings.carrierEmail}
+              </a>{" "}
+              hoặc hotline:{" "}
+              <a href={`tel:${carrierSettings.carrierPhone}`} className="text-blue-600 hover:underline">
+                {carrierSettings.carrierPhone}
+              </a>
+            </p>
+          ) : (
+            <p>vui lòng liên hệ nhân viên hỗ trợ</p>
+          )}
         </div>
       </div>
     </div>

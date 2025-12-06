@@ -308,7 +308,7 @@ const OrderDetailsTab: React.FC<OrderDetailsTabProps> = ({
                                             <TagOutlined className="mr-2 text-gray-500" />
                                             <span className="font-medium mr-1">Loại xe:</span>
                                             <span>
-                                                {detail.vehicleAssignment.vehicle?.vehicleType || "Chưa có thông tin"}
+                                                {detail.vehicleAssignment.vehicle?.vehicleTypeDescription || "Chưa có thông tin"}
                                             </span>
                                         </div>
                                     </div>

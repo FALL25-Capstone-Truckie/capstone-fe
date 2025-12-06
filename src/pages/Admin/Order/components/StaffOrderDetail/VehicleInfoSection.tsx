@@ -17,6 +17,7 @@ interface VehicleInfoSectionProps {
             model: string;
             licensePlateNumber: string;
             vehicleType: string;
+            vehicleTypeDescription?: string; // Vehicle type description from backend
         };
         primaryDriver?: {
             id: string;
@@ -91,7 +92,7 @@ const VehicleInfoSection: React.FC<VehicleInfoSectionProps> = ({ vehicleAssignme
                                 <div className="flex items-center">
                                     <TagOutlined className="mr-2 text-gray-500" />
                                     <span className="font-medium mr-1">Loại xe:</span>
-                                    <span>{vehicleAssignment.vehicle?.vehicleType || "Chưa có thông tin"}</span>
+                                    <span>{vehicleAssignment.vehicle?.vehicleTypeDescription || vehicleAssignment.vehicle?.vehicleType || "Chưa có thông tin"}</span>
                                 </div>
                             </div>
                         </>

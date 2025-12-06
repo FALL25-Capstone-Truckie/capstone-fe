@@ -99,12 +99,36 @@ interface SuggestedAction {
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
 
 interface AIChatbotProps {
+  isOpen?: boolean;
+  onClose?: () => void;
   onOpen?: () => void;
 }
 
-export default function AIChatbot({ onOpen }: AIChatbotProps) {
+export default function AIChatbot({ 
+  isOpen: externalIsOpen, 
+  onClose: externalOnClose, 
+  onOpen: externalOnOpen 
+}: AIChatbotProps) {
   const { user } = useAuth(); // Get current logged-in user
-  const [isOpen, setIsOpen] = useState(false);
+  const [internalIsOpen, setInternalIsOpen] = useState(false);
+  
+  // Use external state if provided, otherwise use internal state
+  const isOpen = externalIsOpen !== undefined ? externalIsOpen : internalIsOpen;
+  
+  const handleOpen = () => {
+    externalOnOpen?.();
+    if (externalOnOpen === undefined) {
+      setInternalIsOpen(true);
+    }
+  };
+  
+  const handleClose = () => {
+    setShowSettings(false);
+    externalOnClose?.();
+    if (externalOnClose === undefined) {
+      setInternalIsOpen(false);
+    }
+  };
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -337,10 +361,7 @@ export default function AIChatbot({ onOpen }: AIChatbotProps) {
     sendMessage(action);
   };
 
-  const handleClose = () => {
-    setIsOpen(false);
-  };
-
+  
   const handleClearChat = () => {
     // Direct clear without confirmation
     setMessages([]);
@@ -397,10 +418,7 @@ export default function AIChatbot({ onOpen }: AIChatbotProps) {
                 bottom: 'calc(1rem + 72px)', // Chat button height + small gap
                 right: '1rem'
               }}
-              onClick={() => {
-                setIsOpen(true);
-                onOpen?.(); // Notify parent to close other chat
-              }}
+              onClick={handleOpen}
             />
           </Badge>
         </Tooltip>

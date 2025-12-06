@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Card, Form, Radio, Alert, Typography, Space, Table, Tooltip, Row, Col, Divider } from "antd";
 import { SafetyCertificateOutlined, WarningOutlined, InfoCircleOutlined, CheckCircleOutlined, CloseCircleOutlined } from "@ant-design/icons";
 import { CategoryName, isFragileCategory } from "../../../models/CategoryName";
+import { useInsuranceRates } from "../../../hooks";
 
 const { Text, Paragraph } = Typography;
 
@@ -16,6 +17,7 @@ const InsuranceSelectionCard: React.FC<InsuranceSelectionCardProps> = ({
 }) => {
   const [selectedOption, setSelectedOption] = useState<boolean>(true);
   const form = Form.useFormInstance();
+  const { rates, normalRatePercent, fragileRatePercent } = useInsuranceRates();
   
   // Lấy giá trị thực tế từ form để kiểm tra validation
   const categoryId = Form.useWatch('categoryId', form);
@@ -42,7 +44,7 @@ const InsuranceSelectionCard: React.FC<InsuranceSelectionCardProps> = ({
   const isFragile = isFragileCategory(categoryName);
 
   // Tính phí bảo hiểm dự kiến - chỉ khi có đủ thông tin
-  const insuranceRate = isFragile ? 0.00165 : 0.00088; // Đã bao gồm VAT 10%
+  const insuranceRate = isFragile ? rates.fragileRate : rates.normalRate; // Đã bao gồm VAT 10%
   const estimatedInsuranceFee = canShowPricing ? Math.round(totalDeclaredValue * insuranceRate) : 0;
 
   // Bảng so sánh 4 trường hợp
@@ -211,7 +213,7 @@ const InsuranceSelectionCard: React.FC<InsuranceSelectionCardProps> = ({
                 <div>
                   <Text type="secondary" style={{ fontSize: 13 }}>Phí bảo hiểm (đã VAT 10%): </Text>
                   <Text strong style={{ color: "#1890ff", fontSize: 13 }}>
-                    {isFragile ? "0.165%" : "0.088%"} × Giá trị khai báo
+                    {isFragile ? `${fragileRatePercent.toFixed(3)}%` : `${normalRatePercent.toFixed(3)}%`} × Giá trị khai báo
                   </Text>
                 </div>
                 {canShowPricing && (

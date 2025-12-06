@@ -16,7 +16,6 @@ export const useOrderCreation = () => {
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [orderSizes, setOrderSizes] = useState<OrderSize[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
-  const [units, setUnits] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -28,11 +27,10 @@ export const useOrderCreation = () => {
         setError(null);
 
         // Fetch all data in parallel
-        const [addressesData, orderSizesData, categoriesData, unitsData] = await Promise.all([
+        const [addressesData, orderSizesData, categoriesData] = await Promise.all([
           addressService.getMyAddresses(),
           orderSizeService.getAllOrderSizes(),
           categoryService.getCategories(),
-          orderService.getUnitsList(),
         ]);
 
         setAddresses(addressesData);
@@ -43,10 +41,6 @@ export const useOrderCreation = () => {
           ? categoriesData 
           : (categoriesData as any)?.data || [];
         setCategories(categoriesArray);
-
-        // Set units from API
-        // console.log('[DEBUG] Units from API:', unitsData);
-        setUnits(unitsData);
       } catch (err: any) {
         console.error('[useOrderCreation] Error fetching initial data:', err);
         setError(err?.message || 'Không thể tải dữ liệu');
@@ -74,7 +68,6 @@ export const useOrderCreation = () => {
     addresses,
     orderSizes,
     categories,
-    units,
     
     // State
     loading,

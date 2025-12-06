@@ -424,22 +424,6 @@ const orderService = {
   },
 
   /**
-   * Get list of available units
-   * @returns Promise with array of unit strings
-   */
-  getUnitsList: async (): Promise<string[]> => {
-    try {
-      const response = await httpClient.get<UnitsListResponse>(
-        "/orders/list-unit"
-      );
-      return response.data.data;
-    } catch (error) {
-      console.error("Error fetching units list:", error);
-      throw handleApiError(error, "Không thể tải danh sách đơn vị");
-    }
-  },
-
-  /**
    * Get all orders for the current customer
    * @returns Promise with array of customer orders
    */
@@ -675,6 +659,61 @@ const orderService = {
     } catch (error) {
       console.error(`Error cancelling order ${orderId}:`, error);
       throw handleApiError(error, "Không thể hủy đơn hàng");
+    }
+  },
+
+  /**
+   * Staff cancel an order with a specific reason
+   * Only allowed for orders with status PROCESSING
+   * @param orderId Order ID to cancel
+   * @param cancellationReason Reason for cancellation
+   * @returns Promise with response data
+   */
+  staffCancelOrder: async (orderId: string, cancellationReason: string): Promise<any> => {
+    try {
+      const response = await httpClient.put(
+        `/orders/${orderId}/staff-cancel`,
+        { cancellationReason }
+      );
+      return response.data;
+    } catch (error) {
+      console.error(`Error staff cancelling order ${orderId}:`, error);
+      throw handleApiError(error, "Không thể hủy đơn hàng");
+    }
+  },
+
+  /**
+   * Get list of cancellation reasons for staff
+   * @returns Promise with list of cancellation reasons
+   */
+  getStaffCancellationReasons: async (): Promise<string[]> => {
+    try {
+      const response = await httpClient.get<{ data: string[] }>(
+        `/orders/cancellation-reasons/staff`
+      );
+      return response.data.data;
+    } catch (error) {
+      console.error("Error fetching staff cancellation reasons:", error);
+      throw handleApiError(error, "Không thể tải danh sách lý do hủy");
+    }
+  },
+
+  /**
+   * Get order tracking information for recipient by order code
+   * This is a public endpoint - no authentication required
+   * Returns order information without contract/transaction data
+   * @param orderCode Order code to search
+   * @returns Promise with recipient order tracking data
+   */
+  getOrderForRecipientByOrderCode: async (orderCode: string): Promise<any> => {
+    try {
+      const response = await httpClient.get(
+        `/public/recipient-tracking/${encodeURIComponent(orderCode)}`
+      );
+      return response.data.data;
+    } catch (error) {
+      console.error(`Error fetching recipient tracking for order ${orderCode}:`, error);
+      throw handleApiError(error, "Không tìm thấy đơn hàng với mã này");
     }
   },
 };

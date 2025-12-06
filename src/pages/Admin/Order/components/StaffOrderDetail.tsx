@@ -9,6 +9,7 @@ import {
   PrinterOutlined,
   UserAddOutlined,
   EnvironmentOutlined,
+  CloseCircleOutlined,
 } from "@ant-design/icons";
 import orderService from "../../../../services/order/orderService";
 import type { StaffOrderDetailResponse } from "../../../../services/order/types";
@@ -21,6 +22,7 @@ import {
   BasicInfoTab,
   OrderDetailTabs,
   ContractAndPaymentTab,
+  CancelOrderModal,
 } from "./StaffOrderDetail/index";
 import BillOfLadingPreviewModal from "./StaffOrderDetail/BillOfLadingPreviewModal";
 import OrderLiveTrackingOnly from "./StaffOrderDetail/OrderLiveTrackingOnly";
@@ -62,6 +64,7 @@ const StaffOrderDetail: React.FC = () => {
     mimeType: string;
   }> | null>(null);
   const [previousOrderStatus, setPreviousOrderStatus] = useState<string | null>(null);
+  const [cancelOrderModalVisible, setCancelOrderModalVisible] = useState<boolean>(false);
 
   // Handle order status changes via WebSocket
   const handleOrderStatusChange = useCallback((statusChange: any) => {
@@ -232,12 +235,7 @@ const StaffOrderDetail: React.FC = () => {
     const vehicleAssignmentIds: string[] = orderData.order.vehicleAssignments.map((va: any) => va.id);
 
     if (vehicleAssignmentIds.length === 0) return;
-    // Connect to issue WebSocket if not connected
-    if (!issueWebSocket.isConnected()) {
-      issueWebSocket.connect().catch(err => {
-        console.error('[StaffOrderDetail] Failed to connect to issue WebSocket:', err);
-      });
-    }
+    // WebSocket connections are now handled by GlobalWebSocketProvider at app root
 
     // Subscribe to global issue updates with a unique callback ID based on order
     const callbackId = `order-${id}`;
@@ -446,6 +444,7 @@ const StaffOrderDetail: React.FC = () => {
     const orderStatus = orderData.order.status;
     const statusesAllowingPrint = [
       OrderStatusEnum.ASSIGNED_TO_DRIVER,
+      OrderStatusEnum.FULLY_PAID,
       OrderStatusEnum.PICKING_UP,
       OrderStatusEnum.ON_DELIVERED,
       OrderStatusEnum.ONGOING_DELIVERED,
@@ -465,6 +464,24 @@ const StaffOrderDetail: React.FC = () => {
   const isOnPlanningStatus = () => {
     if (!orderData || !orderData.order) return false;
     return orderData.order.status === OrderStatusEnum.ON_PLANNING;
+  };
+
+  // Check if order can be cancelled by staff (only PROCESSING status)
+  const canCancelOrder = () => {
+    if (!orderData || !orderData.order) return false;
+    return orderData.order.status === OrderStatusEnum.PROCESSING;
+  };
+
+  // Handle cancel order success
+  const handleCancelOrderSuccess = () => {
+    messageApi.success({
+      content: "Đơn hàng đã được hủy thành công",
+      duration: 5,
+    });
+    // Refetch order details to update UI
+    if (id) {
+      fetchOrderDetails(id);
+    }
   };
 
   if (loading) {
@@ -525,6 +542,18 @@ const StaffOrderDetail: React.FC = () => {
         </div>
 
         <Space size="middle">
+          {canCancelOrder() && (
+            <Button
+              danger
+              icon={<CloseCircleOutlined />}
+              onClick={() => setCancelOrderModalVisible(true)}
+              className="shadow-md transition-all duration-300 flex items-center px-5 py-6 text-base"
+              size="large"
+            >
+              Hủy đơn hàng
+            </Button>
+          )}
+
           {isOnPlanningStatus() && (
             <Button
               type="primary"
@@ -625,6 +654,9 @@ const StaffOrderDetail: React.FC = () => {
               transactions={transactions}
               orderId={id}
               depositAmount={order.depositAmount}
+              hasInsurance={order.hasInsurance}
+              totalInsuranceFee={order.totalInsuranceFee}
+              totalDeclaredValue={order.totalDeclaredValue}
               onRefetch={() => {
                 if (id) {
                   fetchOrderDetails(id);
@@ -656,8 +688,19 @@ const StaffOrderDetail: React.FC = () => {
         loading={billOfLadingPreviewLoading}
         documents={billOfLadingPreviewData}
       />
+
+      {/* Cancel Order Modal */}
+      {id && (
+        <CancelOrderModal
+          visible={cancelOrderModalVisible}
+          orderCode={order.orderCode}
+          orderId={id}
+          onClose={() => setCancelOrderModalVisible(false)}
+          onSuccess={handleCancelOrderSuccess}
+        />
+      )}
     </div>
   );
-};
+}
 
 export default StaffOrderDetail;

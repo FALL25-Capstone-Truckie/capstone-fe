@@ -105,8 +105,11 @@ export const useOrderStatusTracking = (
   // Connect to WebSocket
   const connect = useCallback(() => {
     if (clientRef.current?.connected || isConnecting) {
+      console.log('[OrderStatusTracking] Already connected or connecting, skip');
       return;
     }
+
+    console.log('[OrderStatusTracking] Connecting to WebSocket...');
 
     // Clean up any existing connection before creating new one
     if (clientRef.current) {
@@ -155,6 +158,7 @@ export const useOrderStatusTracking = (
 
     // Connection success handler
     client.onConnect = (_frame) => {
+      console.log('✅ [OrderStatusTracking] WebSocket connected');
       setIsConnected(true);
       setIsConnecting(false);
       setError(null);

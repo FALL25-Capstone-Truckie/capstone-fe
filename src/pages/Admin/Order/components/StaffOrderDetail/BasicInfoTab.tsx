@@ -38,7 +38,7 @@ const BasicInfoTab: React.FC<BasicInfoTabProps> = ({ order, contract }) => {
                     </p>
                     <p className="mb-0">
                         <span className="font-medium">Loại hàng:</span>{" "}
-                        {order.categoryName || "Chưa phân loại"}
+                        {order.categoryDescription || "Chưa phân loại"}
                     </p>
                 </div>
 

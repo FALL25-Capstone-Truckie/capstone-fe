@@ -1,4 +1,5 @@
 export * from './IssueEnum';
+export * from './IssueTypeEnum';
 export * from './issueStatus';
 export * from './sealStatus';
 export * from './JourneyHistoryStatusEnum';
@@ -11,7 +12,6 @@ export * from './UserStatusEnum';
 export * from './VehicleAssignmentEnum';
 export * from './VehicleAssignmentStatusEnum';
 export * from './VehicleStatusEnum';
-export * from './WeightUnitEnum';
 export * from './PenaltyStatusEnum';
 export * from './ConversationStatusEnum';
 export * from './CommonStatusEnum';

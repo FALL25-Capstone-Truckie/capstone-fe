@@ -95,9 +95,9 @@ const CustomerTable: React.FC<CustomerTableProps> = ({
                     <Button
                         icon={<SwapOutlined />}
                         onClick={() => onStatusChange(record)}
-                        className={record.status.toLowerCase() === 'active' ? 'border-red-400 text-red-500 hover:text-red-600 hover:border-red-500' : 'border-green-400 text-green-500 hover:text-green-600 hover:border-green-500'}
+                        className={record.status.toLowerCase() === 'active' ? 'border-gray-400 text-gray-600 hover:text-gray-700 hover:border-gray-500' : 'border-green-400 text-green-500 hover:text-green-600 hover:border-green-500'}
                     >
-                        {record.status.toLowerCase() === 'active' ? 'Cấm' : 'Kích hoạt'}
+                        {record.status.toLowerCase() === 'active' ? 'Vô hiệu hóa' : 'Kích hoạt'}
                     </Button>
                 </Space>
             ),

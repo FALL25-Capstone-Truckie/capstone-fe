@@ -1,6 +1,7 @@
 import React from "react";
 import StaffContractSection from "../StaffContractSection";
 import TransactionSection from "../../../../Orders/components/CustomerOrderDetail/TransactionSection";
+import InsuranceInfo from "../../../../../components/common/InsuranceInfo";
 
 interface ContractAndPaymentTabProps {
   contract?: {
@@ -18,7 +19,7 @@ interface ContractAndPaymentTabProps {
   transactions?: {
     id: string;
     paymentProvider: string;
-    orderCode: string;
+    gatewayOrderCode: string;
     amount: number;
     currencyCode: string;
     status: string;
@@ -28,6 +29,10 @@ interface ContractAndPaymentTabProps {
   orderId?: string; // Add orderId for contract creation
   depositAmount?: number;
   onRefetch?: () => void; // Callback to refresh parent component data
+  // Insurance fields
+  hasInsurance?: boolean;
+  totalInsuranceFee?: number;
+  totalDeclaredValue?: number;
 }
 
 const ContractAndPaymentTab: React.FC<ContractAndPaymentTabProps> = ({
@@ -36,6 +41,9 @@ const ContractAndPaymentTab: React.FC<ContractAndPaymentTabProps> = ({
   orderId,
   depositAmount,
   onRefetch,
+  hasInsurance,
+  totalInsuranceFee,
+  totalDeclaredValue,
 }) => {
   return (
     <div>
@@ -49,8 +57,20 @@ const ContractAndPaymentTab: React.FC<ContractAndPaymentTabProps> = ({
         />
       )}
 
+      {/* Insurance Information */}
+      <InsuranceInfo
+        hasInsurance={hasInsurance}
+        totalInsuranceFee={totalInsuranceFee}
+        totalDeclaredValue={totalDeclaredValue}
+      />
+
       {/* Transaction Information */}
-      <TransactionSection transactions={transactions} />
+      <TransactionSection 
+        transactions={transactions}
+        hasInsurance={hasInsurance}
+        totalInsuranceFee={totalInsuranceFee}
+        totalDeclaredValue={totalDeclaredValue}
+      />
     </div>
   );
 };

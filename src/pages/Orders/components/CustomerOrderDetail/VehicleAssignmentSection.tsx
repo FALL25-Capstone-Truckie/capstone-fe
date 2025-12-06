@@ -201,7 +201,8 @@ const VehicleAssignmentSection: React.FC<VehicleAssignmentSectionProps> = ({
                                 <TagOutlined className="mr-2 text-gray-500" />
                                 <span className="font-medium mr-1">Loại xe:</span>
                                 <span>
-                                    {va.vehicle?.vehicleType ||
+                                    {va.vehicle?.vehicleTypeDescription || 
+                                        va.vehicle?.vehicleType ||
                                         va.vehicleType ||
                                         "Chưa có thông tin"}
                                 </span>

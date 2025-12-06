@@ -8,13 +8,15 @@ import {
   UserOutlined,
   LogoutOutlined,
   DownOutlined,
+  SearchOutlined,
+  DollarOutlined,
 } from "@ant-design/icons";
 import { Link, useNavigate, useLocation } from "react-router-dom";
-import { SUPPORT_EMAIL, SUPPORT_PHONE } from "../../config";
 import { useAuth } from "../../context";
 import NotificationBell from "../notifications/NotificationBell";
 import NotificationQueueBadge from "../notifications/NotificationQueueBadge";
 import { mapToNotificationRole } from "../../utils/roleMapper";
+import { useCarrierSettings } from "../../hooks/useCarrierSettings";
 
 const { Header: AntHeader } = Layout;
 
@@ -24,6 +26,9 @@ const Header: React.FC = () => {
   const location = useLocation();
   const { user, isAuthenticated, logout, isLoading } = useAuth();
   const [selectedKey, setSelectedKey] = useState("trangchu");
+  
+  // Lấy thông tin carrier settings
+  const { phone, email, address } = useCarrierSettings();
 
   // Cập nhật selectedKey dựa trên đường dẫn hiện tại
   useEffect(() => {
@@ -32,6 +37,10 @@ const Header: React.FC = () => {
       setSelectedKey("trangchu");
     } else if (pathname.startsWith("/orders")) {
       setSelectedKey("orders");
+    } else if (pathname.startsWith("/tracking")) {
+      setSelectedKey("tracking");
+    } else if (pathname.startsWith("/pricing-info")) {
+      setSelectedKey("pricing-info");
     } else if (pathname.includes("/profile")) {
       // Không chọn tab nào khi ở trang profile
       setSelectedKey("");
@@ -79,10 +88,51 @@ const Header: React.FC = () => {
     },
   ];
 
-  const menuItems = [
-    { key: "trangchu", label: <Link to="/">Trang chủ</Link> },
-    { key: "orders", label: <Link to="/orders">Đơn hàng</Link> },
-  ];
+  // Menu items - hiển thị khác nhau cho authenticated và guest
+  const menuItems = isAuthenticated
+    ? [
+        { key: "trangchu", label: <Link to="/">Trang chủ</Link> },
+        { key: "orders", label: <Link to="/orders">Đơn hàng</Link> },
+        { 
+          key: "pricing-info", 
+          label: (
+            <Link to="/pricing-info">
+              <DollarOutlined className="mr-1" />
+              Thông tin cước
+            </Link>
+          ) 
+        },
+        { 
+          key: "tracking", 
+          label: (
+            <Link to="/tracking">
+              <SearchOutlined className="mr-1" />
+              Tra cứu đơn hàng
+            </Link>
+          ) 
+        },
+      ]
+    : [
+        { key: "trangchu", label: <Link to="/">Trang chủ</Link> },
+        { 
+          key: "pricing-info", 
+          label: (
+            <Link to="/pricing-info">
+              <DollarOutlined className="mr-1" />
+              Thông tin cước
+            </Link>
+          ) 
+        },
+        { 
+          key: "tracking", 
+          label: (
+            <Link to="/tracking">
+              <SearchOutlined className="mr-1" />
+              Tra cứu đơn hàng
+            </Link>
+          ) 
+        },
+      ];
 
   return (
     <div className="fixed w-full z-10">
@@ -92,20 +142,24 @@ const Header: React.FC = () => {
           <div className="flex-1"></div>{" "}
           {/* Empty div to push content to right */}
           <div className="flex items-center justify-end space-x-6">
-            <span className="flex items-center">
-              <EnvironmentOutlined className="mr-2" />
-              <span className="text-sm">
-                7 D1 St, Long Thanh My, Thu Duc, Ho Chi Minh
+            {address && (
+              <span className="flex items-center">
+                <EnvironmentOutlined className="mr-2" />
+                <span className="text-sm">{address}</span>
               </span>
-            </span>
-            <span className="flex items-center">
-              <MailOutlined className="mr-2" />
-              <span className="text-sm">{SUPPORT_EMAIL}</span>
-            </span>
-            <span className="flex items-center">
-              <PhoneOutlined className="mr-2" />
-              <span className="text-sm">{SUPPORT_PHONE}</span>
-            </span>
+            )}
+            {email && (
+              <span className="flex items-center">
+                <MailOutlined className="mr-2" />
+                <span className="text-sm">{email}</span>
+              </span>
+            )}
+            {phone && (
+              <span className="flex items-center">
+                <PhoneOutlined className="mr-2" />
+                <span className="text-sm">{phone}</span>
+              </span>
+            )}
           </div>
         </div>
       </div>
@@ -146,12 +200,12 @@ const Header: React.FC = () => {
             ) : isAuthenticated ? (
               <>
                 {user && (() => {
-                  console.log('🔍 DEBUG: Header rendering - user role:', user.role);
+                  // console.log('🔍 DEBUG: Header rendering - user role:', user.role);
                   return (
                     <div className="flex items-center h-10 space-x-3">
                       {/* Staff Issue Queue Badge */}
                       {user.role === 'staff' && (() => {
-                        console.log('🔍 DEBUG: Rendering NotificationQueueBadge for staff');
+                        // console.log('🔍 DEBUG: Rendering NotificationQueueBadge for staff');
                         return <NotificationQueueBadge />;
                       })()}
                       {/* General Notification Bell */}

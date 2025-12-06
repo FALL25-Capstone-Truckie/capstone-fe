@@ -120,6 +120,11 @@ httpClient.interceptors.request.use(
       
     }
 
+    // Log abort signal for debugging
+    if (config.signal) {
+      console.debug('[httpClient] 🚫 Request with abort signal:', config.method?.toUpperCase(), config.url);
+    }
+
     return config;
   },
   (error) => {

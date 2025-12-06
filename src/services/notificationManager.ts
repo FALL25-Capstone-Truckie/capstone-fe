@@ -55,18 +55,18 @@ class NotificationManager {
   async initialize(userId: string, userRole: 'STAFF' | 'CUSTOMER'): Promise<void> {
     // Prevent duplicate initialization
     if (this.isInitialized && this.currentUserId === userId) {
-      console.log('🔔 [NotificationManager] Already initialized for user:', userId);
+      // console.log('🔔 [NotificationManager] Already initialized for user:', userId);
       return;
     }
 
     // Prevent concurrent initialization
     if (this.isInitializing) {
-      console.log('🔔 [NotificationManager] Already initializing, waiting...');
+      // console.log('🔔 [NotificationManager] Already initializing, waiting...');
       return;
     }
 
     this.isInitializing = true;
-    console.log('🔔 [NotificationManager] Initializing for user:', userId, 'role:', userRole);
+    // console.log('🔔 [NotificationManager] Initializing for user:', userId, 'role:', userRole);
     
     // Cleanup existing subscription but keep callbacks
     if (this.unsubscribe) {
@@ -83,13 +83,13 @@ class NotificationManager {
       
       // Register callback for notifications
       this.unsubscribe = notificationService.subscribe((notification: Notification) => {
-        console.log('🔔 [NotificationManager] New notification received:', notification);
+        // console.log('🔔 [NotificationManager] New notification received:', notification);
         this.handleNewNotification(notification);
       });
 
       this.isInitialized = true;
       this.isInitializing = false;
-      console.log('✅ [NotificationManager] Initialized successfully');
+      // console.log('✅ [NotificationManager] Initialized successfully');
       
     } catch (error) {
       console.error('❌ [NotificationManager] Failed to initialize:', error);
@@ -102,12 +102,12 @@ class NotificationManager {
    * Register component callbacks
    */
   register(id: string, callbacks: NotificationManagerCallbacks): void {
-    console.log('🔔 [NotificationManager] Registering component:', id);
+    // console.log('🔔 [NotificationManager] Registering component:', id);
     this.callbacks.set(id, callbacks);
     
     // Process any pending notifications that arrived before callbacks were registered
     if (this.pendingNotifications.length > 0) {
-      console.log(`🔔 [NotificationManager] Processing ${this.pendingNotifications.length} pending notifications for ${id}`);
+      // console.log(`🔔 [NotificationManager] Processing ${this.pendingNotifications.length} pending notifications for ${id}`);
       const pending = [...this.pendingNotifications];
       this.pendingNotifications = [];
       
@@ -129,7 +129,7 @@ class NotificationManager {
    * Unregister component callbacks
    */
   unregister(id: string): void {
-    console.log('🔔 [NotificationManager] Unregistering component:', id);
+    // console.log('🔔 [NotificationManager] Unregistering component:', id);
     this.callbacks.delete(id);
   }
 
@@ -139,14 +139,14 @@ class NotificationManager {
   private handleNewNotification(notification: Notification): void {
     // If no callbacks registered yet, queue the notification
     if (this.callbacks.size === 0) {
-      console.log('🔔 [NotificationManager] No callbacks registered, queuing notification');
+      // console.log('🔔 [NotificationManager] No callbacks registered, queuing notification');
       this.pendingNotifications.push(notification);
       return;
     }
 
     // Notify all components about new notification
     this.callbacks.forEach((callbacks, id) => {
-      console.log(`🔔 [NotificationManager] Broadcasting to ${id}`);
+      // console.log(`🔔 [NotificationManager] Broadcasting to ${id}`);
       if (callbacks.onNewNotification) {
         callbacks.onNewNotification(notification);
       }
@@ -247,7 +247,7 @@ class NotificationManager {
       total,
       lastFetch: Date.now()
     };
-    console.log('💾 [NotificationManager] Cached', notifications.length, 'notifications');
+    // console.log('💾 [NotificationManager] Cached', notifications.length, 'notifications');
   }
 
   /**
@@ -257,10 +257,10 @@ class NotificationManager {
     // Cache valid for 5 minutes
     const CACHE_TTL = 5 * 60 * 1000;
     if (Date.now() - this.notificationCache.lastFetch > CACHE_TTL) {
-      console.log('⏰ [NotificationManager] Cache expired');
+      // console.log('⏰ [NotificationManager] Cache expired');
       return null;
     }
-    console.log('📋 [NotificationManager] Using cache with', this.notificationCache.notifications.length, 'notifications');
+    // console.log('📋 [NotificationManager] Using cache with', this.notificationCache.notifications.length, 'notifications');
     return { ...this.notificationCache };
   }
 
@@ -273,14 +273,14 @@ class NotificationManager {
       total: 0,
       lastFetch: 0
     };
-    console.log('🗑️ [NotificationManager] Cache cleared');
+    // console.log('🗑️ [NotificationManager] Cache cleared');
   }
 
   /**
    * Cleanup subscription and callbacks
    */
   cleanup(): void {
-    console.log('🔔 [NotificationManager] Cleaning up...');
+    // console.log('🔔 [NotificationManager] Cleaning up...');
     
     // Unsubscribe from notifications
     if (this.unsubscribe) {

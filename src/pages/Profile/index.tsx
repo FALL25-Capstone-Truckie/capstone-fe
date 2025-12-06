@@ -2,6 +2,7 @@ import React, { useState, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { Card, Tabs, Skeleton, Alert, Row, Col, Typography } from 'antd';
 import { UserOutlined, TeamOutlined, LockOutlined, EnvironmentOutlined } from '@ant-design/icons';
+import { NewCustomerDashboard } from '../Dashboard/components';
 import { useAuth } from '../../context';
 import { useQuery } from '@tanstack/react-query';
 import ProfileSummaryCard from './components/ProfileSummaryCard';
@@ -110,7 +111,7 @@ const ProfilePage = () => {
                         <Card className="shadow-md hover:shadow-lg transition-shadow duration-300">
                             <Tabs defaultActiveKey="company" className="profile-tabs">
                                 <TabPane
-                                    tab={<span className="flex items-center gap-2"><TeamOutlined />Thông tin công ty</span>}
+                                    tab={<span className="flex items-center gap-2"><TeamOutlined />Công ty</span>}
                                     key="company"
                                 >
                                     <CompanyInfoTab
@@ -151,9 +152,14 @@ const ProfilePage = () => {
                         </Card>
                     </Col>
                 </Row>
+
+                {/* Dashboard Section */}
+                <div className="mt-8">
+                    <NewCustomerDashboard />
+                </div>
             </div>
         </div>
     );
 };
 
-export default ProfilePage; 
+export default ProfilePage;

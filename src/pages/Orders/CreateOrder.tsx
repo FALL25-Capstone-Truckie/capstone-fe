@@ -2,11 +2,12 @@ import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button, Form, Steps, Card, Typography, App, Skeleton } from "antd";
 import { useOrderCreation } from "@/hooks";
+import { getDefaultWeightUnit } from "../../config/weightUnits";
 import type { OrderCreateRequest } from "../../models/Order";
 import { OrderDetailFormList, StipulationModal, InsuranceSelectionCard } from "./components";
 import OrderCreationSuccess from "./components/OrderCreationSuccess";
 import { formatToVietnamTime } from "../../utils/dateUtils";
-import { calculateTotalWeight, convertWeightToTons } from "../../utils/weightUtils";
+import { calculateTotalWeight } from "../../utils/weightUtils";
 import dayjs from "dayjs";
 import {
   ReceiverAndAddressStep,
@@ -20,7 +21,7 @@ const { Title, Text } = Typography;
 export default function CreateOrder() {
   const navigate = useNavigate();
   const { message } = App.useApp();
-  const { addresses, orderSizes, categories, units, loading, error, createOrder } = useOrderCreation();
+  const { addresses, orderSizes, categories, loading, error, createOrder } = useOrderCreation();
   const [currentStep, setCurrentStep] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formValues, setFormValues] = useState<any>({
@@ -94,15 +95,16 @@ export default function CreateOrder() {
     setFormValues((prev: any) => ({ ...prev, ...currentValues }));
   };
 
-  // Update formValues when units are loaded from hook
+  // Initialize formValues with default weight unit
   useEffect(() => {
-    if (units && units.length > 0 && !formValues.orderDetailsList[0]?.unit) {
+    const defaultUnit = getDefaultWeightUnit();
+    if (!formValues.orderDetailsList[0]?.unit) {
       setFormValues((prev: any) => ({
         ...prev,
-        orderDetailsList: [{ quantity: 1, unit: units[0] }],
+        orderDetailsList: [{ quantity: 1, unit: defaultUnit }],
       }));
     }
-  }, [units]);
+  }, []);
 
   // Cập nhật form với giá trị đã lưu khi chuyển step
   useEffect(() => {
@@ -295,17 +297,14 @@ export default function CreateOrder() {
         const weight = detail.weight || 0;
         const unit = detail.unit || "Tấn";
         
-        // Use utility function for consistent conversion
-        const weightInTons = convertWeightToTons(weight, unit);
-        
         // Debug: Log declaredValue
         console.log('🔍 DEBUG: detail.declaredValue =', detail.declaredValue, 'type:', typeof detail.declaredValue);
         
         // Tạo nhiều bản copy của item dựa trên quantity
         for (let i = 0; i < quantity; i++) {
           expandedOrderDetailsList.push({
-            weight: weightInTons, // Send converted weight in tons
-            unit: "Tấn", // Always send as tons to backend
+            weight: weight, // Send original weight without conversion
+            unit: unit, // Send original unit as selected by user
             description: detail.description || "",
             orderSizeId: detail.orderSizeId,
             declaredValue: detail.declaredValue, // Giá trị khai báo - không dùng || 0 để tránh convert null thành 0
@@ -481,7 +480,6 @@ export default function CreateOrder() {
               label="Danh sách kiện hàng"
               categories={categories}
               orderSizes={orderSizes}
-              units={units}
               form={form}
             />
             <InsuranceSelectionCard

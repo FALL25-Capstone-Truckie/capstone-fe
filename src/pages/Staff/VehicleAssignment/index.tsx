@@ -35,12 +35,12 @@ const StaffVehicleAssignmentPage: React.FC = () => {
     const createMutation = useMutation({
         mutationFn: (data: CreateVehicleAssignmentRequest) => vehicleAssignmentService.create(data),
         onSuccess: () => {
-            message.success("Tạo phân công xe thành công");
+            message.success("Tạo chuyến xe thành công");
             queryClient.invalidateQueries({ queryKey: ["staffVehicleAssignments"] });
             setIsModalOpen(false);
         },
         onError: (error) => {
-            message.error("Có lỗi xảy ra khi tạo phân công xe");
+            message.error("Có lỗi xảy ra khi tạo chuyến xe");
             console.error("Error creating vehicle assignment:", error);
         },
     });
@@ -50,13 +50,13 @@ const StaffVehicleAssignmentPage: React.FC = () => {
         mutationFn: ({ id, data }: { id: string; data: UpdateVehicleAssignmentRequest }) =>
             vehicleAssignmentService.update(id, data),
         onSuccess: () => {
-            message.success("Cập nhật phân công xe thành công");
+            message.success("Cập nhật chuyến xe thành công");
             queryClient.invalidateQueries({ queryKey: ["staffVehicleAssignments"] });
             setIsModalOpen(false);
             setEditingAssignment(undefined);
         },
         onError: (error) => {
-            message.error("Có lỗi xảy ra khi cập nhật phân công xe");
+            message.error("Có lỗi xảy ra khi cập nhật chuyến xe");
             console.error("Error updating vehicle assignment:", error);
         },
     });
@@ -65,11 +65,11 @@ const StaffVehicleAssignmentPage: React.FC = () => {
     const deleteMutation = useMutation({
         mutationFn: (id: string) => vehicleAssignmentService.delete(id),
         onSuccess: () => {
-            message.success("Xóa phân công xe thành công");
+            message.success("Xóa chuyến xe thành công");
             queryClient.invalidateQueries({ queryKey: ["staffVehicleAssignments"] });
         },
         onError: (error) => {
-            message.error("Có lỗi xảy ra khi xóa phân công xe");
+            message.error("Có lỗi xảy ra khi xóa chuyến xe");
             console.error("Error deleting vehicle assignment:", error);
         },
     });
@@ -117,8 +117,7 @@ const StaffVehicleAssignmentPage: React.FC = () => {
         if (!searchText) return true;
         const searchLower = searchText.toLowerCase();
         return (
-            assignment.id.toLowerCase().includes(searchLower) ||
-            assignment.description?.toLowerCase().includes(searchLower) ||
+            assignment.trackingCode?.toLowerCase().includes(searchLower) ||
             assignment.status.toLowerCase().includes(searchLower)
         );
     });
@@ -134,10 +133,10 @@ const StaffVehicleAssignmentPage: React.FC = () => {
 
     return (
         <EntityManagementLayout
-            title="Quản lý phân công xe"
+            title="Quản lý chuyến xe"
             icon={<SwapOutlined />}
-            description="Quản lý phân công xe và tài xế"
-            addButtonText="Tạo phân công mới"
+            description="Quản lý các chuyến xe và tài xế"
+            addButtonText="Tạo chuyến xe mới"
             addButtonIcon={<PlusOutlined />}
             onAddClick={handleOpenModal}
             searchText={searchText}
@@ -148,7 +147,7 @@ const StaffVehicleAssignmentPage: React.FC = () => {
             totalCount={assignmentsData?.data?.length || 0}
             activeCount={activeCount}
             bannedCount={inactiveCount}
-            tableTitle="Danh sách phân công xe"
+            tableTitle="Danh sách chuyến xe"
             tableComponent={
                 isError ? (
                     <div className="text-red-500">
@@ -166,7 +165,7 @@ const StaffVehicleAssignmentPage: React.FC = () => {
             }
             modalComponent={
                 <Modal
-                    title={editingAssignment ? "Cập nhật phân công xe" : "Tạo phân công xe mới"}
+                    title={editingAssignment ? "Cập nhật chuyến xe" : "Tạo chuyến xe mới"}
                     open={isModalOpen}
                     onCancel={handleCloseModal}
                     footer={null}

@@ -70,9 +70,14 @@ const CustomerPage: React.FC = () => {
     const getStatusColor = (status: string | boolean) => {
         if (typeof status === 'string') {
             switch (status.toLowerCase()) {
-                case 'active': return 'green';
-                case 'banned': return 'red';
-                default: return 'default';
+                case 'active':
+                    return 'green';
+                case 'inactive':
+                    return 'default';
+                case 'banned':
+                    return 'red';
+                default:
+                    return 'default';
             }
         }
         return 'default';
@@ -81,9 +86,14 @@ const CustomerPage: React.FC = () => {
     const getStatusText = (status: string | boolean) => {
         if (typeof status === 'string') {
             switch (status.toLowerCase()) {
-                case 'active': return 'Hoạt động';
-                case 'banned': return 'Bị cấm';
-                default: return status || 'Không xác định';
+                case 'active':
+                    return 'Hoạt động';
+                case 'inactive':
+                    return 'Không hoạt động';
+                case 'banned':
+                    return 'Bị cấm';
+                default:
+                    return status || 'Không xác định';
             }
         }
         return 'Không xác định';
@@ -99,9 +109,9 @@ const CustomerPage: React.FC = () => {
             icon: <CheckCircleOutlined />
         },
         {
-            value: 'BANNED',
-            label: 'Cấm hoạt động',
-            description: 'Khách hàng không thể đăng nhập và sử dụng hệ thống',
+            value: 'INACTIVE',
+            label: 'Không hoạt động',
+            description: 'Khách hàng tạm thời không thể đăng nhập và sử dụng hệ thống',
             color: 'red',
             icon: <StopOutlined />
         }

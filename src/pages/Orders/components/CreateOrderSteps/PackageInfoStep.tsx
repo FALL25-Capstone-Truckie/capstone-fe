@@ -4,27 +4,21 @@ import type { OrderSize } from "../../../../models/OrderSize";
 import type { Category } from "../../../../models/Category";
 import { CategoryName, getCategoryDisplayName, isFragileCategory } from "../../../../models/CategoryName";
 import { formatCurrency } from "../../../../utils/formatters";
+import { getWeightUnits } from "../../../../config/weightUnits";
 
 const { Title, Text } = Typography;
 const { Option } = Select;
 
 interface PackageInfoStepProps {
   orderSizes: OrderSize[];
-  weightUnits: { value: string; label: string }[];
   categories: Category[];
 }
 
 const PackageInfoStep: React.FC<PackageInfoStepProps> = ({
   orderSizes,
-  weightUnits,
   categories,
 }) => {
-  // const weightUnits = [
-  //   { value: "Tấn", label: "Tấn" },
-  //   { value: "Tạ", label: "Tạ" },
-  //   { value: "Yến", label: "Yến" },
-  //   { value: "Kí", label: "Kilogram (kg)" },
-  // ];
+  const weightUnits = getWeightUnits();
 
   return (
     <>

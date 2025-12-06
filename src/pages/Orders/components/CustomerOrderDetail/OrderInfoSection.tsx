@@ -7,6 +7,7 @@ interface OrderInfoSectionProps {
     packageDescription?: string;
     totalQuantity: number;
     categoryName?: string;
+    categoryDescription?: string;
     notes?: string;
     orderDetails: {
         id: string;
@@ -22,6 +23,7 @@ const OrderInfoSection: React.FC<OrderInfoSectionProps> = ({
     packageDescription,
     totalQuantity,
     categoryName,
+    categoryDescription,
     notes,
     orderDetails,
 }) => {
@@ -44,7 +46,7 @@ const OrderInfoSection: React.FC<OrderInfoSectionProps> = ({
                     <span className="font-medium">Số lượng:</span> {totalQuantity}
                 </p>
                 <p className="mb-0">
-                    <span className="font-medium">Loại hàng:</span> {categoryName || "Chưa phân loại"}
+                    <span className="font-medium">Loại hàng:</span> {categoryDescription || categoryName || "Chưa phân loại"}
                 </p>
             </div>
 

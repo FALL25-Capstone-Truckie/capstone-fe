@@ -11,7 +11,8 @@ export enum VehicleAssignmentEnum {
     ASSIGNED = 'ASSIGNED',
     AVAILABLE = 'AVAILABLE',
     IN_TRIP = 'IN_TRIP',
-    COMPLETED = 'COMPLETED'
+    COMPLETED = 'COMPLETED',
+    ACTIVE = 'ACTIVE'
 }
 
 export const VehicleAssignmentColors = {
@@ -27,7 +28,8 @@ export const VehicleAssignmentColors = {
     [VehicleAssignmentEnum.ASSIGNED]: 'bg-blue-500 text-white',
     [VehicleAssignmentEnum.AVAILABLE]: 'bg-green-500 text-white',
     [VehicleAssignmentEnum.IN_TRIP]: 'bg-yellow-500 text-white',
-    [VehicleAssignmentEnum.COMPLETED]: 'bg-green-500 text-white'
+    [VehicleAssignmentEnum.COMPLETED]: 'bg-green-500 text-white',
+    [VehicleAssignmentEnum.ACTIVE]: 'bg-blue-500 text-white'
 };
 
 export const VehicleAssignmentLabels = {
@@ -43,5 +45,6 @@ export const VehicleAssignmentLabels = {
     [VehicleAssignmentEnum.ASSIGNED]: 'Đã giao cho tài xế',
     [VehicleAssignmentEnum.AVAILABLE]: 'Có sẵn',
     [VehicleAssignmentEnum.IN_TRIP]: 'Đang di chuyển',
-    [VehicleAssignmentEnum.COMPLETED]: 'Hoàn thành'
+    [VehicleAssignmentEnum.COMPLETED]: 'Hoàn thành',
+    [VehicleAssignmentEnum.ACTIVE]: 'Đang hoạt động'
 }; 

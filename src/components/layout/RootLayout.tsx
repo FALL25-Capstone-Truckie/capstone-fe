@@ -2,12 +2,10 @@ import React, { useEffect, useState } from 'react';
 import { Outlet } from 'react-router-dom';
 import { useLogoutListener } from '@/hooks/useLogoutListener';
 import { useAuth } from '@/context';
-import { ChatProvider, useChatContext } from '@/context/ChatContext';
 import { IssuesProvider } from '@/context/IssuesContext';
-import ChatWidget from '@/components/chat/ChatWidget';
-import StaffChatWidget from '@/components/chat/StaffChatWidget';
+import CustomerChatWidget from '@/components/userChat/CustomerChatWidget';
+import StaffUserChatWidget from '@/components/userChat/StaffUserChatWidget';
 import { AIChatbot } from '@/components/ai-chatbot';
-import issueWebSocket from '@/services/websocket/issueWebSocket';
 
 /**
  * Root layout component that wraps all routes
@@ -19,57 +17,59 @@ const RootLayout: React.FC = () => {
   
   const { user } = useAuth();
   const isStaff = user?.role === 'staff';
-
-  // Connect to WebSocket for staff users
-  useEffect(() => {
-    if (user && user.role === 'staff') {
-      issueWebSocket.connect().catch(error => {
-        console.error('❌ [RootLayout] Failed to connect to WebSocket:', error);
-      });
-
-      return () => {
-        issueWebSocket.disconnect();
-      };
-    }
-  }, [user]);
-
-  return (
-    <ChatProvider isStaff={isStaff}>
-      <IssuesProvider>
-        <Outlet />
-        {/* Chat Widgets with toggle logic */}
-        <ChatWidgetsManager isStaff={isStaff} />
-      </IssuesProvider>
-    </ChatProvider>
-  );
-};
-
-/**
- * Manages toggle between AI chat and normal chat
- */
-const ChatWidgetsManager: React.FC<{ isStaff: boolean }> = ({ isStaff }) => {
-  const { isOpen: isChatOpen, toggleChat } = useChatContext();
+  const isAdmin = user?.role === 'admin';
+  
+  // State to manage which chat is open
+  const [isNormalChatOpen, setIsNormalChatOpen] = useState(false);
   const [isAIChatOpen, setIsAIChatOpen] = useState(false);
 
-  // Close AI chat when normal chat opens
-  const handleChatOpen = () => {
+  // Handle normal chat open - close AI chat if open
+  const handleNormalChatOpen = () => {
+    setIsNormalChatOpen(true);
     setIsAIChatOpen(false);
   };
 
-  // Close normal chat when AI chat opens  
-  const handleAIChatOpen = () => {
-    if (isChatOpen) {
-      toggleChat();
-    }
-    setIsAIChatOpen(true);
+  // Handle normal chat close
+  const handleNormalChatClose = () => {
+    setIsNormalChatOpen(false);
   };
 
+  // Handle AI chat open - close normal chat if open
+  const handleAIChatOpen = () => {
+    setIsAIChatOpen(true);
+    setIsNormalChatOpen(false);
+  };
+
+  // Handle AI chat close
+  const handleAIChatClose = () => {
+    setIsAIChatOpen(false);
+  };
+
+  // WebSocket connections are now handled by GlobalWebSocketProvider at app root
+
   return (
-    <>
-      {isStaff ? <StaffChatWidget /> : <ChatWidget onOpen={handleChatOpen} />}
-      {/* AI Chatbot chỉ cho Customer và Guest (không phải Staff) */}
-      {!isStaff && <AIChatbot onOpen={handleAIChatOpen} />}
-    </>
+    <IssuesProvider>
+      <Outlet />
+      {/* Chat Widgets - Ẩn hoàn toàn với admin, chỉ hiển thị cho staff hoặc customer/guest */}
+      {!isAdmin && (
+        isStaff ? (
+          <StaffUserChatWidget />
+        ) : (
+          <>
+            <CustomerChatWidget 
+              isOpen={isNormalChatOpen}
+              onClose={handleNormalChatClose}
+              onOpen={handleNormalChatOpen}
+            />
+            <AIChatbot 
+              isOpen={isAIChatOpen}
+              onClose={handleAIChatClose}
+              onOpen={handleAIChatOpen}
+            />
+          </>
+        )
+      )}
+    </IssuesProvider>
   );
 };
 

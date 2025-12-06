@@ -33,6 +33,19 @@ export const vehicleAssignmentService = {
         }
     },
 
+    /**
+     * Get full vehicle assignment details for staff view
+     * Includes: vehicle, drivers, penalties, fuel consumption, seals, journey histories, photo completions, issues, order details, order info
+     */
+    getFullById: async (id: string): Promise<ApiResponse<any>> => {
+        try {
+            const response = await httpClient.get<ApiResponse<any>>(`${BASE_URL}/${id}/full`);
+            return response.data;
+        } catch (error) {
+            throw error;
+        }
+    },
+
     create: async (data: CreateVehicleAssignmentRequest): Promise<VehicleAssignmentDetailResponse> => {
         try {
             const response = await httpClient.post<VehicleAssignmentDetailResponse>(BASE_URL, data);

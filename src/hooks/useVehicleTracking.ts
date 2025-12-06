@@ -155,6 +155,7 @@ export const useVehicleTracking = (options: UseVehicleTrackingOptions = {}): Use
   // Connect to WebSocket
   const connect = useCallback(() => {
     if (clientRef.current?.connected || isConnecting) {
+      console.log('[VehicleTracking] Already connected or connecting, skip');
       return;
     }
 
@@ -171,6 +172,7 @@ export const useVehicleTracking = (options: UseVehicleTrackingOptions = {}): Use
       return;
     }
 
+    console.log('[VehicleTracking] Connecting WebSocket...');
     setIsConnecting(true);
     setError(null);
     
@@ -200,6 +202,7 @@ export const useVehicleTracking = (options: UseVehicleTrackingOptions = {}): Use
 
     // Connection success handler
     client.onConnect = () => {
+      console.log('✅ [VehicleTracking] WebSocket connected');
       // Clear connecting timeout khi kết nối thành công
       if (connectingTimeoutRef.current) {
         clearTimeout(connectingTimeoutRef.current);

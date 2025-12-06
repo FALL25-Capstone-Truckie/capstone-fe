@@ -23,10 +23,36 @@ import timezone from "dayjs/plugin/timezone";
 import RouteMapSection from "./RouteMapSection";
 import OrderDetailStatusCard from "../../../../../components/common/OrderDetailStatusCard";
 import { formatSealStatus } from "../../../../../models/JourneyHistory";
-import { getSealStatusColor } from "../../../../../constants/enums";
+import { getSealStatusColor, VehicleAssignmentLabels, VehicleAssignmentEnum } from "../../../../../constants/enums";
 import { getIssueStatusLabel, getIssueStatusColor, getSealStatusLabel } from '@/constants/enums';
 import vietmapService from '@/services/vietmap/vietmapService';
 import "./VehicleAssignmentSection.css";
+
+// Helper functions for status translation and colors
+const getVehicleAssignmentStatusLabel = (status: string) => {
+    return VehicleAssignmentLabels[status as VehicleAssignmentEnum] || status;
+};
+
+const getVehicleAssignmentStatusColor = (status: string) => {
+    const colors: Record<string, string> = {
+        'ACTIVE': 'processing',
+        'INACTIVE': 'default',
+        'COMPLETED': 'success',
+        'COMPLETE': 'success',
+        'UNASSIGNED': 'default',
+        'ASSIGNED_TO_DRIVER': 'processing',
+        'ASSIGNED_TO_ROUTE': 'processing',
+        'RESERVED': 'purple',
+        'IN_TRANSIT': 'processing',
+        'ON_STANDBY': 'warning',
+        'MAINTENANCE_HOLD': 'orange',
+        'DECOMMISSIONED': 'error',
+        'ASSIGNED': 'processing',
+        'AVAILABLE': 'success',
+        'IN_TRIP': 'processing',
+    };
+    return colors[status?.toUpperCase()] || 'default';
+};
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -176,9 +202,9 @@ const VehicleAssignmentSection: React.FC<VehicleAssignmentSectionProps> = ({
                             </span>
                             <Tag
                                 className="ml-3"
-                                color={getStatusColor(va.status || "")}
+                                color={getVehicleAssignmentStatusColor(va.status || "")}
                             >
-                                {va.status}
+                                {getVehicleAssignmentStatusLabel(va.status || "")}
                             </Tag>
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -204,8 +230,8 @@ const VehicleAssignmentSection: React.FC<VehicleAssignmentSectionProps> = ({
                                 <TagOutlined className="mr-2 text-gray-500" />
                                 <span className="font-medium mr-1">Loại xe:</span>
                                 <span>
-                                    {va.vehicle?.vehicleType ||
-                                        va.vehicleType ||
+                                    {va.vehicle?.vehicleTypeDescription ||
+                                        va.vehicleTypeDescription ||
                                         "Chưa có thông tin"}
                                 </span>
                             </div>

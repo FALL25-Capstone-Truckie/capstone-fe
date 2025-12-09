@@ -1,5 +1,6 @@
 import React from "react";
 import { Layout, Menu } from "antd";
+import type { MenuProps } from "antd";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "../../context";
 import {
@@ -24,12 +25,7 @@ import { icons } from "lucide-react";
 
 const { Sider } = Layout;
 
-interface MenuItem {
-  key: string;
-  icon?: React.ReactNode;
-  label: React.ReactNode;
-  children?: MenuItem[];
-}
+type MenuItem = Required<MenuProps>['items'][number];
 
 interface AdminSidebarProps {
   collapsed?: boolean;
@@ -79,6 +75,33 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({
           ],
         },
         {
+          key: "/admin/penalties",
+          icon: <ExclamationCircleOutlined />,
+          label: <Link to="/admin/penalties">Vi phạm giao thông</Link>,
+        },
+        {
+          key: "admin-vehicle-management",
+          icon: <TruckOutlined />,
+          label: "Quản lý phương tiện",
+          children: [
+            {
+              key: "/admin/vehicles",
+              icon: <TruckFilled />,
+              label: <Link to="/admin/vehicles">Phương tiện</Link>,
+            },
+            {
+              key: "/admin/vehicle-maintenances",
+              icon: <ToolOutlined />,
+              label: <Link to="/admin/vehicle-maintenances">Bảo trì</Link>,
+            },
+            {
+              key: "/admin/devices",
+              icon: <HddOutlined />,
+              label: <Link to="/admin/devices">Thiết bị GPS</Link>,
+            },
+          ],
+        },
+        {
           key: "/admin/settings",
           icon: <SettingOutlined />,
           label: <Link to="/admin/settings">Cài đặt</Link>,
@@ -91,6 +114,11 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({
       return [
         ...baseItems,
         {
+          key: "/staff/orders",
+          icon: <ShoppingCartOutlined />,
+          label: <Link to="/staff/orders">Đơn hàng</Link>,
+        },
+        {
           key: "/staff/issues",
           icon: <ExclamationCircleOutlined />,
           label: <Link to="/staff/issues">Sự cố</Link>,
@@ -99,28 +127,6 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({
           key: "/staff/vehicle-assignments",
           icon: <SwapOutlined />,
           label: <Link to="/staff/vehicle-assignments">Chuyến xe</Link>,
-        },
-        {
-          key: "staff-vehicle-management",
-          icon: <TruckOutlined />,
-          label: "Quản lý phương tiện",
-          children: [
-            {
-              key: "/staff/vehicles",
-              icon: <TruckFilled />,
-              label: <Link to="/staff/vehicles">Phương tiện</Link>,
-            },
-            {
-              key: "/staff/vehicle-maintenances",
-              icon: <ToolOutlined />,
-              label: <Link to="/staff/vehicle-maintenances">Bảo trì</Link>,
-            },
-            {
-              key: "/staff/devices",
-              icon: <HddOutlined />,
-              label: <Link to="/staff/devices">Thiết bị GPS</Link>,
-            },
-          ],
         },
         {
           key: "staff-pricing-management",
@@ -167,11 +173,6 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({
           label: <Link to="/staff/stipulation-settings">Điều khoản</Link>,
         },
         {
-          key: "/staff/penalties",
-          icon: <ExclamationCircleOutlined />,
-          label: <Link to="/staff/penalties">Phạt vi phạm</Link>,
-        },
-        {
           key: "/staff/notifications",
           icon: <BellOutlined />,
           label: <Link to="/staff/notifications">Thông báo</Link>,
@@ -184,9 +185,9 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({
   };
 
   const menuItems = getMenuItems();
-  const openKeys = menuItems.find((item) =>
-    item.children?.some((child) => child.key === location.pathname)
-  )?.key;
+  const openKeys = menuItems.find((item: any) =>
+    item?.children?.some((child: any) => child?.key === location.pathname)
+  )?.key as string | undefined;
 
   return (
     <Sider
@@ -238,7 +239,7 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({
       <Menu
         mode="inline"
         selectedKeys={[location.pathname]}
-        defaultOpenKeys={openKeys ? [openKeys] : []}
+        defaultOpenKeys={openKeys ? [String(openKeys)] : []}
         style={{
           height: "100%",
           borderRight: 0,

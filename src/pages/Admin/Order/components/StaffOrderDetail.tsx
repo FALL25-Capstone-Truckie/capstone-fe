@@ -54,6 +54,18 @@ const StaffOrderDetail: React.FC = () => {
   const [activeMainTab, setActiveMainTab] = useState<string>(getInitialTab());
   const [vehicleAssignmentModalVisible, setVehicleAssignmentModalVisible] =
     useState<boolean>(false);
+
+  // Debug wrapper để track TẤT CẢ lần set modal visible
+  const trackedSetVehicleAssignmentModalVisible = (visible: boolean) => {
+    console.log(`🚨 MODAL STATE CHANGE: ${visible ? 'OPENING' : 'CLOSING'} modal`, {
+      visible,
+      currentValue: vehicleAssignmentModalVisible,
+      orderStatus: orderData?.order?.status,
+      stack: new Error().stack?.split('\n').slice(1, 4).join('\n')
+    });
+    setVehicleAssignmentModalVisible(visible);
+  };
+
   const [billOfLadingPreviewVisible, setBillOfLadingPreviewVisible] =
     useState<boolean>(false);
   const [billOfLadingPreviewLoading, setBillOfLadingPreviewLoading] =
@@ -66,10 +78,30 @@ const StaffOrderDetail: React.FC = () => {
   const [previousOrderStatus, setPreviousOrderStatus] = useState<string | null>(null);
   const [cancelOrderModalVisible, setCancelOrderModalVisible] = useState<boolean>(false);
 
+  // REF để BLOCK HOÀN TOÀN modal sau khi submit thành công
+  // Đây là giải pháp triệt để - modal sẽ KHÔNG THỂ render sau khi assignment success
+  const assignmentSuccessfulRef = useRef<boolean>(false);
+
   // Handle order status changes via WebSocket
   const handleOrderStatusChange = useCallback((statusChange: any) => {
     // Check if this status change is for the current order
     if (id && statusChange.orderId === id) {
+      // SKIP refetch nếu vừa assignment thành công (đã fetch rồi)
+      // Chỉ update status locally để tránh fetch trùng lặp
+      if (assignmentSuccessfulRef.current && statusChange.newStatus === 'ASSIGNED_TO_DRIVER') {
+        console.log('⏭️ Skipping WebSocket refetch - already fetched after assignment success');
+        if (orderData) {
+          setOrderData({
+            ...orderData,
+            order: {
+              ...orderData.order,
+              status: statusChange.newStatus
+            }
+          });
+        }
+        return;
+      }
+      
       // CRITICAL: Refetch for important status transitions BEFORE and including PICKING_UP
       // Also refetch for RETURNING/RETURNED to get new return journey data
       // For other status changes after PICKING_UP, just update locally to avoid disrupting real-time tracking
@@ -402,6 +434,12 @@ const StaffOrderDetail: React.FC = () => {
   };
 
   const handleVehicleAssignmentSuccess = () => {
+    console.log(' handleVehicleAssignmentSuccess - BLOCKING modal permanently');
+    // BLOCK modal vĩnh viễn cho đến khi component unmount
+    assignmentSuccessfulRef.current = true;
+    // Force close modal state
+    trackedSetVehicleAssignmentModalVisible(false);
+    // Fetch lại order để cập nhật status mới (ASSIGNED_TO_DRIVER)
     if (id) {
       fetchOrderDetails(id);
     }
@@ -464,6 +502,21 @@ const StaffOrderDetail: React.FC = () => {
   const isOnPlanningStatus = () => {
     if (!orderData || !orderData.order) return false;
     return orderData.order.status === OrderStatusEnum.ON_PLANNING;
+  };
+
+  const openVehicleAssignmentModal = () => {
+    console.log(' openVehicleAssignmentModal called');
+    // BLOCK nếu đã assignment thành công
+    if (assignmentSuccessfulRef.current) {
+      console.log(' Blocked: Assignment already completed');
+      return;
+    }
+    if (!orderData || orderData.order.status !== OrderStatusEnum.ON_PLANNING) {
+      console.log(' Blocked: Invalid status or no order data');
+      return;
+    }
+    console.log(' Opening modal via button click');
+    trackedSetVehicleAssignmentModalVisible(true);
   };
 
   // Check if order can be cancelled by staff (only PROCESSING status)
@@ -558,7 +611,7 @@ const StaffOrderDetail: React.FC = () => {
             <Button
               type="primary"
               icon={<UserAddOutlined />}
-              onClick={() => setVehicleAssignmentModalVisible(true)}
+              onClick={openVehicleAssignmentModal}
               className="bg-green-500 hover:bg-green-600 shadow-md transition-all duration-300 flex items-center px-5 py-6 text-base"
               size="large"
             >
@@ -621,7 +674,6 @@ const StaffOrderDetail: React.FC = () => {
             <OrderDetailTabs
               order={order}
               formatDate={formatDate}
-              setVehicleAssignmentModalVisible={setVehicleAssignmentModalVisible}
             />
           </TabPane>
           {/* Live Tracking Tab - Only show when status >= PICKING_UP */}
@@ -671,12 +723,16 @@ const StaffOrderDetail: React.FC = () => {
         </Tabs>
       </Card>
 
-      {/* Vehicle Assignment Modal */}
-      {id && (
+      {/* Vehicle Assignment Modal - CHỈ render khi order status = ON_PLANNING */}
+      {/* Sau khi submit success, status đổi thành ASSIGNED_TO_DRIVER → modal tự động unmount */}
+      {id && isOnPlanningStatus() && !assignmentSuccessfulRef.current && (
         <VehicleAssignmentModal
           visible={vehicleAssignmentModalVisible}
           orderId={id}
-          onClose={() => setVehicleAssignmentModalVisible(false)}
+          onClose={() => {
+            console.log('🔒 Modal onClose callback');
+            trackedSetVehicleAssignmentModalVisible(false);
+          }}
           onSuccess={handleVehicleAssignmentSuccess}
         />
       )}

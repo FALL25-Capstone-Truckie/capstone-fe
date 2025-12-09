@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { Form, Input, Button, Select, Divider, Typography, Alert, Space, Tooltip } from 'antd';
 import { IdcardOutlined, CalendarOutlined, UserOutlined, MailOutlined, PhoneOutlined, LockOutlined, InfoCircleOutlined } from '@ant-design/icons';
-import type { DriverRegisterRequest } from '../../../../services/driver';
 import dayjs from 'dayjs';
+
 import DateSelectGroup from '../../../../components/common/DateSelectGroup';
 
 const { Option } = Select;
@@ -11,9 +11,11 @@ const { Text } = Typography;
 interface DriverFormProps {
     loading: boolean;
     onSubmit: (values: any) => void;
+    /** Hide password field when using new driver creation flow (password auto-generated) */
+    hidePasswordField?: boolean;
 }
 
-const DriverForm: React.FC<DriverFormProps> = ({ loading, onSubmit }) => {
+const DriverForm: React.FC<DriverFormProps> = ({ loading, onSubmit, hidePasswordField = false }) => {
     const [form] = Form.useForm();
     const [selectedLicenseClass, setSelectedLicenseClass] = useState<string>('');
 
@@ -136,6 +138,18 @@ const DriverForm: React.FC<DriverFormProps> = ({ loading, onSubmit }) => {
                 <UserOutlined className="text-blue-500 mr-2" />
                 <Text strong className="text-lg">Thông tin tài khoản</Text>
             </div>
+
+            {hidePasswordField && (
+                <Alert
+                    message="Mật khẩu tự động"
+                    description="Mật khẩu tạm thời sẽ được hệ thống tự động tạo. Sau khi tạo tài xế, bạn sẽ nhận được mật khẩu để gửi cho tài xế. Tài xế sẽ phải đổi mật khẩu khi đăng nhập lần đầu."
+                    type="info"
+                    showIcon
+                    icon={<LockOutlined />}
+                    className="mb-4"
+                />
+            )}
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Form.Item
                     name="username"
@@ -145,16 +159,18 @@ const DriverForm: React.FC<DriverFormProps> = ({ loading, onSubmit }) => {
                     <Input placeholder="Nhập tên đăng nhập" prefix={<UserOutlined className="text-gray-400" />} />
                 </Form.Item>
 
-                <Form.Item
-                    name="password"
-                    label="Mật khẩu"
-                    rules={[
-                        { required: true, message: 'Vui lòng nhập mật khẩu' },
-                        { min: 6, message: 'Mật khẩu phải có ít nhất 6 ký tự' }
-                    ]}
-                >
-                    <Input.Password placeholder="Nhập mật khẩu" prefix={<LockOutlined className="text-gray-400" />} />
-                </Form.Item>
+                {!hidePasswordField && (
+                    <Form.Item
+                        name="password"
+                        label="Mật khẩu"
+                        rules={[
+                            { required: true, message: 'Vui lòng nhập mật khẩu' },
+                            { min: 6, message: 'Mật khẩu phải có ít nhất 6 ký tự' }
+                        ]}
+                    >
+                        <Input.Password placeholder="Nhập mật khẩu" prefix={<LockOutlined className="text-gray-400" />} />
+                    </Form.Item>
+                )}
 
                 <Form.Item
                     name="email"
@@ -372,6 +388,8 @@ const DriverForm: React.FC<DriverFormProps> = ({ loading, onSubmit }) => {
                 >
                     <DateSelectGroup
                         mode="birthdate"
+                        maxYear={dayjs().year() + 10}
+                        minYear={dayjs().year() - 1}
                     />
                 </Form.Item>
             </div>
@@ -380,7 +398,7 @@ const DriverForm: React.FC<DriverFormProps> = ({ loading, onSubmit }) => {
                 <Button
                     type="primary"
                     htmlType="submit"
-                    className="w-full md:w-auto bg-blue-600 hover:bg-blue-700"
+                    className="w-full bg-blue-600 hover:bg-blue-700"
                     loading={loading}
                     size="large"
                 >
@@ -391,4 +409,4 @@ const DriverForm: React.FC<DriverFormProps> = ({ loading, onSubmit }) => {
     );
 };
 
-export default DriverForm; 
+export default DriverForm;

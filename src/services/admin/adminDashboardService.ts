@@ -6,6 +6,7 @@ import type {
   TopStaff,
   TopDriver,
   PeriodType,
+  FleetStats,
 } from '../../models/AdminDashboard';
 
 const adminDashboardService = {
@@ -75,6 +76,18 @@ const adminDashboardService = {
     } catch (error) {
       console.error('Error fetching admin AI summary:', error);
       throw handleApiError(error, 'Không thể tải tóm tắt AI');
+    }
+  },
+
+  getFleetStats: async (period: PeriodType = 'month'): Promise<FleetStats> => {
+    try {
+      const response = await httpClient.get('/dashboard/fleet-stats', {
+        params: { period },
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching fleet statistics:', error);
+      throw handleApiError(error, 'Không thể tải thống kê đội xe');
     }
   },
 };

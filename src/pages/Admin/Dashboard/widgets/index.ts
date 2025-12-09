@@ -1,3 +1,7 @@
 export { default as StatsCards } from './StatsCards';
 export { default as RegistrationChart } from './RegistrationChart';
 export { default as TopPerformersChart } from './TopPerformersChart';
+export { default as DeviceStatsCards } from './DeviceStatsCards';
+export { default as FleetTab } from './FleetTab';
+export { default as PenaltiesSummaryCards } from './PenaltiesSummaryCards';
+export { default as PenaltiesTimeSeriesChart } from './PenaltiesTimeSeriesChart';

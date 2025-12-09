@@ -1,67 +1,87 @@
 /**
- * Penalty model representing a driver violation and associated penalty
+ * Penalty model representing a traffic violation record
  */
+
+export interface DriverSummary {
+    // User info
+    userId: string;
+    username?: string;
+    fullName?: string;
+    email?: string;
+    phoneNumber?: string;
+    gender?: boolean;
+    dateOfBirth?: string;
+    imageUrl?: string;
+    userStatus?: string;
+    roleName?: string;
+
+    // Driver info
+    driverId: string;
+    identityNumber?: string;
+    driverLicenseNumber?: string;
+    cardSerialNumber?: string;
+    placeOfIssue?: string;
+    dateOfIssue?: string;
+    dateOfExpiry?: string;
+    licenseClass?: string;
+    dateOfPassing?: string;
+    driverStatus?: string;
+}
+
+export interface VehicleAssignmentSummary {
+    id: string;
+    trackingCode: string;
+    description?: string;
+    status?: string;
+    vehiclePlateNumber?: string;
+    vehicleTypeDescription?: string;
+    
+    driver1Id?: string;
+    driver1Name?: string;
+    driver1Phone?: string;
+    driver1LicenseNumber?: string;
+    
+    driver2Id?: string;
+    driver2Name?: string;
+    driver2Phone?: string;
+    driver2LicenseNumber?: string;
+}
 
 export interface Penalty {
     id: string;
     violationType: string;
-    violationDescription: string;
-    penaltyAmount: number;
     penaltyDate: string;
-    location: string;
-    status: string;
-    paymentDate?: string;
-    disputeReason?: string;
-    driverId: string;
-    vehicleAssignmentId: string;
+    trafficViolationRecordImageUrl?: string;
+    driverId?: string;
+    driverSummary?: DriverSummary;
+    vehicleAssignmentId?: string;
+    vehicleAssignment?: VehicleAssignmentSummary;
 }
 
 export interface PenaltyCreateDto {
     violationType: string;
-    violationDescription: string;
-    penaltyAmount: number;
     penaltyDate: string;
-    location: string;
-    status: string;
+    trafficViolationRecordImageUrl?: string;
     driverId: string;
     vehicleAssignmentId: string;
 }
 
 export interface PenaltyUpdateDto {
     violationType: string;
-    violationDescription: string;
-    penaltyAmount: number;
     penaltyDate: string;
-    location: string;
-    status: string;
+    trafficViolationRecordImageUrl?: string;
     driverId: string;
     vehicleAssignmentId: string;
 }
 
-export enum PenaltyStatus {
-    PENDING = 'PENDING',
-    PAID = 'PAID',
-    DISPUTED = 'DISPUTED',
-    RESOLVED = 'RESOLVED',
-    CANCELLED = 'CANCELLED'
-}
-
-export const penaltyStatusColors = {
-    [PenaltyStatus.PENDING]: 'orange',
-    [PenaltyStatus.PAID]: 'green',
-    [PenaltyStatus.DISPUTED]: 'red',
-    [PenaltyStatus.RESOLVED]: 'blue',
-    [PenaltyStatus.CANCELLED]: 'gray'
-};
-
 export const violationTypes = [
-    'Speeding',
-    'Illegal Parking',
-    'Traffic Signal Violation',
-    'Improper Vehicle Documentation',
-    'Overloading',
-    'Unauthorized Route',
-    'Driving Hours Violation',
-    'Vehicle Condition Violation',
-    'Other'
-]; 
+    'Vượt tốc độ',
+    'Đỗ sai quy định',
+    'Vi phạm tín hiệu giao thông',
+    'Không đủ giấy tờ xe',
+    'Quá tải',
+    'Đi sai tuyến đường',
+    'Vi phạm thời gian lái xe',
+    'Vi phạm điều kiện phương tiện',
+    'Khác'
+];

@@ -19,6 +19,7 @@ import CustomerOrderDetailPage from "../pages/Orders/CustomerOrderDetailPage";
 import CreateOrder from "../pages/Orders/CreateOrder";
 import { PermissionRoute } from "../components/auth";
 import { MainLayout, AdminLayout, RootLayout } from "../components/layout";
+import ScrollToTop from "../components/common/ScrollToTop";
 import StaffNotificationListPage from "../pages/Staff/notifications/NotificationListPage";
 import CustomerNotificationListPage from "../pages/customer/notifications/NotificationListPage";
 import DriverPage from "../pages/Admin/Driver";
@@ -260,10 +261,6 @@ const router = createBrowserRouter([
             element: <Dashboard />,
           },
           {
-            path: "penalties",
-            element: <PenaltyHistory />,
-          },
-          {
             path: "orders",
             element: <StaffOrderList />,
           },
@@ -477,6 +474,10 @@ const router = createBrowserRouter([
           {
             path: "profile/:userId",
             element: <ProfilePage />,
+          },
+          {
+            path: "penalties",
+            element: <PenaltyHistory />,
           },
         ],
       },

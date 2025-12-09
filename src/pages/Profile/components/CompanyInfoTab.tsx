@@ -45,7 +45,7 @@ const CompanyInfoTab: React.FC<CompanyInfoTabProps> = ({ customerData, isOwnProf
                 </Col>
             </Row>
 
-            <Divider orientation="left">Chi tiết</Divider>
+            <Divider titlePlacement="start">Chi tiết</Divider>
 
             <Row gutter={[16, 24]}>
                 <Col xs={24} md={12}>

@@ -206,9 +206,11 @@ const ReturnShippingIssuesSection: React.FC<ReturnShippingIssuesSectionProps> = 
   const pendingPayments = mappedIssues.filter(
     issue => {
       if (issue.status !== 'IN_PROGRESS') return false;
-      // Check if there's any PENDING transaction
-      const hasPendingTransaction = issue.transactions?.some((t: any) => t.status === 'PENDING');
-      return hasPendingTransaction || issue.returnTransaction?.status === 'PENDING';
+      // Check if there's any PAID transaction - if yes, don't count as pending
+      const hasPaidTransaction = issue.transactions?.some((t: any) => t.status === 'PAID') || 
+                                issue.returnTransaction?.status === 'PAID';
+      // Count as pending if NOT paid yet (regardless of other transaction statuses)
+      return !hasPaidTransaction;
     }
   ).length;
 
@@ -392,11 +394,8 @@ const ReturnShippingIssuesSection: React.FC<ReturnShippingIssuesSectionProps> = 
                   {issue.status === 'IN_PROGRESS' && issue.paymentDeadline && (() => {
                     const hasPaidTransaction = issue.transactions?.some((t: any) => t.status === 'PAID') || 
                                               issue.returnTransaction?.status === 'PAID';
-                    const hasPendingTransaction = issue.transactions?.some((t: any) => t.status === 'PENDING') || 
-                                                  issue.returnTransaction?.status === 'PENDING' || 
-                                                  !issue.returnTransaction;
-                    // Only show countdown if NOT paid yet and has pending/no transaction
-                    return !hasPaidTransaction && hasPendingTransaction;
+                    // Only show countdown if NOT paid yet (regardless of other transaction statuses)
+                    return !hasPaidTransaction;
                   })() && (
                     <>
                       <div className="border-t pt-4 mt-3">
@@ -508,28 +507,50 @@ const ReturnShippingIssuesSection: React.FC<ReturnShippingIssuesSectionProps> = 
               )}
 
               {/* Action Buttons */}
-              {issue.status === 'IN_PROGRESS' && (!issue.returnTransaction || issue.returnTransaction?.status === 'PENDING') && (() => {
+              {issue.status === 'IN_PROGRESS' && (() => {
                 const isExpired = isDeadlinePassed(issue.paymentDeadline) || expiredIssues.has(issue.issueId);
-                return (
-                  <Button
-                    type="primary"
-                    icon={<DollarOutlined />}
-                    onClick={() => handlePaymentClick(issue)}
-                    block
-                    size="large"
-                    disabled={isExpired}
-                    loading={processingPayment === issue.issueId}
-                    danger={!isExpired}
-                    className="font-semibold"
-                    style={{ height: '48px' }}
-                  >
-                    {isExpired ? (
-                      <span>Đã hết hạn thanh toán</span>
-                    ) : (
+                // Check if there's any PAID transaction - if yes, don't show payment button
+                const hasPaidTransaction = issue.transactions?.some((t: any) => t.status === 'PAID') || 
+                                          issue.returnTransaction?.status === 'PAID';
+                
+                // Show payment button if NOT expired and NOT yet paid (regardless of transaction status)
+                if (!isExpired && !hasPaidTransaction) {
+                  return (
+                    <Button
+                      type="primary"
+                      icon={<DollarOutlined />}
+                      onClick={() => handlePaymentClick(issue)}
+                      block
+                      size="large"
+                      loading={processingPayment === issue.issueId}
+                      danger
+                      className="font-semibold"
+                      style={{ height: '48px' }}
+                    >
                       <span>Thanh toán ngay qua PayOS</span>
-                    )}
-                  </Button>
-                );
+                    </Button>
+                  );
+                }
+                
+                // Show expired button if expired but not paid
+                if (isExpired && !hasPaidTransaction) {
+                  return (
+                    <Button
+                      type="primary"
+                      icon={<DollarOutlined />}
+                      block
+                      size="large"
+                      disabled
+                      danger
+                      className="font-semibold"
+                      style={{ height: '48px' }}
+                    >
+                      <span>Đã hết hạn thanh toán</span>
+                    </Button>
+                  );
+                }
+                
+                return null; // Don't show button if already paid
               })()}
 
               {/* Payment Overdue Status */}

@@ -1,57 +1,60 @@
 import React, { useState } from 'react';
-import { Card, Button, App, Typography, Breadcrumb, Result } from 'antd';
+import { Card, Button, App, Typography, Breadcrumb, Result, Alert, Space } from 'antd';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeftOutlined, HomeOutlined, IdcardOutlined, UserAddOutlined, CheckCircleOutlined } from '@ant-design/icons';
+import { ArrowLeftOutlined, HomeOutlined, IdcardOutlined, UserAddOutlined, KeyOutlined, InfoCircleOutlined } from '@ant-design/icons';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import driverService from '../../../services/driver';
-import type { DriverRegisterRequest } from '../../../services/driver';
+import type { AdminCreateDriverRequest, DriverCreatedResponse } from '../../../services/driver';
 import DriverForm from './components/DriverForm';
 
-const { Title, Text } = Typography;
+const { Title, Text, Paragraph } = Typography;
 
 const RegisterDriver: React.FC = () => {
     const navigate = useNavigate();
     const { message } = App.useApp();
     const queryClient = useQueryClient();
     const [isSuccess, setIsSuccess] = useState(false);
+    const [createdDriverData, setCreatedDriverData] = useState<DriverCreatedResponse | null>(null);
 
-    const registerMutation = useMutation({
-        mutationFn: (values: DriverRegisterRequest) => driverService.registerDriver(values),
-        onSuccess: () => {
-            message.success('Đăng ký tài xế thành công');
+    const createMutation = useMutation({
+        mutationFn: (values: AdminCreateDriverRequest) => driverService.createDriver(values),
+        onSuccess: (data) => {
+            message.success('Tạo tài xế thành công');
             // Invalidate drivers query to refresh the list
             queryClient.invalidateQueries({ queryKey: ['drivers'] });
+            setCreatedDriverData(data);
             setIsSuccess(true);
         },
         onError: (error: any) => {
-            message.error(error.response?.data?.message || 'Đăng ký tài xế thất bại');
+            message.error(error.response?.data?.message || 'Tạo tài xế thất bại');
         }
     });
 
     const handleSubmit = (values: any) => {
-        // Format dates to ISO string
-        const formattedValues = {
-            ...values,
+        // Format dates to ISO string - remove password field
+        const { password, imageUrl, ...rest } = values;
+        const formattedValues: AdminCreateDriverRequest = {
+            ...rest,
             dateOfBirth: values.dateOfBirth.format('YYYY-MM-DD'),
             dateOfIssue: values.dateOfIssue.format('YYYY-MM-DD'),
             dateOfExpiry: values.dateOfExpiry.format('YYYY-MM-DD'),
             dateOfPassing: values.dateOfPassing.format('YYYY-MM-DD'),
         };
 
-        registerMutation.mutate(formattedValues);
+        createMutation.mutate(formattedValues);
     };
 
     const handleGoToDriversList = () => {
         navigate('/admin/drivers');
     };
 
-    if (isSuccess) {
+    if (isSuccess && createdDriverData) {
         return (
             <div className="p-6 bg-gray-50 min-h-screen">
                 <Result
                     status="success"
-                    title="Đăng ký tài xế thành công!"
-                    subTitle="Tài xế mới đã được thêm vào hệ thống."
+                    title="Tạo tài xế thành công!"
+                    subTitle={`Tài xế ${createdDriverData.driver.userResponse.fullName} đã được thêm vào hệ thống với trạng thái CHƯA KÍCH HOẠT.`}
                     extra={[
                         <Button
                             type="primary"
@@ -64,13 +67,40 @@ const RegisterDriver: React.FC = () => {
                         </Button>,
                         <Button
                             key="register-another"
-                            onClick={() => setIsSuccess(false)}
+                            onClick={() => {
+                                setIsSuccess(false);
+                                setCreatedDriverData(null);
+                            }}
                             icon={<UserAddOutlined />}
                         >
-                            Đăng ký tài xế khác
+                            Tạo tài xế khác
                         </Button>,
                     ]}
-                />
+                >
+                    {/* Success Message */}
+                    <div className="mt-6 max-w-lg mx-auto">
+                        <Alert
+                            message={
+                                <Space>
+                                    <KeyOutlined />
+                                    <span className="font-semibold">Thông tin đăng nhập đã được gửi</span>
+                                </Space>
+                            }
+                            description={
+                                <div className="mt-3">
+                                    <Paragraph className="text-sm text-gray-600">
+                                        <InfoCircleOutlined className="mr-1" />
+                                        Thông tin đăng nhập (tên đăng nhập và mật khẩu tạm thởi) đã được gửi đến email của tài xế. 
+                                        Tài xế sẽ sử dụng thông tin này để đăng nhập lần đầu và hoàn tất kích hoạt tài khoản.
+                                    </Paragraph>
+                                </div>
+                            }
+                            type="success"
+                            showIcon={false}
+                            className="text-left"
+                        />
+                    </div>
+                </Result>
             </div>
         );
     }
@@ -96,7 +126,7 @@ const RegisterDriver: React.FC = () => {
                     icon={<ArrowLeftOutlined />}
                     onClick={() => navigate('/admin/drivers')}
                     className="mr-4"
-                    disabled={registerMutation.isPending}
+                    disabled={createMutation.isPending}
                 >
                     Quay lại
                 </Button>
@@ -112,8 +142,9 @@ const RegisterDriver: React.FC = () => {
 
             <Card className="shadow-sm hover:shadow-md transition-shadow">
                 <DriverForm
-                    loading={registerMutation.isPending}
+                    loading={createMutation.isPending}
                     onSubmit={handleSubmit}
+                    hidePasswordField={true}
                 />
             </Card>
         </div>

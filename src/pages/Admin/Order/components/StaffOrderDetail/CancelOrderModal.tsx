@@ -6,6 +6,8 @@ import orderService from "../../../../../services/order/orderService";
 const { Text, Paragraph } = Typography;
 const { TextArea } = Input;
 
+const OTHER_REASON_LABEL = "Lý do khác";
+
 interface CancelOrderModalProps {
   visible: boolean;
   orderCode: string;
@@ -62,15 +64,15 @@ const CancelOrderModal: React.FC<CancelOrderModalProps> = ({
       return;
     }
 
-    // If "Khác" is selected, validate custom reason
-    const finalReason = selectedReason === "Khác" ? customReason.trim() : selectedReason;
+    // If "Lý do khác" is selected, validate custom reason
+    const finalReason = selectedReason === OTHER_REASON_LABEL ? customReason.trim() : selectedReason;
     
     if (!finalReason) {
       setError("Vui lòng nhập lý do hủy đơn hàng");
       return;
     }
 
-    if (selectedReason === "Khác" && customReason.trim().length < 10) {
+    if (selectedReason === OTHER_REASON_LABEL && customReason.trim().length < 10) {
       setError("Lý do hủy phải có ít nhất 10 ký tự");
       return;
     }
@@ -154,8 +156,8 @@ const CancelOrderModal: React.FC<CancelOrderModalProps> = ({
           )}
         </div>
 
-        {/* Show custom reason input when "Khác" is selected */}
-        {selectedReason === "Khác" && (
+        {/* Show custom reason input when "Lý do khác" is selected */}
+        {selectedReason === OTHER_REASON_LABEL && (
           <div className="mb-4">
             <Text strong className="block mb-2">
               Nhập lý do hủy đơn hàng <Text type="danger">*</Text>
@@ -171,7 +173,13 @@ const CancelOrderModal: React.FC<CancelOrderModalProps> = ({
               rows={3}
               maxLength={500}
               showCount
-              status={error && selectedReason === "Khác" && customReason.trim().length < 10 ? "error" : undefined}
+              status={
+                error &&
+                selectedReason === OTHER_REASON_LABEL &&
+                customReason.trim().length < 10
+                  ? "error"
+                  : undefined
+              }
             />
             <Text type="secondary" className="text-xs mt-1 block">
               Tối thiểu 10 ký tự, tối đa 500 ký tự
@@ -202,7 +210,11 @@ const CancelOrderModal: React.FC<CancelOrderModalProps> = ({
             icon={<CloseCircleOutlined />}
             onClick={handleCancel}
             loading={loading}
-            disabled={!selectedReason || loadingReasons || (selectedReason === "Khác" && customReason.trim().length < 10)}
+            disabled={
+              !selectedReason ||
+              loadingReasons ||
+              (selectedReason === OTHER_REASON_LABEL && customReason.trim().length < 10)
+            }
             size="large"
           >
             Xác nhận hủy đơn

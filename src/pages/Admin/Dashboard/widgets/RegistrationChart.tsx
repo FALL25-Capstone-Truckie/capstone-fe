@@ -19,25 +19,10 @@ const RegistrationChart: React.FC<RegistrationChartProps> = ({
   period,
 }) => {
   const chartData = data?.points.map((point) => {
-    const date = new Date(point.date);
-    let formattedDate: string;
-    
-    if (period === 'year') {
-      // For year view, show month only
-      formattedDate = date.toLocaleDateString('vi-VN', {
-        month: 'short',
-        year: 'numeric',
-      });
-    } else {
-      // For week/month view, show day and month
-      formattedDate = date.toLocaleDateString('vi-VN', {
-        month: 'short',
-        day: 'numeric',
-      });
-    }
-    
+    // Use the label directly since backend already formats appropriately
+    // WEEK: "dd/MM", MONTH: "Tuần X", YEAR: "MM/yyyy"
     return {
-      date: formattedDate,
+      date: point.date,
       count: point.count,
     };
   }) || [];

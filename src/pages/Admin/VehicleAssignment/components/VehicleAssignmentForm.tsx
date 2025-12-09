@@ -15,7 +15,7 @@ import type { RouteSegment } from "../../../../models/RoutePoint";
 import type { RouteInfo } from "../../../../models/VehicleAssignment";
 import RoutePlanningStep from "./RoutePlanningStep";
 
-const { Step } = Steps;
+// Steps.Step deprecated in v6, use items prop instead
 
 interface VehicleAssignmentFormProps {
     initialValues?: VehicleAssignment;
@@ -263,10 +263,14 @@ const VehicleAssignmentForm: React.FC<VehicleAssignmentFormProps> = ({
 
     return (
         <div className="vehicle-assignment-form">
-            <Steps current={currentStep} className="mb-6">
-                <Step title="Thông tin cơ bản" />
-                <Step title="Định tuyến" />
-            </Steps>
+            <Steps 
+                current={currentStep} 
+                className="mb-6"
+                items={[
+                    { title: 'Thông tin cơ bản' },
+                    { title: 'Định tuyến' },
+                ]}
+            />
 
             <Card bordered={false}>
                 {currentStep === 0 && renderBasicInfoStep()}
@@ -284,4 +288,4 @@ const VehicleAssignmentForm: React.FC<VehicleAssignmentFormProps> = ({
     );
 };
 
-export default VehicleAssignmentForm; 
+export default VehicleAssignmentForm;

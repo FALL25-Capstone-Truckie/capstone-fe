@@ -39,9 +39,16 @@ export const TripInfoHeader: React.FC<TripInfoHeaderProps> = ({ group, tripIndex
                                         <span className="text-blue-600 font-medium">
                                             {idx + 1}. {detail.trackingCode}
                                         </span>
-                                        <span className="font-medium text-gray-800">
-                                            - {detail.totalWeight} kg
-                                        </span>
+                                        {detail.weightBaseUnit != null && detail.unit && (
+                                            <span className="font-medium text-gray-800">
+                                                - {detail.weightBaseUnit} {detail.unit}
+                                            </span>
+                                        )}
+                                        {detail.description && (
+                                            <div className="text-gray-500 text-xs mt-1">
+                                                Mô tả: {detail.description}
+                                            </div>
+                                        )}
                                     </div>
                                 ))}
                             </div>

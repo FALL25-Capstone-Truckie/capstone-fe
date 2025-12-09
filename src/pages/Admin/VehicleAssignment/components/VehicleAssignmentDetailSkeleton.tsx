@@ -99,7 +99,7 @@ const VehicleAssignmentDetailSkeleton: React.FC = () => {
 
                     {/* Driver Info */}
                     <Card title={<Skeleton.Input active style={{ width: 150, height: 24 }} />} className="shadow-sm mb-6">
-                        <Divider orientation="left">
+                        <Divider titlePlacement="start">
                             <Skeleton.Input active style={{ width: 120, height: 16 }} />
                         </Divider>
 
@@ -146,7 +146,7 @@ const VehicleAssignmentDetailSkeleton: React.FC = () => {
                         </div>
 
                         {/* Second Driver (Optional) */}
-                        <Divider orientation="left">
+                        <Divider titlePlacement="start">
                             <Skeleton.Input active style={{ width: 120, height: 16 }} />
                         </Divider>
 

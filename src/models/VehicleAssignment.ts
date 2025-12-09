@@ -20,6 +20,7 @@ export interface VehicleSuggestion {
     manufacturer: string;
     vehicleTypeId: string;
     vehicleTypeName?: string;
+    vehicleTypeDescription?: string;
     suggestedDrivers: SuggestedDriver[];
     isRecommended: boolean;
 }
@@ -86,10 +87,13 @@ export interface UpdateVehicleAssignmentRequest {
 export interface OrderDetailInfo {
     id: string;
     trackingCode: string;
-    originAddress: string;
-    destinationAddress: string;
-    totalWeight: number;
-    totalVolume: number;
+    originAddress?: string;
+    destinationAddress?: string;
+    totalWeight?: number;
+    totalVolume?: number;
+    weightBaseUnit?: number;
+    unit?: string;
+    description?: string;
 }
 
 export interface OrderDetailGroup {

@@ -17,4 +17,5 @@ export * from './ConversationStatusEnum';
 export * from './CommonStatusEnum';
 export * from './MaintenanceTypeEnum';
 export * from './DeviceStatusEnum';
-export * from './PriorityEnum'; 
+export * from './PriorityEnum';
+export * from './OrderSizeEnum'; 

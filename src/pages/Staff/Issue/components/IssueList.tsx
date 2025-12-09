@@ -31,6 +31,7 @@ import {
     AlertOutlined,
     SortAscendingOutlined
 } from '@ant-design/icons';
+
 import { useNavigate } from 'react-router-dom';
 import issueService from '@/services/issue';
 import type { Issue } from '@/models/Issue';
@@ -182,9 +183,9 @@ const IssueList: React.FC = () => {
         const pendingIssues = issues.filter(issue => issue.status === IssueEnum.OPEN).length;
         const inProgressIssues = issues.filter(issue => issue.status === IssueEnum.IN_PROGRESS).length;
         const resolvedIssues = issues.filter(issue => issue.status === IssueEnum.RESOLVED).length;
-        const overdueIssues = issues.filter(issue => issue.status === IssueEnum.PAYMENT_OVERDUE).length;
+        const expiredIssues = issues.filter(issue => (issue.status as any) === IssueEnum.EXPIRED).length;
 
-        return { pendingIssues, inProgressIssues, resolvedIssues, overdueIssues };
+        return { pendingIssues, inProgressIssues, resolvedIssues, expiredIssues };
     };
 
     const stats = getIssueStats();
@@ -269,14 +270,14 @@ const IssueList: React.FC = () => {
             <Card className="bg-gradient-to-r from-red-50 to-red-100 border-red-200 shadow-sm hover:shadow-md transition-shadow">
                 <div className="flex justify-between items-center">
                     <div>
-                        <Text className="text-gray-600 block">Quá hạn thanh toán</Text>
+                        <Text className="text-gray-600 block">Hết hạn khiếu nại</Text>
                         {loading ? (
                             <Skeleton.Input style={{ width: 60 }} active size="small" />
                         ) : (
-                            <Title level={3} className="m-0 text-red-700">{stats.overdueIssues}</Title>
+                            <Title level={3} className="m-0 text-red-700">{stats.expiredIssues}</Title>
                         )}
                     </div>
-                    <Badge count={loading ? 0 : stats.overdueIssues} color="red" showZero>
+                    <Badge count={loading ? 0 : stats.expiredIssues} color="red" showZero>
                         <div className="bg-red-200 p-2 rounded-full">
                             <ClockCircleOutlined className="text-3xl text-red-600" />
                         </div>
@@ -527,7 +528,7 @@ const IssueList: React.FC = () => {
                             <Option value={IssueEnum.OPEN}>Chờ xử lý</Option>
                             <Option value={IssueEnum.IN_PROGRESS}>Đang xử lý</Option>
                             <Option value={IssueEnum.RESOLVED}>Đã giải quyết</Option>
-                            <Option value={IssueEnum.PAYMENT_OVERDUE}>Quá hạn thanh toán</Option>
+                            <Option value={IssueEnum.EXPIRED}>Hết hạn khiếu nại</Option>
                         </Select>
 
                         <div className="flex items-center gap-2 text-sm text-gray-600">

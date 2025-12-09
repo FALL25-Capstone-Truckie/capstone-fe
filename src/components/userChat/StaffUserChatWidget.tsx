@@ -1196,7 +1196,6 @@ const StaffUserChatWidget: React.FC = () => {
                                       className="max-w-[200px] max-h-[200px] rounded cursor-pointer"
                                       preview={{
                                         mask: 'Xem ảnh lớn',
-                                        maskClosable: true,
                                       }}
                                       onClick={(e) => e.stopPropagation()}
                                     />
@@ -1211,7 +1210,6 @@ const StaffUserChatWidget: React.FC = () => {
                                           className="max-w-[200px] max-h-[200px] rounded cursor-pointer"
                                           preview={{
                                             mask: 'Xem ảnh lớn',
-                                            maskClosable: true,
                                           }}
                                           onClick={(e) => e.stopPropagation()}
                                         />
@@ -1351,6 +1349,7 @@ const StaffUserChatWidget: React.FC = () => {
         {showDriverOverview && selectedConversation?.initiatorId && (
           <DriverOverviewModal
             driverId={selectedConversation.initiatorId}
+            visible={showDriverOverview}
             onClose={() => setShowDriverOverview(false)}
           />
         )}

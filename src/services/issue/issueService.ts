@@ -21,6 +21,16 @@ import type { IssueStatus, IssueCategory } from '@/models/Issue';
  * Helper function to map API response to Issue model
  */
 const mapApiResponseToIssue = (apiData: IssueApiResponse): Issue => {
+    // Map vehicleAssignmentEntity to both fields for backward compatibility
+    const vehicleAssignment = apiData.vehicleAssignmentEntity ? {
+        id: apiData.vehicleAssignmentEntity.id,
+        trackingCode: apiData.vehicleAssignmentEntity.trackingCode,
+        status: apiData.vehicleAssignmentEntity.status,
+        vehicle: apiData.vehicleAssignmentEntity.vehicle,
+        driver1: apiData.vehicleAssignmentEntity.driver1,
+        driver2: apiData.vehicleAssignmentEntity.driver2,
+    } : undefined;
+    
     return {
         id: apiData.id,
         description: apiData.description,
@@ -31,6 +41,7 @@ const mapApiResponseToIssue = (apiData: IssueApiResponse): Issue => {
         reportedAt: apiData.reportedAt,
         resolvedAt: apiData.resolvedAt,
         vehicleAssignmentEntity: apiData.vehicleAssignmentEntity,
+        vehicleAssignment: vehicleAssignment, // Alias for backward compatibility
         staff: apiData.staff,
         issueTypeEntity: apiData.issueTypeEntity,
         // Seal replacement fields
@@ -307,10 +318,17 @@ const issueService = {
      * @param vehicleAssignmentId Vehicle assignment ID
      * @returns Promise with array of active seals
      */
-    getActiveSeals: async (vehicleAssignmentId: string): Promise<any[]> => {
+    getActiveSeals: async (vehicleAssignmentId?: string, trackingCode?: string): Promise<any[]> => {
         try {
-            const response = await httpClient.get(`/issues/vehicle-assignment/${vehicleAssignmentId}/active-seals`);
-            return response.data.data || [];
+            if (vehicleAssignmentId) {
+                const response = await httpClient.get(`/issues/vehicle-assignment/${vehicleAssignmentId}/active-seals`);
+                return response.data.data || [];
+            } else if (trackingCode) {
+                const response = await httpClient.get(`/issues/vehicle-assignment/tracking-code/${trackingCode}/active-seals`);
+                return response.data.data || [];
+            } else {
+                throw new Error('Either vehicleAssignmentId or trackingCode must be provided');
+            }
         } catch (error: any) {
             console.error('Error fetching active seals:', error);
             throw new Error(error.response?.data?.message || 'Không thể tải danh sách seal');
@@ -534,6 +552,23 @@ const issueService = {
             console.error('Error fetching damage compensation detail:', error);
             throw new Error(error.response?.data?.message || 'Không thể tải chi tiết bồi thường');
         }
+    },
+    
+    /**
+     * Update OFF_ROUTE issue compensation information (Staff)
+     * Calculates compensation based on policy (100% goods value + 100% transport fee, no 10x cap)
+     * and saves assessment data.
+     * @param request Update off-route compensation request
+     * @returns Promise with updated assessment
+     */
+    updateOffRouteCompensation: async (request: OffRouteCompensationRequest): Promise<OffRouteAssessment> => {
+        try {
+            const response = await httpClient.put('/issues/off-route/compensation', request);
+            return response.data.data;
+        } catch (error: any) {
+            console.error('Error updating off-route compensation:', error);
+            throw new Error(error.response?.data?.message || 'Không thể cập nhật thông tin bồi thường');
+        }
     }
 
 };
@@ -579,21 +614,12 @@ export interface OffRouteRunawayDetail {
     status: string;
     reportedAt: string;
     resolvedAt?: string;
-    locationLatitude: number;
-    locationLongitude: number;
-    offRouteEventInfo?: {
-        eventId: string;
-        detectedAt: string;
-        offRouteDurationMinutes: number;
-        distanceFromRouteMeters: number;
-        warningStatus: string;
-        canContactDriver: boolean;
-        contactNotes?: string;
-        contactedAt?: string;
-    };
-    vehicleAssignment: any;
+    locationLatitude?: number;
+    locationLongitude?: number;
+    offRouteEventInfo?: OffRouteEventInfo;
+    vehicleAssignment?: any;
     sender?: {
-        id: string;
+        id?: string;
         companyName?: string;
         representativeName?: string;
         representativePhone?: string;
@@ -601,7 +627,13 @@ export interface OffRouteRunawayDetail {
     };
     packages: PackageInfo[];
     totalDeclaredValue: number;
+    transportFee?: number;
+    legalLimit?: number;
+    compensationPolicyNote?: string;
+    suggestedCompensation?: number;
     refund?: any;
+    assessment?: OffRouteAssessment;
+    evidenceImages?: string[];
 }
 
 export interface PackageInfo {
@@ -612,6 +644,56 @@ export interface PackageInfo {
     unit: string;
     declaredValue: number;
     status: string;
+}
+
+export interface OffRouteCompensationRequest {
+    issueId: string;
+    hasDocuments: boolean;
+    documentValue?: number;
+    estimatedMarketValue?: number;
+    assessmentRate: number;
+    finalCompensation: number;
+    adjustReason?: string;
+    handlerNotes?: string;
+    fraudDetected?: boolean;
+    fraudReason?: string;
+    refund?: RefundRequest;
+}
+
+export interface RefundRequest {
+    refundAmount?: number;
+    bankName?: string;
+    accountNumber?: string;
+    accountHolderName?: string;
+    transactionCode?: string;
+    bankTransferImage?: string;
+    notes?: string;
+}
+
+export interface OffRouteAssessment {
+    id: string;
+    hasDocuments: boolean;
+    documentValue?: number;
+    estimatedMarketValue?: number;
+    assessmentRate: number;
+    compensationByPolicy: number;
+    finalCompensation: number;
+    adjustReason?: string;
+    handlerNotes?: string;
+    fraudDetected?: boolean;
+    fraudReason?: string;
+}
+
+export interface OffRouteEventInfo {
+    eventId: string;
+    offRouteDurationMinutes: number;
+    distanceFromRouteMeters: number;
+    warningStatus: string;
+    canContactDriver: boolean;
+    gracePeriodExpiresAt?: string;
+    detectedAt?: string;
+    contactedAt?: string;
+    contactNotes?: string;
 }
 
 export default issueService;

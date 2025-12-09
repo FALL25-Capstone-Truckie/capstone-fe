@@ -2,56 +2,43 @@ import React, { useState, useMemo } from 'react';
 import {
     Table,
     Button,
-    Space,
     Input,
     Card,
     Typography,
-    message,
-    Popconfirm,
-    Select,
-    Spin,
     Result,
     Skeleton,
-    Badge
+    Badge,
+    Statistic,
+    Segmented,
+    Space,
+    App,
+    ConfigProvider,
+    theme
 } from 'antd';
 import {
     SearchOutlined,
-    PlusOutlined,
-    EditOutlined,
-    DeleteOutlined,
-    EyeOutlined,
     ReloadOutlined,
-    WarningOutlined,
-    DollarOutlined,
-    CheckCircleOutlined,
-    ExclamationCircleOutlined
+    WarningOutlined
 } from '@ant-design/icons';
-import { useNavigate } from 'react-router-dom';
 import dayjs from 'dayjs';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { debounce } from 'lodash';
 import penaltyService from '@/services/penalty';
 import type { Penalty } from '@/models/Penalty';
-import { PenaltyStatus } from '@/models/Penalty';
-import { PenaltyStatusEnum } from '@/constants/enums';
-import { PenaltyStatusTag } from '@/components/common/tags';
 import PenaltyModal from './components/PenaltyModal';
 import { useAuth } from '@/context';
 import type { GetPenaltiesResponse } from '@/services/penalty/types';
-import { DateSelectGroup } from '@/components/common';
 
 const { Title, Text } = Typography;
-const { Option } = Select;
 
 const PenaltyHistory: React.FC = () => {
+    const { token } = theme.useToken();
     const [searchText, setSearchText] = useState<string>('');
     const [isModalVisible, setIsModalVisible] = useState<boolean>(false);
     const [currentPenalty, setCurrentPenalty] = useState<Penalty | null>(null);
-    const [modalMode, setModalMode] = useState<'create' | 'edit' | 'view'>('create');
     const [isFetching, setIsFetching] = useState<boolean>(false);
-    const navigate = useNavigate();
+    const [statusFilter, setStatusFilter] = useState<string>('all');
     const { isAuthenticated } = useAuth();
-    const queryClient = useQueryClient();
 
     // Sử dụng React Query để fetch penalties
     const {
@@ -70,43 +57,6 @@ const PenaltyHistory: React.FC = () => {
         staleTime: 5 * 60 * 1000, // 5 phút
     });
 
-    // Mutations
-    const createMutation = useMutation({
-        mutationFn: penaltyService.createPenalty,
-        onSuccess: () => {
-            message.success('Tạo vi phạm mới thành công');
-            setIsModalVisible(false);
-            queryClient.invalidateQueries({ queryKey: ['penalties'] });
-        },
-        onError: (err: Error) => {
-            message.error(err.message);
-        }
-    });
-
-    const updateMutation = useMutation({
-        mutationFn: ({ id, data }: { id: string; data: any }) =>
-            penaltyService.updatePenalty(id, data),
-        onSuccess: () => {
-            message.success('Cập nhật vi phạm thành công');
-            setIsModalVisible(false);
-            queryClient.invalidateQueries({ queryKey: ['penalties'] });
-        },
-        onError: (err: Error) => {
-            message.error(err.message);
-        }
-    });
-
-    const deleteMutation = useMutation({
-        mutationFn: penaltyService.deletePenalty,
-        onSuccess: () => {
-            message.success('Xóa vi phạm thành công');
-            queryClient.invalidateQueries({ queryKey: ['penalties'] });
-        },
-        onError: (err: Error) => {
-            message.error(err.message);
-        }
-    });
-
     // Debounce search
     const debouncedSearch = useMemo(
         () => debounce((value: string) => {
@@ -115,142 +65,94 @@ const PenaltyHistory: React.FC = () => {
         []
     );
 
-    const handleAddPenalty = () => {
-        setCurrentPenalty(null);
-        setModalMode('create');
-        setIsModalVisible(true);
-    };
-
-    const handleEditPenalty = (record: Penalty) => {
-        setCurrentPenalty(record);
-        setModalMode('edit');
-        setIsModalVisible(true);
-    };
-
     const handleViewPenalty = (record: Penalty) => {
         setCurrentPenalty(record);
-        setModalMode('view');
         setIsModalVisible(true);
-    };
-
-    const handleDeletePenalty = async (id: string) => {
-        deleteMutation.mutate(id);
-    };
-
-    const handleModalSubmit = async (values: any, mode: 'create' | 'edit') => {
-        if (mode === 'create') {
-            createMutation.mutate(values);
-        } else if (mode === 'edit' && currentPenalty) {
-            updateMutation.mutate({ id: currentPenalty.id, data: values });
-        }
     };
 
     const handleModalCancel = () => {
         setIsModalVisible(false);
     };
 
-    // Filter penalties based on search text
+    // Filter penalties based on search text and status
     const filteredPenalties = useMemo(() => {
         if (!penaltiesResponse?.data) return [];
 
-        return penaltiesResponse.data.filter((penalty: Penalty) =>
-            penalty.violationType.toLowerCase().includes(searchText.toLowerCase()) ||
-            penalty.violationDescription.toLowerCase().includes(searchText.toLowerCase()) ||
-            penalty.location.toLowerCase().includes(searchText.toLowerCase()) ||
-            penalty.status.toLowerCase().includes(searchText.toLowerCase())
-        );
-    }, [penaltiesResponse?.data, searchText]);
+        let penalties = penaltiesResponse.data;
+        
+        // Apply status filter
+        if (statusFilter !== 'all') {
+            penalties = penalties.filter((penalty: Penalty) => {
+                // Add status filtering logic when penalty has status field
+                return true; // Placeholder - update when status field is available
+            });
+        }
+
+        const keyword = searchText.trim().toLowerCase();
+        if (!keyword) return penalties;
+
+        return penalties.filter((penalty: Penalty) => {
+            const violation = penalty.violationType?.toLowerCase() ?? '';
+            const username = penalty.driverSummary?.username?.toLowerCase() ?? '';
+            const fullName = penalty.driverSummary?.fullName?.toLowerCase() ?? '';
+            const phone = penalty.driverSummary?.phoneNumber?.toLowerCase() ?? '';
+
+            return (
+                violation.includes(keyword) ||
+                username.includes(keyword) ||
+                fullName.includes(keyword) ||
+                phone.includes(keyword)
+            );
+        });
+    }, [penaltiesResponse?.data, searchText, statusFilter]);
 
     // Thống kê vi phạm theo trạng thái
     const getPenaltyStats = () => {
         if (!penaltiesResponse?.data) return {
-            pendingCount: 0,
-            paidCount: 0,
-            disputedCount: 0,
-            totalAmount: 0
+            totalCount: 0
         };
 
         const penalties = penaltiesResponse.data;
+        const totalCount = penalties.length;
 
-        const pendingCount = penalties.filter(p => p.status === PenaltyStatus.PENDING).length;
-        const paidCount = penalties.filter(p => p.status === PenaltyStatus.PAID).length;
-        const disputedCount = penalties.filter(p => p.status === PenaltyStatus.DISPUTED).length;
-
-        const totalAmount = penalties.reduce((sum, penalty) => sum + penalty.penaltyAmount, 0);
-
-        return { pendingCount, paidCount, disputedCount, totalAmount };
+        return { totalCount };
     };
 
     const stats = getPenaltyStats();
 
-    // Render stats card theo layout của Admin
+    // Render stats card với Statistic component
     const renderStatCards = () => (
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-            <Card className="bg-gradient-to-r from-orange-50 to-orange-100 border-orange-200 shadow-sm hover:shadow-md transition-shadow">
-                <div className="flex justify-between items-center">
-                    <div>
-                        <Text className="text-gray-600 block">Chờ thanh toán</Text>
-                        {isLoading ? (
-                            <Skeleton.Input style={{ width: 60 }} active size="small" />
-                        ) : (
-                            <Title level={3} className="m-0 text-orange-800">{stats.pendingCount}</Title>
-                        )}
-                    </div>
-                    <Badge count={isLoading ? 0 : stats.pendingCount} color="orange" showZero>
-                        <div className="bg-orange-200 p-2 rounded-full">
-                            <ExclamationCircleOutlined className="text-3xl text-orange-600" />
-                        </div>
-                    </Badge>
-                </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <Card className="shadow-sm hover:shadow-md transition-all duration-300">
+                <Statistic
+                    title="Tổng số vi phạm"
+                    value={stats.totalCount}
+                    prefix={<WarningOutlined />}
+                    valueStyle={{ color: token.colorPrimary }}
+                    loading={isLoading}
+                />
             </Card>
-            <Card className="bg-gradient-to-r from-blue-50 to-blue-100 border-blue-200 shadow-sm hover:shadow-md transition-shadow">
-                <div className="flex justify-between items-center">
-                    <div>
-                        <Text className="text-gray-600 block">Đang khiếu nại</Text>
-                        {isLoading ? (
-                            <Skeleton.Input style={{ width: 60 }} active size="small" />
-                        ) : (
-                            <Title level={3} className="m-0 text-blue-800">{stats.disputedCount}</Title>
-                        )}
-                    </div>
-                    <Badge count={isLoading ? 0 : stats.disputedCount} color="blue" showZero>
-                        <div className="bg-blue-200 p-2 rounded-full">
-                            <WarningOutlined className="text-3xl text-blue-600" />
-                        </div>
-                    </Badge>
-                </div>
+            <Card className="shadow-sm hover:shadow-md transition-all duration-300">
+                <Statistic
+                    title="Vi phạm trong tháng"
+                    value={penaltiesResponse?.data?.filter(p => 
+                        dayjs(p.penaltyDate).isSame(dayjs(), 'month')
+                    ).length || 0}
+                    prefix={<WarningOutlined />}
+                    valueStyle={{ color: token.colorWarning }}
+                    loading={isLoading}
+                />
             </Card>
-            <Card className="bg-gradient-to-r from-green-50 to-green-100 border-green-200 shadow-sm hover:shadow-md transition-shadow">
-                <div className="flex justify-between items-center">
-                    <div>
-                        <Text className="text-gray-600 block">Đã thanh toán</Text>
-                        {isLoading ? (
-                            <Skeleton.Input style={{ width: 60 }} active size="small" />
-                        ) : (
-                            <Title level={3} className="m-0 text-green-700">{stats.paidCount}</Title>
-                        )}
-                    </div>
-                    <Badge count={isLoading ? 0 : stats.paidCount} color="green" showZero>
-                        <div className="bg-green-200 p-2 rounded-full">
-                            <CheckCircleOutlined className="text-3xl text-green-600" />
-                        </div>
-                    </Badge>
-                </div>
-            </Card>
-            <Card className="bg-gradient-to-r from-purple-50 to-purple-100 border-purple-200 shadow-sm hover:shadow-md transition-shadow">
-                <div className="flex justify-between items-center">
-                    <div>
-                        <Text className="text-gray-600 block">Tổng tiền phạt</Text>
-                        {isLoading ? (
-                            <Skeleton.Input style={{ width: 120 }} active size="small" />
-                        ) : (
-                            <Title level={3} className="m-0 text-purple-700">{stats.totalAmount.toLocaleString()} VND</Title>
-                        )}
-                    </div>
-                    <div className="bg-purple-200 p-2 rounded-full">
-                        <DollarOutlined className="text-3xl text-purple-600" />
-                    </div>
-                </div>
+            <Card className="shadow-sm hover:shadow-md transition-all duration-300">
+                <Statistic
+                    title="Vi phạm trong tuần"
+                    value={penaltiesResponse?.data?.filter(p => 
+                        dayjs(p.penaltyDate).isSame(dayjs(), 'week')
+                    ).length || 0}
+                    prefix={<WarningOutlined />}
+                    valueStyle={{ color: token.colorError }}
+                    loading={isLoading}
+                />
             </Card>
         </div>
     );
@@ -263,19 +165,6 @@ const PenaltyHistory: React.FC = () => {
             sorter: (a: Penalty, b: Penalty) => a.violationType.localeCompare(b.violationType),
         },
         {
-            title: 'Mô tả',
-            dataIndex: 'violationDescription',
-            key: 'violationDescription',
-            ellipsis: true,
-        },
-        {
-            title: 'Số tiền phạt',
-            dataIndex: 'penaltyAmount',
-            key: 'penaltyAmount',
-            render: (amount: number) => `${amount.toLocaleString()} VND`,
-            sorter: (a: Penalty, b: Penalty) => a.penaltyAmount - b.penaltyAmount,
-        },
-        {
             title: 'Ngày vi phạm',
             dataIndex: 'penaltyDate',
             key: 'penaltyDate',
@@ -283,71 +172,16 @@ const PenaltyHistory: React.FC = () => {
             sorter: (a: Penalty, b: Penalty) => dayjs(a.penaltyDate).unix() - dayjs(b.penaltyDate).unix(),
         },
         {
-            title: 'Địa điểm',
-            dataIndex: 'location',
-            key: 'location',
+            title: 'ID Tài xế',
+            dataIndex: 'driverId',
+            key: 'driverId',
         },
         {
-            title: 'Trạng thái',
-            dataIndex: 'status',
-            key: 'status',
-            render: (status: string) => (
-                <PenaltyStatusTag status={status as PenaltyStatusEnum} />
-            ),
-            filters: Object.values(PenaltyStatus).map(status => ({
-                text: status,
-                value: status,
-            })),
-            onFilter: (value: any, record: Penalty) => record.status === value,
-        },
-        {
-            title: 'Thao tác',
-            key: 'action',
-            render: (_: any, record: Penalty) => (
-                <Space size="small">
-                    <Button
-                        type="primary"
-                        size="small"
-                        icon={<EyeOutlined />}
-                        onClick={() => handleViewPenalty(record)}
-                        className="bg-blue-500 hover:bg-blue-600"
-                    >
-                        Chi tiết
-                    </Button>
-                    <Button
-                        type="default"
-                        size="small"
-                        icon={<EditOutlined />}
-                        onClick={() => handleEditPenalty(record)}
-                    />
-                    <Popconfirm
-                        title="Bạn có chắc chắn muốn xóa vi phạm này?"
-                        onConfirm={() => handleDeletePenalty(record.id)}
-                        okText="Có"
-                        cancelText="Không"
-                    >
-                        <Button
-                            type="default"
-                            size="small"
-                            danger
-                            icon={<DeleteOutlined />}
-                        />
-                    </Popconfirm>
-                </Space>
-            ),
+            title: 'ID Phân công xe',
+            dataIndex: 'vehicleAssignmentId',
+            key: 'vehicleAssignmentId',
         },
     ];
-
-    // Render loading state
-    if (isLoading && !penaltiesResponse) {
-        return (
-            <div className="p-6">
-                <Card>
-                    <Skeleton active paragraph={{ rows: 10 }} />
-                </Card>
-            </div>
-        );
-    }
 
     // Render error state
     if (isError) {
@@ -368,25 +202,34 @@ const PenaltyHistory: React.FC = () => {
     }
 
     return (
-        <div className="p-6 bg-gray-50 min-h-screen">
-            <div className="mb-8">
-                <div className="flex justify-between items-center mb-6">
-                    <div>
-                        <Title level={2} className="flex items-center m-0 text-blue-800">
-                            <WarningOutlined className="mr-3 text-blue-600" /> Lịch sử vi phạm
-                        </Title>
-                        <Text type="secondary">Quản lý thông tin các vi phạm và khoản phạt trong hệ thống</Text>
-                    </div>
-                    <div className="flex gap-2">
-                        <Button
-                            type="primary"
-                            icon={<PlusOutlined />}
-                            onClick={handleAddPenalty}
-                            className="bg-blue-600 hover:bg-blue-700"
-                            size="large"
-                        >
-                            Thêm vi phạm mới
-                        </Button>
+        <ConfigProvider
+            theme={{
+                token: {
+                    colorPrimary: token.colorPrimary,
+                    borderRadius: 8,
+                    wireframe: false
+                },
+                components: {
+                    Table: {
+                        headerBg: '#fafafa',
+                        headerColor: token.colorText,
+                        rowHoverBg: token.colorPrimaryBg
+                    },
+                    Card: {
+                        borderRadius: 12
+                    }
+                }
+            }}
+        >
+            <div className="p-6 bg-gray-50 min-h-screen">
+                <div className="mb-8">
+                    <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-6 gap-4">
+                        <div className="flex-1">
+                            <Title level={2} className="flex items-center m-0 text-blue-800">
+                                <WarningOutlined className="mr-3 text-blue-600" /> Lịch sử vi phạm
+                            </Title>
+                            <Text type="secondary">Quản lý thông tin các vi phạm và khoản phạt trong hệ thống</Text>
+                        </div>
                         <Button
                             type="default"
                             icon={<ReloadOutlined spin={isFetching} />}
@@ -397,61 +240,102 @@ const PenaltyHistory: React.FC = () => {
                             Làm mới
                         </Button>
                     </div>
+
+                    {renderStatCards()}
+
+                    <Card className="shadow-sm mb-6">
+                        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-6 gap-4">
+                            <div className="flex-1">
+                                <Title level={4} className="m-0">Danh sách vi phạm</Title>
+                                <Text type="secondary" className="text-sm">
+                                    Hiển thị {filteredPenalties.length} trên {penaltiesResponse?.data?.length || 0} vi phạm
+                                </Text>
+                            </div>
+                            <Space.Compact className="w-full lg:w-auto">
+                                <Segmented
+                                    options={[
+                                        { label: 'Tất cả', value: 'all' },
+                                        { label: 'Nghiêm trọng', value: 'serious' },
+                                        { label: 'Thông thường', value: 'normal' }
+                                    ]}
+                                    value={statusFilter}
+                                    onChange={setStatusFilter}
+                                    className="mb-0"
+                                />
+                                <Input
+                                    placeholder="Tìm kiếm..."
+                                    prefix={<SearchOutlined />}
+                                    onChange={e => debouncedSearch(e.target.value)}
+                                    className="flex-1 min-w-[200px]"
+                                    disabled={isLoading}
+                                />
+                            </Space.Compact>
+                        </div>
+
+                        <Table
+                            columns={columns}
+                            dataSource={filteredPenalties}
+                            rowKey="id"
+                            onRow={(record) => ({
+                                onClick: () => handleViewPenalty(record),
+                                style: { cursor: 'pointer' }
+                            })}
+                            pagination={{
+                                pageSize: 15,
+                                showSizeChanger: true,
+                                pageSizeOptions: ['10', '15', '20', '50'],
+                                showTotal: (total, range) => 
+                                    `Hiển thị ${range[0]}-${range[1]} trên ${total} khoản phạt`,
+                                showQuickJumper: true,
+                                size: 'default'
+                            }}
+                            loading={{
+                                spinning: isLoading,
+                                indicator: <Skeleton active paragraph={{ rows: 8 }} />
+                            }}
+                            className="penalty-table"
+                            rowClassName={(record, index) => 
+                                index % 2 === 0 ? 'bg-gray-50 hover:bg-blue-50 transition-colors' : 'hover:bg-blue-50 transition-colors'
+                            }
+                            locale={{
+                                emptyText: isLoading ? (
+                                    <div className="py-8">
+                                        <Skeleton active paragraph={{ rows: 8 }} />
+                                    </div>
+                                ) : 'Không có dữ liệu vi phạm'
+                            }}
+                            scroll={{ 
+                                x: 'max-content',
+                                y: 'calc(100vh - 400px)'
+                            }}
+                            sticky={{
+                                offsetHeader: 0
+                            }}
+                            size="middle"
+                            summary={() => 
+                                filteredPenalties.length > 0 ? (
+                                    <Table.Summary.Row>
+                                        <Table.Summary.Cell index={0} colSpan={3}>
+                                            <Text strong>Tổng cộng</Text>
+                                        </Table.Summary.Cell>
+                                        <Table.Summary.Cell index={3}>
+                                            <Text strong>{filteredPenalties.length} vi phạm</Text>
+                                        </Table.Summary.Cell>
+                                    </Table.Summary.Row>
+                                ) : null
+                            }
+                        />
+                    </Card>
                 </div>
 
-                {renderStatCards()}
-
-                <Card className="shadow-sm mb-6">
-                    <div className="flex flex-col md:flex-row justify-between items-center mb-4">
-                        <Title level={4} className="m-0 mb-4 md:mb-0">Danh sách vi phạm</Title>
-                        <div className="flex w-full md:w-auto">
-                            <Input
-                                placeholder="Tìm kiếm vi phạm..."
-                                prefix={<SearchOutlined />}
-                                onChange={e => debouncedSearch(e.target.value)}
-                                className="w-full md:w-80"
-                                disabled={isLoading}
-                            />
-                        </div>
-                    </div>
-
-                    <Table
-                        columns={columns}
-                        dataSource={filteredPenalties}
-                        rowKey="id"
-                        pagination={{
-                            pageSize: 10,
-                            showSizeChanger: true,
-                            pageSizeOptions: ['10', '20', '50'],
-                            showTotal: (total) => `Tổng ${total} khoản phạt`
-                        }}
-                        loading={{
-                            spinning: isLoading,
-                            indicator: <></>
-                        }}
-                        className="penalty-table"
-                        rowClassName="hover:bg-blue-50 transition-colors"
-                        locale={{
-                            emptyText: isLoading ? (
-                                <div className="py-5">
-                                    <Skeleton active paragraph={{ rows: 5 }} />
-                                </div>
-                            ) : 'Không có dữ liệu'
-                        }}
-                        scroll={{ x: 'max-content' }}
-                    />
-                </Card>
+                <PenaltyModal
+                    visible={isModalVisible}
+                    onCancel={handleModalCancel}
+                    penalty={currentPenalty}
+                />
             </div>
-
-            <PenaltyModal
-                visible={isModalVisible}
-                onCancel={handleModalCancel}
-                onSubmit={handleModalSubmit}
-                penalty={currentPenalty}
-                mode={modalMode}
-            />
-        </div>
+        </ConfigProvider>
     );
 };
 
-export default PenaltyHistory; 
+export default PenaltyHistory;

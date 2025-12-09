@@ -29,9 +29,11 @@ export const useDriverManagement = () => {
   }, []);
 
   const createDriver = useCallback(async (data: any) => {
-    const response = await driverService.registerDriver(data);
+    // Use new createDriver API (returns DriverCreatedResponse)
+    const response = await driverService.createDriver(data);
     await fetchDrivers();
-    return response;
+    // Keep hook API compatible by returning the created DriverModel
+    return response.driver;
   }, [fetchDrivers]);
 
   const updateDriverStatus = useCallback(async (id: string, status: string) => {

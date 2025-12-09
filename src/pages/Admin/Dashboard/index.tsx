@@ -1,95 +1,117 @@
-import React, { useState } from 'react';
-import { Card, Row, Col, Typography } from 'antd';
+import React, { useState, useCallback } from 'react';
+import { Card, Row, Col, Typography, Tabs } from 'antd';
 import { useQuery } from '@tanstack/react-query';
-import { UserOutlined } from '@ant-design/icons';
-import adminDashboardService from '../../../services/admin/adminDashboardService';
-import { StatsCards, RegistrationChart, TopPerformersChart } from './widgets';
+import { UserOutlined, CarOutlined, DashboardOutlined } from '@ant-design/icons';
+import { dashboardService } from '../../../services/dashboard';
+import type { DashboardFilter, TimeRange, AdminDashboardResponse, TopPerformer, TrendDataPoint } from '../../../services/dashboard';
+import type { PeriodType, RegistrationTimeSeries, TopStaff, TopDriver } from '../../../models/AdminDashboard';
+import { StatsCards, RegistrationChart, TopPerformersChart, DeviceStatsCards, FleetTab, PenaltiesSummaryCards, PenaltiesTimeSeriesChart } from './widgets';
 import { TimeRangeFilter, KpiCard, AiSummaryCard } from '../../Dashboard/components/widgets';
-import type { PeriodType } from '../../../models/AdminDashboard';
-import type { TimeRange } from '../../../services/dashboard';
 
 const { Title, Text } = Typography;
 
 const AdminDashboard: React.FC = () => {
-  const [period, setPeriod] = useState<PeriodType>('month');
-  const [customDates, setCustomDates] = useState<{ from?: string; to?: string }>({});
-
-  // Map TimeRange to PeriodType
-  const mapTimeRangeToPeriod = (range: TimeRange): PeriodType => {
-    switch (range) {
-      case 'WEEK':
-        return 'week';
-      case 'YEAR':
-        return 'year';
-      case 'MONTH':
-      default:
-        return 'month';
-    }
-  };
+  const [filter, setFilter] = useState<DashboardFilter>({
+    range: 'MONTH',
+  });
+  const [activeTab, setActiveTab] = useState<string>('overview');
 
   const handleTimeRangeChange = (range: TimeRange, from?: string, to?: string) => {
-    setPeriod(mapTimeRangeToPeriod(range));
-    if (range === 'CUSTOM') {
-      setCustomDates({ from, to });
-    } else {
-      setCustomDates({});
-    }
+    setFilter({
+      range,
+      fromDate: from,
+      toDate: to,
+    });
   };
 
-  // Fetch dashboard summary
-  const { data: summary, isLoading: summaryLoading } = useQuery({
-    queryKey: ['adminDashboardSummary', period],
-    queryFn: () => adminDashboardService.getSummary(period),
+  // Type adapters to convert unified response to widget-specific types
+  const adaptRegistrationData = useCallback((trendData: TrendDataPoint[] | undefined, role: string): RegistrationTimeSeries | null => {
+    if (!trendData || trendData.length === 0) return null;
+    
+    // Filter out invalid data points and ensure proper structure
+    const validPoints = trendData
+      .filter(p => {
+        // Check if label exists and is not empty
+        const isValidLabel = p.label && p.label.trim() !== '';
+        // Check if count is valid
+        const isValidCount = p.count !== null && p.count !== undefined && p.count >= 0;
+        return isValidLabel && isValidCount;
+      })
+      .map(p => ({
+        date: p.label, // Use backend label directly (WEEK: "dd/MM", MONTH: "Tuần X", YEAR: "MM/yyyy")
+        count: p.count
+      }));
+    
+    if (validPoints.length === 0) return null;
+    
+    return {
+      role,
+      period: filter.range.toLowerCase() as PeriodType,
+      points: validPoints
+    };
+  }, [filter.range]);
+
+  const adaptTopStaff = (topPerformers: TopPerformer[] | undefined): TopStaff[] => {
+    if (!topPerformers) return [];
+    
+    return topPerformers.map((staff, index) => ({
+      staffId: staff.id,
+      name: staff.name,
+      email: '', // Email not available in TopPerformer, use empty string
+      resolvedIssues: staff.orderCount || 0, // Provide default value for undefined
+      avatarUrl: undefined
+    }));
+  };
+
+  const adaptTopDrivers = (topPerformers: TopPerformer[] | undefined): TopDriver[] => {
+    if (!topPerformers) return [];
+    
+    return topPerformers.map((driver, index) => ({
+      driverId: driver.id,
+      name: driver.name,
+      email: '', // Email not available in TopPerformer, use empty string
+      acceptedTrips: driver.orderCount || 0, // Provide default value for undefined
+      avatarUrl: undefined
+    }));
+  };
+
+  const adaptFleetHealth = (fleetHealth: any) => {
+    if (!fleetHealth) return null;
+    
+    // Convert FleetHealthSummary to AdminDashboardSummary format for FleetTab
+    return {
+      period: filter.range.toLowerCase() as PeriodType,
+      currentRange: { from: '', to: '' }, // Not used in FleetTab
+      previousRange: { from: '', to: '' }, // Not used in FleetTab
+      totals: {
+        customers: { count: 0, deltaPercent: 0 }, // Not used in FleetTab
+        staff: { count: 0, deltaPercent: 0 },
+        drivers: { count: 0, deltaPercent: 0 }
+      },
+      fleetStatus: {
+        totalVehicles: fleetHealth.totalVehicles,
+        availableVehicles: fleetHealth.activeVehicles,
+        inUseVehicles: fleetHealth.activeVehicles, // Use active as in-use
+        inMaintenanceVehicles: fleetHealth.inMaintenanceVehicles,
+        maintenanceAlerts: fleetHealth.upcomingMaintenances?.map((alert: any) => ({
+          vehicleId: alert.vehicleId,
+          licensePlate: alert.licensePlate,
+          maintenanceType: alert.maintenanceType,
+          scheduledDate: alert.dueDate,
+          isOverdue: alert.isOverdue
+        })) || []
+      }
+    };
+  };
+
+  // Single API call for all admin dashboard data
+  const { data: dashboard, isLoading } = useQuery({
+    queryKey: ['adminDashboard', filter],
+    queryFn: () => dashboardService.getAdminDashboard(filter),
   });
 
-  // Fetch customer registrations
-  const { data: customerRegistrations, isLoading: customerLoading } = useQuery({
-    queryKey: ['customerRegistrations', period],
-    queryFn: () => adminDashboardService.getRegistrations('customer', period),
-  });
-
-  // Fetch staff registrations
-  const { data: staffRegistrations, isLoading: staffLoading } = useQuery({
-    queryKey: ['staffRegistrations', period],
-    queryFn: () => adminDashboardService.getRegistrations('staff', period),
-  });
-
-  // Fetch driver registrations
-  const { data: driverRegistrations, isLoading: driverLoading } = useQuery({
-    queryKey: ['driverRegistrations', period],
-    queryFn: () => adminDashboardService.getRegistrations('driver', period),
-  });
-
-  // Fetch top staff
-  const { data: topStaff, isLoading: topStaffLoading, error: topStaffError } = useQuery({
-    queryKey: ['topStaff', period],
-    queryFn: async () => {
-      const result = await adminDashboardService.getTopStaff(5, period);
-      console.log('Top Staff Data:', result);
-      return result;
-    },
-  });
-
-  // Fetch top drivers
-  const { data: topDrivers, isLoading: topDriversLoading, error: topDriversError } = useQuery({
-    queryKey: ['topDrivers', period],
-    queryFn: async () => {
-      const result = await adminDashboardService.getTopDrivers(5, period);
-      console.log('Top Drivers Data:', result);
-      return result;
-    },
-  });
-
-  // Fetch AI summary
-  const { data: aiSummary, isLoading: aiSummaryLoading, error: aiSummaryError } = useQuery({
-    queryKey: ['adminAiSummary', period],
-    queryFn: () => adminDashboardService.getAdminAiSummary(period),
-  });
-
-  // Calculate total users
-  const totalUsers = (summary?.totals.customers.count || 0) + 
-                     (summary?.totals.staff.count || 0) + 
-                     (summary?.totals.drivers.count || 0);
+  // Calculate total users from KPI summary
+  const totalUsers = dashboard?.kpiSummary.newCustomers || 0;
 
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
@@ -103,65 +125,54 @@ const AdminDashboard: React.FC = () => {
             <Text type="secondary">Theo dõi thống kê và hiệu suất tổng thể</Text>
           </div>
           <TimeRangeFilter
-            value={period === 'week' ? 'WEEK' : period === 'year' ? 'YEAR' : 'MONTH'}
+            value={filter.range}
             onChange={handleTimeRangeChange}
-            customFromDate={customDates.from}
-            customToDate={customDates.to}
+            customFromDate={filter.fromDate}
+            customToDate={filter.toDate}
           />
         </div>
       </div>
 
-      {/* Stats Cards */}
+      {/* Stats Cards - User Statistics */}
       <Row gutter={[16, 16]} className="mb-6">
         <Col xs={24} sm={12} lg={6}>
           <KpiCard
-            title="Tổng số người dùng"
-            value={totalUsers}
+            title="Tổng người dùng"
+            value={
+              (dashboard?.registrationData?.customerRegistrations?.reduce((sum, point) => sum + point.count, 0) || 0) +
+              (dashboard?.registrationData?.staffRegistrations?.reduce((sum, point) => sum + point.count, 0) || 0) +
+              (dashboard?.registrationData?.driverRegistrations?.reduce((sum, point) => sum + point.count, 0) || 0)
+            }
             prefix={<UserOutlined className="text-purple-500" />}
-            loading={summaryLoading}
+            loading={isLoading}
             borderColor="border-t-purple-500"
           />
         </Col>
         <Col xs={24} sm={12} lg={6}>
           <KpiCard
-            title="Tổng số khách hàng"
-            value={summary?.totals.customers.count || 0}
+            title="Tổng khách hàng"
+            value={dashboard?.registrationData?.customerRegistrations?.reduce((sum, point) => sum + point.count, 0) || 0}
             prefix={<UserOutlined className="text-blue-500" />}
-            loading={summaryLoading}
+            loading={isLoading}
             borderColor="border-t-blue-500"
-            suffix={
-              summary?.totals.customers.deltaPercent !== undefined 
-                ? `${summary.totals.customers.deltaPercent >= 0 ? '↑' : '↓'} ${Math.abs(summary.totals.customers.deltaPercent).toFixed(1)}%`
-                : undefined
-            }
           />
         </Col>
         <Col xs={24} sm={12} lg={6}>
           <KpiCard
-            title="Tổng số nhân viên"
-            value={summary?.totals.staff.count || 0}
-            prefix={<UserOutlined className="text-green-500" />}
-            loading={summaryLoading}
+            title="Tổng nhân viên"
+            value={dashboard?.registrationData?.staffRegistrations?.reduce((sum, point) => sum + point.count, 0) || 0}
+            prefix={<DashboardOutlined className="text-green-500" />}
+            loading={isLoading}
             borderColor="border-t-green-500"
-            suffix={
-              summary?.totals.staff.deltaPercent !== undefined 
-                ? `${summary.totals.staff.deltaPercent >= 0 ? '↑' : '↓'} ${Math.abs(summary.totals.staff.deltaPercent).toFixed(1)}%`
-                : undefined
-            }
           />
         </Col>
         <Col xs={24} sm={12} lg={6}>
           <KpiCard
-            title="Tổng số tài xế"
-            value={summary?.totals.drivers.count || 0}
-            prefix={<UserOutlined className="text-orange-500" />}
-            loading={summaryLoading}
+            title="Tổng tài xế"
+            value={dashboard?.registrationData?.driverRegistrations?.reduce((sum, point) => sum + point.count, 0) || 0}
+            prefix={<CarOutlined className="text-orange-500" />}
+            loading={isLoading}
             borderColor="border-t-orange-500"
-            suffix={
-              summary?.totals.drivers.deltaPercent !== undefined 
-                ? `${summary.totals.drivers.deltaPercent >= 0 ? '↑' : '↓'} ${Math.abs(summary.totals.drivers.deltaPercent).toFixed(1)}%`
-                : undefined
-            }
           />
         </Col>
       </Row>
@@ -169,67 +180,111 @@ const AdminDashboard: React.FC = () => {
       {/* AI Summary - Full Row */}
       <div className="mb-6">
         <AiSummaryCard
-          summary={aiSummary || ''}
-          loading={aiSummaryLoading}
+          summary={dashboard?.aiSummary || ''}
+          loading={isLoading}
         />
       </div>
 
-      {/* Customer Registrations Chart - Full Row */}
-      <div className="mt-6">
-        <RegistrationChart
-          data={customerRegistrations || null}
-          loading={customerLoading}
-          title="Số khách hàng đăng ký theo thời gian"
-          color="#1890ff"
-          period={period}
-        />
-      </div>
+      {/* Tabs Navigation */}
+      <Tabs 
+        activeKey={activeTab} 
+        onChange={setActiveTab}
+        className="admin-dashboard-tabs"
+        items={[
+          {
+            key: 'overview',
+            label: (
+              <span>
+                <DashboardOutlined />
+                Tổng quan
+              </span>
+            ),
+            children: (
+              <>
+                {/* Customer Registrations Chart - Full Row */}
+                <div className="mt-6 overflow-x-auto">
+                  <RegistrationChart
+                    data={adaptRegistrationData(dashboard?.registrationData?.customerRegistrations, 'customer')}
+                    loading={isLoading}
+                    title="Số khách hàng đăng ký theo thời gian"
+                    color="#1890ff"
+                    period={filter.range.toLowerCase() as PeriodType}
+                  />
+                </div>
 
-      {/* Staff & Driver Registrations Charts - Same Row */}
-      <Row gutter={[16, 16]} className="mt-6">
-        <Col xs={24} lg={12}>
-          <RegistrationChart
-            data={staffRegistrations || null}
-            loading={staffLoading}
-            title="Số nhân viên đăng ký theo thời gian"
-            color="#52c41a"
-            period={period}
-          />
-        </Col>
-        <Col xs={24} lg={12}>
-          <RegistrationChart
-            data={driverRegistrations || null}
-            loading={driverLoading}
-            title="Số tài xế đăng ký theo thời gian"
-            color="#faad14"
-            period={period}
-          />
-        </Col>
-      </Row>
+                {/* Staff & Driver Registrations Charts - Same Row */}
+                <Row gutter={[16, 16]} className="mt-6">
+                  <Col xs={24} lg={12}>
+                    <div className="overflow-x-auto">
+                      <RegistrationChart
+                        data={adaptRegistrationData(dashboard?.registrationData?.staffRegistrations, 'staff')}
+                        loading={isLoading}
+                        title="Số nhân viên đăng ký theo thời gian"
+                        color="#52c41a"
+                        period={filter.range.toLowerCase() as PeriodType}
+                      />
+                    </div>
+                  </Col>
+                  <Col xs={24} lg={12}>
+                    <div className="overflow-x-auto">
+                      <RegistrationChart
+                        data={adaptRegistrationData(dashboard?.registrationData?.driverRegistrations, 'driver')}
+                        loading={isLoading}
+                        title="Số tài xế đăng ký theo thời gian"
+                        color="#faad14"
+                        period={filter.range.toLowerCase() as PeriodType}
+                      />
+                    </div>
+                  </Col>
+                </Row>
 
-      {/* Top Staff & Top Drivers - Same Row */}
-      <Row gutter={[16, 16]} className="mt-6">
-        <Col xs={24} lg={12}>
-          <TopPerformersChart
-            data={topStaff || null}
-            loading={topStaffLoading}
-            title="Top nhân viên xuất sắc"
-            color="#52c41a"
-            metricKey="resolvedIssues"
-            metricLabel="Sự cố đã xử lý"
-          />
-        </Col>
-        <Col xs={24} lg={12}>
-          <TopPerformersChart
-            data={topDrivers || null}
-            loading={topDriversLoading}
-            title="Top tài xế xuất sắc"
-            color="#faad14"
-            metricKey="acceptedTrips"
-            metricLabel="Chuyến xe hoàn thành"
-          />
-        </Col>
-      </Row>
+                {/* Top Performers - Full Row */}
+                <Row gutter={[16, 16]} className="mt-6">
+                  <Col xs={24} lg={12}>
+                    <TopPerformersChart
+                      data={adaptTopStaff(dashboard?.topStaff)}
+                      loading={isLoading}
+                      title="Top nhân viên xuất sắc"
+                      color="#52c41a"
+                      metricKey="resolvedIssues"
+                      metricLabel="Sự cố giải quyết"
+                    />
+                  </Col>
+                  <Col xs={24} lg={12}>
+                    <TopPerformersChart
+                      data={adaptTopDrivers(dashboard?.topDrivers)}
+                      loading={isLoading}
+                      title="Top tài xế xuất sắc"
+                      color="#faad14"
+                      metricKey="acceptedTrips"
+                      metricLabel="Chuyến xe hoàn thành"
+                    />
+                  </Col>
+                </Row>
+              </>
+            ),
+          },
+          {
+            key: 'fleet',
+            label: (
+              <span>
+                <CarOutlined />
+                Đội xe
+              </span>
+            ),
+            children: (
+              <FleetTab 
+                data={adaptFleetHealth(dashboard?.fleetHealth)} 
+                isLoading={isLoading}
+                handleNavigateToVehicle={(vehicleId) => {
+                  // Navigate to vehicle detail page
+                  console.log('Navigate to vehicle:', vehicleId);
+                }}
+              />
+            ),
+          },
+        ]}
+      />
     </div>
   );
 };

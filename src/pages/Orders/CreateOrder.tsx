@@ -15,7 +15,7 @@ import {
   StepActions,
 } from "./components/CreateOrderSteps";
 
-const { Step } = Steps;
+// Steps.Step deprecated in v6, use items prop instead
 const { Title, Text } = Typography;
 
 export default function CreateOrder() {
@@ -537,20 +537,15 @@ export default function CreateOrder() {
         <Card className="shadow-lg border-0 rounded-2xl overflow-hidden">
           {/* Steps Navigation */}
           <div className="bg-gradient-to-r from-blue-50 to-indigo-50 px-8 py-6">
-            <Steps current={currentStep} className="mb-0">
-              <Step
-                title="Thông tin kiện hàng"
-                description="Nhập thông tin kiện hàng"
-              />
-              <Step
-                title="Thông tin vận chuyển"
-                description="Nhập thông tin vận chuyển"
-              />
-              <Step
-                title="Tổng hợp và xác nhận"
-                description="Xác nhận thông tin đơn hàng"
-              />
-            </Steps>
+            <Steps 
+              current={currentStep} 
+              className="mb-0"
+              items={[
+                { title: 'Thông tin kiện hàng', description: 'Nhập thông tin kiện hàng' },
+                { title: 'Thông tin vận chuyển', description: 'Nhập thông tin vận chuyển' },
+                { title: 'Tổng hợp và xác nhận', description: 'Xác nhận thông tin đơn hàng' },
+              ]}
+            />
           </div>
 
           {/* Form Content */}

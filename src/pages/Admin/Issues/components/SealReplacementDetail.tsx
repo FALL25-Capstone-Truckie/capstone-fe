@@ -31,23 +31,30 @@ const SealReplacementDetail: React.FC<SealReplacementDetailProps> = ({ issue, on
     const [selectedSealId, setSelectedSealId] = useState<string | null>(null);
     const [loadingSeals, setLoadingSeals] = useState(false);
 
-    // Debug log
     // Auto-fetch active seals when component mounts or issue changes
     useEffect(() => {
-        if (issue.status === 'OPEN' && issue.vehicleAssignment?.id) {
+        const vehicleAssignmentId = issue.vehicleAssignment?.id;
+        const trackingCode = issue.vehicleAssignment?.trackingCode;
+        
+        if (issue.status === 'OPEN' && (vehicleAssignmentId || trackingCode)) {
             fetchActiveSeals();
         }
-    }, [issue.id, issue.status]);
+    }, [issue.id, issue.status, issue.vehicleAssignment?.id, issue.vehicleAssignment?.trackingCode]);
 
     // Fetch active seals for selection
     const fetchActiveSeals = async () => {
-        if (!issue.vehicleAssignment?.id) {
+        const vehicleAssignmentId = issue.vehicleAssignment?.id;
+        const trackingCode = issue.vehicleAssignment?.trackingCode;
+        
+        if (!vehicleAssignmentId && !trackingCode) {
+            console.warn('[SealReplacementDetail] No vehicle assignment ID or tracking code available');
             return;
         }
+        
         setLoadingSeals(true);
         try {
-            const seals = await issueService.getActiveSeals(issue.vehicleAssignment.id);
-            
+            // Use tracking code fallback if vehicleAssignmentId is undefined
+            const seals = await issueService.getActiveSeals(vehicleAssignmentId, trackingCode);
             setActiveSeals(seals);
         } catch (error: any) {
             console.error('[SealReplacementDetail] Error fetching seals:', error);
@@ -59,24 +66,35 @@ const SealReplacementDetail: React.FC<SealReplacementDetailProps> = ({ issue, on
 
     // Handle assign new seal (Staff only)
     const handleAssignNewSeal = () => {
+        console.log('[SealReplacementDetail] 🔘 Submit button clicked');
+        console.log('[SealReplacementDetail] Selected seal ID:', selectedSealId);
+        console.log('[SealReplacementDetail] User:', user);
+        console.log('[SealReplacementDetail] Active seals count:', activeSeals.length);
+        
         if (!selectedSealId || !user) {
+            console.log('[SealReplacementDetail] ❌ Validation failed - missing seal or user');
             message.error('Vui lòng chọn seal và đảm bảo bạn đã đăng nhập!');
             return;
         }
 
         const selectedSeal = activeSeals.find(s => s.id === selectedSealId);
+        console.log('[SealReplacementDetail] Selected seal:', selectedSeal);
+        
         // Validate selected seal status
         if (!selectedSeal) {
             console.error('[SealReplacementDetail] ❌ Selected seal not found in activeSeals list');
+            console.error('[SealReplacementDetail] Available seals:', activeSeals.map(s => ({ id: s.id, code: s.sealCode, status: s.status })));
             message.error('Seal được chọn không hợp lệ. Vui lòng chọn lại seal.');
             return;
         }
         
         if (selectedSeal.status !== 'ACTIVE') {
-            console.error('[SealReplacementDetail] ❌ Selected seal status is not ACTIVE:', selectedSeal.status);
-            message.error(`Seal được chọn có trạng thái ${selectedSeal.status}, không phải ACTIVE. Vui lòng chọn seal có trạng thái ACTIVE.`);
+            console.error('[SealReplacementDetail] ❌ Selected seal is not ACTIVE:', selectedSeal.status);
+            message.error('Seal được chọn không có trạng thái ACTIVE. Vui lòng chọn seal đang hoạt động.');
             return;
         }
+        
+        console.log('[SealReplacementDetail] ✅ Validation passed, showing confirmation modal');
         
         // Try using modal.confirm from App.useApp()
         try {

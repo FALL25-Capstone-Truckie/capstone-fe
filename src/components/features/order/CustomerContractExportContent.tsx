@@ -383,16 +383,43 @@ const CustomerContractExportContent: React.FC<CustomerContractExportContentProps
             </tr>
           </thead>
           <tbody>
-            {contractData.priceDetails.steps.map((step, index) => (
-              <tr key={index}>
-                <td>{step.sizeRuleName}</td>
-                <td>{step.numOfVehicles}</td>
-                <td>{step.distanceRange}</td>
-                <td>{formatCurrency(step.unitPrice)}</td>
-                <td>{step.appliedKm.toFixed(2)}</td>
-                <td>{formatCurrency(step.subtotal)}</td>
-              </tr>
-            ))}
+            {(() => {
+              // Group steps by sizeRuleName to use rowSpan for vehicle type columns
+              const groupedSteps: { [key: string]: typeof contractData.priceDetails.steps } = {};
+              contractData.priceDetails.steps.forEach((step) => {
+                const key = step.sizeRuleName;
+                if (!groupedSteps[key]) {
+                  groupedSteps[key] = [];
+                }
+                groupedSteps[key].push(step);
+              });
+
+              const rows: React.ReactNode[] = [];
+              Object.entries(groupedSteps).forEach(([sizeRuleName, steps]) => {
+                steps.forEach((step, stepIndex) => {
+                  rows.push(
+                    <tr key={`${sizeRuleName}-${stepIndex}`}>
+                      {/* Only render vehicle type and count on first row of each group */}
+                      {stepIndex === 0 && (
+                        <>
+                          <td rowSpan={steps.length} style={{ verticalAlign: 'middle' }}>
+                            {sizeRuleName}
+                          </td>
+                          <td rowSpan={steps.length} style={{ verticalAlign: 'middle', textAlign: 'center' }}>
+                            {step.numOfVehicles}
+                          </td>
+                        </>
+                      )}
+                      <td>{step.distanceRange}</td>
+                      <td>{formatCurrency(step.unitPrice)}</td>
+                      <td>{step.appliedKm.toFixed(2)}</td>
+                      <td>{formatCurrency(step.subtotal)}</td>
+                    </tr>
+                  );
+                });
+              });
+              return rows;
+            })()}
           </tbody>
         </table>
 
@@ -408,12 +435,24 @@ const CustomerContractExportContent: React.FC<CustomerContractExportContentProps
                   fontStyle: "italic",
                 }}
               >
-                {contractData.priceDetails.steps.map((step, index) => (
-                  <span key={index}>
-                    {index > 0 && " + "}({formatCurrency(step.unitPrice)} ×{" "}
-                    {step.appliedKm.toFixed(2)} km)
-                  </span>
-                ))}
+                {(() => {
+                  // Group steps by sizeRuleName for cleaner display
+                  const groupedSteps: { [key: string]: { total: number; count: number } } = {};
+                  contractData.priceDetails.steps.forEach((step) => {
+                    const key = step.sizeRuleName;
+                    if (!groupedSteps[key]) {
+                      groupedSteps[key] = { total: 0, count: 0 };
+                    }
+                    groupedSteps[key].total += step.subtotal;
+                    groupedSteps[key].count += step.numOfVehicles;
+                  });
+
+                  return Object.entries(groupedSteps).map(([sizeRuleName, data], index) => (
+                    <span key={sizeRuleName}>
+                      {index > 0 && " + "}{sizeRuleName} ({data.count} xe): {formatCurrency(data.total)}
+                    </span>
+                  ));
+                })()}
               </div>
             </div>
             <div

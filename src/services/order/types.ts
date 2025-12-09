@@ -87,6 +87,10 @@ export interface VehicleSuggestion {
   sizeRuleName: string;
   currentLoad: number;
   currentLoadUnit: string;
+  // Vehicle dimensions (meters) - for 3D visualization
+  maxLength?: number;
+  maxWidth?: number;
+  maxHeight?: number;
   assignedDetails: AssignedDetail[];
   packedDetailDetails?: PackedDetail[];
 }

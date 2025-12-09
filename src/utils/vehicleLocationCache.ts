@@ -1,4 +1,5 @@
 import type { VehicleLocationMessage } from '../hooks/useVehicleTracking';
+import { webStorage } from './webStorage';
 
 /**
  * Cache utility để lưu trữ vị trí cuối cùng của vehicle
@@ -131,7 +132,7 @@ class VehicleLocationCache {
   private saveToStorage(): void {
     try {
       const data = Array.from(this.cache.entries());
-      localStorage.setItem(this.storageKey, JSON.stringify(data));
+      webStorage.setItem(this.storageKey, JSON.stringify(data), 'session');
     } catch (error) {
       console.warn('[VehicleCache] Failed to save to localStorage:', error);
     }
@@ -142,7 +143,7 @@ class VehicleLocationCache {
    */
   private loadFromStorage(): void {
     try {
-      const stored = localStorage.getItem(this.storageKey);
+      const stored = webStorage.getItem(this.storageKey, 'session');
       if (stored) {
         const data = JSON.parse(stored);
         if (Array.isArray(data)) {
@@ -162,7 +163,7 @@ class VehicleLocationCache {
     } catch (error) {
       console.warn('[VehicleCache] Failed to load from localStorage:', error);
       // Xóa dữ liệu lỗi
-      localStorage.removeItem(this.storageKey);
+      webStorage.removeItem(this.storageKey, 'session');
     }
   }
 

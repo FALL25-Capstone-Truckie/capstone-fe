@@ -347,7 +347,7 @@ const OrdersContent: React.FC<OrdersContentProps> = ({
             />
           </div>
 
-          <Divider orientation="left">Bộ lọc</Divider>
+          <Divider titlePlacement="start">Bộ lọc</Divider>
 
           <Row gutter={[16, 16]} align="middle">
             <Col xs={24} sm={12} md={6}>

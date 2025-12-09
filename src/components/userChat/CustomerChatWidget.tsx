@@ -686,7 +686,6 @@ const CustomerChatWidget: React.FC<CustomerChatWidgetProps> = ({
                                   className="max-w-[200px] max-h-[200px] rounded cursor-pointer"
                                   preview={{
                                     mask: 'Xem ảnh lớn',
-                                    maskClosable: true,
                                   }}
                                   onClick={(e) => e.stopPropagation()}
                                 />
@@ -701,7 +700,6 @@ const CustomerChatWidget: React.FC<CustomerChatWidgetProps> = ({
                                       className="max-w-[200px] max-h-[200px] rounded cursor-pointer"
                                       preview={{
                                         mask: 'Xem ảnh lớn',
-                                        maskClosable: true,
                                       }}
                                       onClick={(e) => e.stopPropagation()}
                                     />

@@ -14,10 +14,11 @@ const { Title, Text, Paragraph } = Typography;
  */
 const IssueModal: React.FC = () => {
   const navigate = useNavigate();
-  const { newIssueForModal, hideNewIssueModal } = useIssuesContext();
+  const { newIssueForModal, hideNewIssueModal, clearIssueFromQueueByIssueId } = useIssuesContext();
 
   const handleViewDetail = () => {
     if (newIssueForModal) {
+      clearIssueFromQueueByIssueId(newIssueForModal.id);
       hideNewIssueModal();
       navigate(`/staff/issues/${newIssueForModal.id}`);
     }

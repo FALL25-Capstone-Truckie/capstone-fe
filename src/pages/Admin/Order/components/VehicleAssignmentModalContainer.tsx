@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { 
     Modal, Button, App, Result, Form, Card, Input, Row, Col, Divider, Select, Space, Tooltip
 } from "antd";
@@ -60,20 +60,39 @@ const VehicleAssignmentModal: React.FC<VehicleAssignmentModalProps> = ({
     
     // Form state for current trip
     const [selectedVehicleId, setSelectedVehicleId] = useState<string | undefined>();
-    const [manualDriver1Phone, setManualDriver1Phone] = useState<string>("");
-    const [manualDriver2Phone, setManualDriver2Phone] = useState<string>("");
-    const [searchingDriver, setSearchingDriver] = useState(false);
+    const [manualDriver1Phone, setManualDriver1Phone] = useState<string>(""); // Phone number for manual driver 1 search
+    const [manualDriver2Phone, setManualDriver2Phone] = useState<string>(""); // Phone number for manual driver 2 search
+    const [searchingDriver, setSearchingDriver] = useState(false); // Flag for searching driver
     const [selectedDriver1, setSelectedDriver1] = useState<string | undefined>();
     const [selectedDriver2, setSelectedDriver2] = useState<string | undefined>();
+    
+    // Modal state: 'idle' | 'loading' | 'ready' | 'submitting' | 'success'
+    // Simple state machine - NO complex refs, NO race conditions
+    const [modalState, setModalState] = useState<'idle' | 'loading' | 'ready' | 'submitting' | 'success'>('idle');
+    
+    // Track previous visible state to detect open/close transitions
+    const prevVisibleRef = useRef(visible);
 
-    // Fetch suggestions when modal opens
+    // ONLY fetch when modal OPENS (visible changes from false to true)
     useEffect(() => {
-        if (visible && orderId) {
+        const wasVisible = prevVisibleRef.current;
+        const isNowVisible = visible;
+        prevVisibleRef.current = visible;
+        
+        // Modal just OPENED (false -> true)
+        if (!wasVisible && isNowVisible && orderId && modalState === 'idle') {
+            console.log('📂 Modal opened - fetching data');
             fetchSuggestions();
-        } else {
-            resetWizard();
         }
-    }, [visible, orderId]);
+        
+        // Modal just CLOSED (true -> false)
+        if (wasVisible && !isNowVisible) {
+            console.log('📁 Modal closed - resetting state');
+            // Reset everything when modal closes
+            resetWizard();
+            setModalState('idle');
+        }
+    }, [visible, orderId, modalState]);
 
     // Prefill form when trip changes
     useEffect(() => {
@@ -101,12 +120,21 @@ const VehicleAssignmentModal: React.FC<VehicleAssignmentModalProps> = ({
     };
 
     const fetchSuggestions = async () => {
+        // Don't fetch if already submitting or success
+        if (modalState === 'submitting' || modalState === 'success') {
+            console.log('🚫 Skipping fetch - modalState:', modalState);
+            return;
+        }
+        
+        setModalState('loading');
         setLoading(true);
+        
         try {
             const response = await vehicleAssignmentService.getGroupedSuggestionsForOrderDetails(orderId);
             
             if (!response || !response.data) {
                 messageApi.error("❌ Không thể tải gợi ý phân công xe");
+                setModalState('idle');
                 return;
             }
 
@@ -118,9 +146,15 @@ const VehicleAssignmentModal: React.FC<VehicleAssignmentModalProps> = ({
                 newSuggestionsMap[index] = group.suggestedVehicles || [];
             });
             setSuggestionsMap(newSuggestionsMap);
-        } catch (error) {
+            setModalState('ready');
+        } catch (error: any) {
             console.error("Error fetching suggestions:", error);
-            messageApi.error("❌ Không thể tải gợi ý phân công xe");
+            const errorMessage = error?.response?.data?.message || "";
+            // Don't show error if order is already assigned
+            if (!errorMessage.includes("đã được phân công") && !errorMessage.includes("already assigned")) {
+                messageApi.error("❌ Không thể tải gợi ý phân công xe");
+            }
+            setModalState('idle');
         } finally {
             setLoading(false);
         }
@@ -287,7 +321,7 @@ const VehicleAssignmentModal: React.FC<VehicleAssignmentModalProps> = ({
             console.error("Error searching driver:", error);
             
             // Show backend message directly (backend already formats user-friendly messages)
-            const backendMessage = error.response?.data?.message || "❌ Không thể xác thực tài xế. Vui lòng kiểm tra số điện thoại.";
+            const backendMessage = error?.response?.data?.message || "❌ Không thể xác thực tài xế. Vui lòng kiểm tra số điện thoại.";
             
             // Use warning for business logic errors, error for technical failures
             if (error.response?.status === 400 || error.response?.status === 404) {
@@ -381,23 +415,34 @@ const VehicleAssignmentModal: React.FC<VehicleAssignmentModalProps> = ({
                 driverId_1: trip.driverId_1!,
                 driverId_2: trip.driverId_2!,
                 description: trip.description || "",
-                routeInfo: sortedRouteInfo!,
+                routeInfo: sortedRouteInfo,
                 seals: trip.seals || []
             };
         });
 
+        // Set state to submitting FIRST - this prevents any re-fetch
+        setModalState('submitting');
+        
         try {
             await vehicleAssignmentService.createGroupedAssignments({
                 groupAssignments
             });
 
+            // SUCCESS! Set state to success - this is a terminal state
+            setModalState('success');
+            console.log('✅ Submit success - modalState set to success');
+            
             messageApi.success("✅ Phân công xe thành công!");
-            onSuccess();
+            
+            // Close modal and notify parent
             onClose();
+            onSuccess();
         } catch (error) {
             console.error("Error submitting assignments:", error);
             messageApi.error("❌ Không thể tạo phân công xe. Vui lòng thử lại.");
-            throw error; // Re-throw to propagate to caller
+            // Reset to ready state so user can try again
+            setModalState('ready');
+            throw error;
         }
     };
 
@@ -425,8 +470,10 @@ const VehicleAssignmentModal: React.FC<VehicleAssignmentModalProps> = ({
                         <span className="font-medium">{vehicle.licensePlateNumber}</span>
                         <span className="text-gray-500 mx-2">-</span>
                         <span>{vehicle.manufacturer} {vehicle.model}</span>
-                        {vehicle.vehicleTypeName && (
-                            <span className="text-gray-500 mx-2">({vehicle.vehicleTypeName})</span>
+                        {(vehicle.vehicleTypeDescription || vehicle.vehicleTypeName) && (
+                            <span className="text-gray-500 mx-2">
+                                ({vehicle.vehicleTypeDescription ?? vehicle.vehicleTypeName})
+                            </span>
                         )}
                     </div>
                 </Option>
@@ -465,7 +512,7 @@ const VehicleAssignmentModal: React.FC<VehicleAssignmentModalProps> = ({
                     </div>
                     <div className="flex justify-between">
                         <span className="text-gray-500">Loại xe:</span>
-                        <span className="font-medium">{vehicle.vehicleTypeName || "Không có thông tin"}</span>
+                        <span className="font-medium">{vehicle.vehicleTypeDescription ?? vehicle.vehicleTypeName ?? "Không có thông tin"}</span>
                     </div>
                 </div>
             </div>

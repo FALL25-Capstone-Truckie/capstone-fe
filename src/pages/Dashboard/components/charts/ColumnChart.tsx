@@ -116,11 +116,29 @@ const ColumnChart: React.FC<ColumnChartProps> = ({
             },
         },
         tooltip: {
-            formatter: (datum: ColumnDataItem) => {
-                return {
-                    name: datum.type || datum.category,
-                    value: datum.value.toLocaleString('vi-VN'),
-                };
+            showTitle: true,
+            title: (datum: any) => datum.category,
+            customContent: (title: string, items: any[]) => {
+                if (!items || items.length === 0) return null;
+                const item = items[0];
+                const value = item?.data?.value || 0;
+                const name = item?.data?.type || title;
+                
+                return (
+                    <div style={{ padding: '8px 12px', border: '1px solid #f0f0f0', borderRadius: '4px', backgroundColor: '#fff' }}>
+                        <div style={{ marginBottom: 4, fontWeight: 500 }}>{name}</div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <span style={{ 
+                                width: 8, 
+                                height: 8, 
+                                borderRadius: '50%', 
+                                backgroundColor: Array.isArray(color) ? color[items[0]?.dataIndex || 0] : color,
+                                display: 'inline-block'
+                            }}></span>
+                            <span>Số lượng: <strong>{value.toLocaleString('vi-VN')}</strong></span>
+                        </div>
+                    </div>
+                );
             },
         },
         animation: {

@@ -476,16 +476,43 @@ const StaffContractPreview: React.FC<StaffContractPreviewProps> = ({
             </tr>
           </thead>
           <tbody>
-            {contractData.priceDetails.steps.map((step, index) => (
-              <tr key={index}>
-                <td>{step.sizeRuleName}</td>
-                <td>{step.numOfVehicles}</td>
-                <td>{step.distanceRange}</td>
-                <td>{formatCurrency(step.unitPrice)}</td>
-                <td>{step.appliedKm.toFixed(2)}</td>
-                <td>{formatCurrency(step.subtotal)}</td>
-              </tr>
-            ))}
+            {(() => {
+              // Group steps by sizeRuleName to use rowSpan for vehicle type columns
+              const groupedSteps: { [key: string]: typeof contractData.priceDetails.steps } = {};
+              contractData.priceDetails.steps.forEach((step) => {
+                const key = step.sizeRuleName;
+                if (!groupedSteps[key]) {
+                  groupedSteps[key] = [];
+                }
+                groupedSteps[key].push(step);
+              });
+
+              const rows: React.ReactNode[] = [];
+              Object.entries(groupedSteps).forEach(([sizeRuleName, steps]) => {
+                steps.forEach((step, stepIndex) => {
+                  rows.push(
+                    <tr key={`${sizeRuleName}-${stepIndex}`}>
+                      {/* Only render vehicle type and count on first row of each group */}
+                      {stepIndex === 0 && (
+                        <>
+                          <td rowSpan={steps.length} style={{ verticalAlign: 'middle' }}>
+                            {sizeRuleName}
+                          </td>
+                          <td rowSpan={steps.length} style={{ verticalAlign: 'middle', textAlign: 'center' }}>
+                            {step.numOfVehicles}
+                          </td>
+                        </>
+                      )}
+                      <td>{step.distanceRange}</td>
+                      <td>{formatCurrency(step.unitPrice)}</td>
+                      <td>{step.appliedKm.toFixed(2)}</td>
+                      <td>{formatCurrency(step.subtotal)}</td>
+                    </tr>
+                  );
+                });
+              });
+              return rows;
+            })()}
           </tbody>
         </table>
 
@@ -495,19 +522,69 @@ const StaffContractPreview: React.FC<StaffContractPreviewProps> = ({
             <strong>3.1. Chi phí vận chuyển:</strong>
           </p>
           
-          {/* Base transport calculation */}
+          {/* Base transport calculation - grouped by vehicle type with detailed breakdown */}
           <p style={{ marginLeft: "20px", marginBottom: "8px" }}>
             a) Cước vận chuyển cơ bản theo quãng đường {contractData.distanceKm.toFixed(2)} km:
           </p>
-          {contractData.priceDetails.steps.map((step, index) => (
-            <p key={index} style={{ marginLeft: "40px", marginBottom: "4px" }}>
-              - {step.sizeRuleName} ({step.numOfVehicles} xe): {formatCurrency(step.unitPrice)}/km × {step.appliedKm.toFixed(2)} km = <strong>{formatCurrency(step.subtotal)}</strong>
-            </p>
-          ))}
-          
-          <p style={{ marginLeft: "40px", marginBottom: "8px" }}>
-            Tổng cước cơ bản: <strong>{formatCurrency(contractData.priceDetails.steps.reduce((sum, step) => sum + step.subtotal, 0))}</strong>
-          </p>
+          {(() => {
+            // Group steps by sizeRuleName to show detailed breakdown and totals per vehicle type
+            const groupedSteps: {
+              [key: string]: { steps: typeof contractData.priceDetails.steps; total: number; vehicleCount: number };
+            } = {};
+
+            contractData.priceDetails.steps.forEach((step) => {
+              const key = step.sizeRuleName;
+              if (!groupedSteps[key]) {
+                groupedSteps[key] = { steps: [], total: 0, vehicleCount: step.numOfVehicles };
+              }
+              groupedSteps[key].steps.push(step);
+              groupedSteps[key].total += step.subtotal;
+              // Giả định numOfVehicles là số xe cố định theo loại, không cộng dồn theo từng rule
+              groupedSteps[key].vehicleCount = step.numOfVehicles;
+            });
+
+            return Object.entries(groupedSteps).map(([sizeRuleName, data]) => (
+              <p
+                key={sizeRuleName}
+                style={{ marginLeft: "40px", marginBottom: "4px" }}
+              >
+                - {sizeRuleName} ({data.vehicleCount} xe):{" "}
+                {data.steps.map((step, idx) => (
+                  <span key={`${sizeRuleName}-detail-${idx}`}>
+                    {idx > 0 && " + "}
+                    ({formatCurrency(step.unitPrice)}/km × {step.appliedKm.toFixed(2)} km)
+                  </span>
+                ))}
+                {" = "}
+                <strong>{formatCurrency(data.total)}</strong>
+              </p>
+            ));
+          })()}
+
+          {(() => {
+            // Tính tổng theo từng loại xe để hiển thị công thức cộng rõ ràng
+            const groupedTotals: { [key: string]: number } = {};
+            contractData.priceDetails.steps.forEach((step) => {
+              const key = step.sizeRuleName;
+              groupedTotals[key] = (groupedTotals[key] || 0) + step.subtotal;
+            });
+
+            const perVehicleTotals = Object.values(groupedTotals);
+            const basicTotal = perVehicleTotals.reduce((sum, val) => sum + val, 0);
+
+            return (
+              <p style={{ marginLeft: "40px", marginBottom: "8px" }}>
+                Tổng cước cơ bản: {perVehicleTotals.map((val, idx) => (
+                  <span key={idx}>
+                    {idx > 0 && " + "}
+                    {formatCurrency(val)}
+                  </span>
+                ))}
+                {" = "}
+                <strong>{formatCurrency(basicTotal)}</strong>
+              </p>
+            );
+          })()}
 
           {/* Category multiplier */}
           <p style={{ marginLeft: "20px", marginBottom: "8px" }}>

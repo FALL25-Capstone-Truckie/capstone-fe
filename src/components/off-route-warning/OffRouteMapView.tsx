@@ -37,7 +37,7 @@ const OffRouteMapView: React.FC<OffRouteMapViewProps> = ({
   const deviationLayerAdded = useRef(false);
   const mapRef = useRef<any>(null);
 
-  // WebSocket tracking for real-time vehicle position
+  // WebSocket tracking for real-time vehicle position (per order)
   const {
     vehicleLocations,
     isConnected,
@@ -48,11 +48,8 @@ const OffRouteMapView: React.FC<OffRouteMapViewProps> = ({
     reconnectInterval: 5000,
   });
 
-  // Get active vehicle from tracking
-  const activeVehicle = vehicleLocations.find(v => 
-    v.vehicleAssignmentId === vehicleAssignmentId ||
-    v.latitude !== null && v.longitude !== null
-  );
+  // Chỉ chọn vehicle khớp đúng vehicleAssignmentId để tránh nhầm trip khác trong multi-trip
+  const activeVehicle = vehicleLocations.find(v => v.vehicleAssignmentId === vehicleAssignmentId);
 
   // Process planned route segments into map format
   useEffect(() => {

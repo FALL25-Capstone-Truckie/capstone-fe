@@ -13,13 +13,11 @@ const { TabPane } = Tabs;
 interface OrderDetailTabsProps {
     order: any;
     formatDate: (dateString?: string) => string;
-    setVehicleAssignmentModalVisible: (visible: boolean) => void;
 }
 
 const OrderDetailTabs: React.FC<OrderDetailTabsProps> = ({
     order,
     formatDate,
-    setVehicleAssignmentModalVisible,
 }) => {
     const [activeDetailTab, setActiveDetailTab] = useState<string>("0");
 
@@ -78,7 +76,7 @@ const OrderDetailTabs: React.FC<OrderDetailTabsProps> = ({
                         tab={
                             <span>
                                 <BoxPlotOutlined /> Kiện {index + 1}{" "}
-                                {detail.trackingCode ? `- ${detail.trackingCode} ` : ""}
+                                {detail.trackingCode ? `- ${detail.trackingCode}` : ""}
                             </span>
                         }
                         key={index.toString()}
@@ -86,7 +84,6 @@ const OrderDetailTabs: React.FC<OrderDetailTabsProps> = ({
                         <OrderDetailPackageTab
                             detail={detail}
                             formatDate={formatDate}
-                            setVehicleAssignmentModalVisible={setVehicleAssignmentModalVisible}
                             order={order}
                             vehicleAssignments={order.vehicleAssignments}
                         />

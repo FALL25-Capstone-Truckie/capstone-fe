@@ -16,11 +16,46 @@ export interface UserTotals {
   drivers: RoleCount;
 }
 
+export interface MaintenanceAlert {
+  vehicleId: string;
+  licensePlate: string;
+  maintenanceType: string;
+  scheduledDate: string;
+  isOverdue: boolean;
+}
+
+export interface FleetStatus {
+  totalVehicles: number;
+  availableVehicles: number;
+  inUseVehicles: number;
+  inMaintenanceVehicles: number;
+  maintenanceAlerts: MaintenanceAlert[];
+}
+
+export interface PenaltiesSummary {
+  totalPenalties: number;
+  previousPenalties: number;
+  deltaPercent: number;
+}
+
+export interface PenaltiesDataPoint {
+  date: string;
+  count: number;
+}
+
+export interface PenaltiesTimeSeries {
+  period: PeriodType;
+  points: PenaltiesDataPoint[];
+}
+
 export interface AdminDashboardSummary {
   period: PeriodType;
   currentRange: DateRange;
   previousRange: DateRange;
   totals: UserTotals;
+  fleetStatus: FleetStatus;
+  penaltiesSummary?: PenaltiesSummary;
+  penaltiesTimeSeries?: PenaltiesTimeSeries;
 }
 
 export interface DataPoint {
@@ -48,4 +83,11 @@ export interface TopDriver {
   email: string;
   acceptedTrips: number;
   avatarUrl?: string;
+}
+
+export interface FleetStats {
+  vehicles: RoleCount;
+  devices: RoleCount;
+  maintenances: RoleCount;
+  penalties: RoleCount;
 }

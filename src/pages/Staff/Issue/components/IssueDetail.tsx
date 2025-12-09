@@ -20,12 +20,13 @@ import SealReplacementDetail from '../../../Admin/Issues/components/SealReplacem
 import VehicleDriverInfo from './VehicleDriverInfo';
 import IssueInfoCard from './IssueInfoCard';
 import RefundProcessingDetail from './RefundProcessingDetail';
-import DamageCompensationDetail from './DamageCompensationDetail';
+import DamageResolutionPanel from './DamageResolutionPanel';
 import PenaltyDetail from './PenaltyDetail';
 import OrderRejectionDetail from './OrderRejectionDetail';
 import RerouteDetail from './RerouteDetail';
 import OffRouteRunawayDetail from './OffRouteRunawayDetail';
 import issueWebSocket from '@/services/websocket/issueWebSocket';
+import { useIssuesContext } from '@/context';
 
 const IssueDetail: React.FC = () => {
     const { id } = useParams<{ id: string }>();
@@ -34,6 +35,7 @@ const IssueDetail: React.FC = () => {
     const [issue, setIssue] = useState<Issue | null>(null);
     const [loading, setLoading] = useState<boolean>(true);
     const [resolvingPenalty, setResolvingPenalty] = useState<boolean>(false);
+    const { clearIssueFromQueueByIssueId } = useIssuesContext();
 
     // Lấy thông tin sự cố khi component mount
     useEffect(() => {
@@ -41,6 +43,13 @@ const IssueDetail: React.FC = () => {
             fetchIssueDetails(id);
         }
     }, [id]);
+
+    // Cleanup issue queue when viewing this issue detail
+    useEffect(() => {
+        if (id) {
+            clearIssueFromQueueByIssueId(id);
+        }
+    }, [id, clearIssueFromQueueByIssueId]);
 
     // Subscribe to real-time issue updates via WebSocket
     useEffect(() => {
@@ -70,6 +79,13 @@ const IssueDetail: React.FC = () => {
 
     const handleIssueUpdate = (updatedIssue: Issue) => {
         setIssue(updatedIssue);
+    };
+
+    const handleDamageResolutionSuccess = () => {
+        // Refresh issue data after damage resolution
+        if (id) {
+            fetchIssueDetails(id);
+        }
     };
 
     const handleResolvePenalty = () => {
@@ -186,12 +202,12 @@ const IssueDetail: React.FC = () => {
                     </Col>
                 )}
 
-                {/* Damage Compensation Detail - DAMAGE */}
+                {/* Damage Resolution Panel - DAMAGE */}
                 {(issue.issueCategory === 'DAMAGE' || issue.issueTypeEntity?.issueCategory === 'DAMAGE') && (
                     <Col span={24}>
-                        <DamageCompensationDetail 
-                            issue={issue}
-                            onUpdate={handleIssueUpdate} 
+                        <DamageResolutionPanel 
+                            issueId={issue.id}
+                            onSuccess={handleDamageResolutionSuccess} 
                         />
                     </Col>
                 )}
@@ -220,7 +236,11 @@ const IssueDetail: React.FC = () => {
                 {/* Off-Route Runaway Detail */}
                 {(issue.issueCategory === 'OFF_ROUTE_RUNAWAY' || issue.issueTypeEntity?.issueCategory === 'OFF_ROUTE_RUNAWAY') && (
                     <Col span={24}>
-                        <OffRouteRunawayDetail issue={issue} onUpdate={handleIssueUpdate} />
+                        <OffRouteRunawayDetail 
+                            issue={issue} 
+                            onUpdate={handleIssueUpdate}
+                            onAssessmentSaved={handleDamageResolutionSuccess} 
+                        />
                     </Col>
                 )}
             </Row>

@@ -207,9 +207,9 @@ const TripConfirmationModal: React.FC<TripConfirmationModalProps> = ({
                                         <h4 className="font-semibold text-base">
                                             Chuyến {index + 1}
                                         </h4>
-                                        {trip.group.orderDetails.length > 1 && (
+                                        {trip.group.orderDetails.length > 0 && (
                                             <Tag color="blue" className="ml-2">
-                                                {trip.group.orderDetails.length} đơn hàng
+                                                {trip.group.orderDetails.length} kiện hàng
                                             </Tag>
                                         )}
                                     </div>

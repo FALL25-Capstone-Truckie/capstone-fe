@@ -325,6 +325,7 @@ const StaffChatDashboard: React.FC = () => {
       {driverOverviewId && (
         <DriverOverviewModal
           driverId={driverOverviewId}
+          visible={!!driverOverviewId}
           onClose={() => setDriverOverviewId(null)}
         />
       )}

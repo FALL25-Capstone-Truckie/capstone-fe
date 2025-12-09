@@ -46,6 +46,7 @@ interface IssuesContextType {
   markAsProcessed: (issueId: string) => void;
   getQueueCount: () => number;
   getHighPriorityCount: () => number;
+  clearIssueFromQueueByIssueId: (issueId: string) => void;
 }
 
 const IssuesContext = createContext<IssuesContextType | undefined>(undefined);
@@ -91,6 +92,7 @@ export const IssuesProvider: React.FC<IssuesProviderProps> = ({ children }) => {
   const subscriptionReturnPaymentRef = useRef<any>(null);
   const subscriptionReturnPaymentTimeoutRef = useRef<any>(null);
   const shownPaymentNotificationsRef = useRef<Set<string>>(new Set());
+  const processedSealConfirmationsRef = useRef<Set<string>>(new Set());
 
   // Fetch issues from API
   const fetchIssues = useCallback(async () => {
@@ -142,6 +144,29 @@ export const IssuesProvider: React.FC<IssuesProviderProps> = ({ children }) => {
     }
   }, []);
 
+  // Check queue and show appropriate modal (single vs queue)
+  const checkQueueAndShowModal = useCallback(() => {
+    setQueuedIssues(prev => {
+      if (prev.length === 0) return prev;
+      
+      if (prev.length === 1) {
+        // Single issue - show single modal
+        const singleIssue = prev[0];
+        if (singleIssue.priority === 'HIGH') {
+          setNewIssueForModal(singleIssue.issue);
+        }
+      } else {
+        // Multiple issues - show queue modal instead of single modals
+        setIsQueueOpen(true);
+        // Clear any single modal that might be showing
+        setNewIssueForModal(null);
+        setGroupedIssuesForModal(null);
+      }
+      
+      return prev;
+    });
+  }, []);
+
   // Add issue to queue with priority and sorting
   const addToQueue = useCallback((issue: Issue, priority: 'HIGH' | 'MEDIUM' | 'LOW', showModal: boolean = false) => {
     const queuedIssue: QueuedIssue = {
@@ -163,11 +188,6 @@ export const IssuesProvider: React.FC<IssuesProviderProps> = ({ children }) => {
       });
     });
 
-    // Show modal immediately for high priority issues
-    if (showModal && priority === 'HIGH') {
-      setNewIssueForModal(issue);
-    }
-
     // Play appropriate notification sound
     if (priority === 'HIGH') {
       playNotificationSound(NotificationSoundType.URGENT);
@@ -176,7 +196,7 @@ export const IssuesProvider: React.FC<IssuesProviderProps> = ({ children }) => {
     }
 
     console.log(`📋 Issue added to queue: ${issue.issueCategory} (${priority})`);
-  }, []); // Remove showNewIssueModal dependency to fix declaration order
+  }, []);
 
   // Remove issue from queue
   const removeFromQueue = useCallback((issueId: string) => {
@@ -188,6 +208,11 @@ export const IssuesProvider: React.FC<IssuesProviderProps> = ({ children }) => {
     removeFromQueue(issueId);
     fetchIssues();
   }, [removeFromQueue, fetchIssues]);
+
+  // Clear all queued entries for a given issue id
+  const clearIssueFromQueueByIssueId = useCallback((issueId: string) => {
+    setQueuedIssues(prev => prev.filter(qi => qi.issue.id !== issueId));
+  }, []);
 
   // Get queue count
   const getQueueCount = useCallback(() => {
@@ -225,11 +250,10 @@ export const IssuesProvider: React.FC<IssuesProviderProps> = ({ children }) => {
     // Determine issue priority
     const priority = getIssuePriority(msg);
     
-    // Add to queue with priority
-    const shouldShowModal = priority === 'HIGH'; // Only show modal immediately for high priority
-    addToQueue(msg, priority, shouldShowModal);
+    // Add to queue
+    addToQueue(msg, priority, false);
     
-    // Smart Grouping Logic: Group issues by orderId within 5 second window
+    // Smart Grouping Logic: Group issues by orderId within 7 second window
     // Get orderId from orderDetailEntity (for DAMAGE/ORDER_REJECTION issues)
     const orderId = msg.orderDetailEntity?.orderId || msg.orderDetail?.orderId;
     
@@ -250,19 +274,17 @@ export const IssuesProvider: React.FC<IssuesProviderProps> = ({ children }) => {
         const issues = pendingIssuesRef.current.get(orderId);
         if (issues && issues.length > 0) {
           
-          // Only show combined modal if all issues are high priority
+          // Only show combined modal if all issues are high priority and multiple issues
           const allHighPriority = issues.every(issue => getIssuePriority(issue) === 'HIGH');
           
           if (issues.length > 1 && allHighPriority) {
-            // Multiple high-priority issues - show combined modal
+            // Multiple high-priority issues - show combined modal instead of queue
             setGroupedIssuesForModal(issues);
             setNewIssueForModal(null); // Clear single issue modal
-          } else if (issues.length === 1 && allHighPriority) {
-            // Single high-priority issue - modal already shown by queue
-            // No additional action needed
+            setIsQueueOpen(false); // Close queue if open
           } else {
-            // Mixed priorities or medium/low only - no modal, rely on queue
-            console.log(`📋 Issues for order ${orderId} added to queue: ${issues.map(i => i.issueCategory).join(', ')}`);
+            // For single issues or mixed priorities, check queue and show appropriate modal
+            checkQueueAndShowModal();
           }
           
           // Cleanup
@@ -273,13 +295,10 @@ export const IssuesProvider: React.FC<IssuesProviderProps> = ({ children }) => {
       
       groupingTimerRef.current.set(orderId, timer);
     } else {
-      // No orderId - handle based on priority
-      if (priority === 'HIGH') {
-        setNewIssueForModal(msg);
-        setGroupedIssuesForModal(null);
-      }
+      // No orderId - check queue immediately
+      checkQueueAndShowModal();
     }
-  }, [getIssuePriority, addToQueue]);
+  }, [getIssuePriority, addToQueue, checkQueueAndShowModal]);
 
   // Handle issue status change from WebSocket
   const handleIssueStatusChange = useCallback((msg: Issue) => {
@@ -320,7 +339,7 @@ export const IssuesProvider: React.FC<IssuesProviderProps> = ({ children }) => {
     ));
     
     notification.warning({
-      message: '⏰ Khách hàng không thanh toán',
+      title: '⏰ Khách hàng không thanh toán',
       description: <div>{messageLines}</div>,
       duration: 10,
       placement: 'topRight',
@@ -383,7 +402,7 @@ export const IssuesProvider: React.FC<IssuesProviderProps> = ({ children }) => {
     ));
     
     notification.success({
-      message: '💰 Thanh toán thành công',
+      title: '💰 Thanh toán thành công',
       description: <div>{messageLines}</div>,
       duration: 10,
       placement: 'topRight',
@@ -415,16 +434,47 @@ export const IssuesProvider: React.FC<IssuesProviderProps> = ({ children }) => {
 
   // Handle staff-specific messages from WebSocket
   const handleStaffMessage = useCallback((messageData: any) => {
+    // Debug logging to track duplicate messages
+    console.log('🔔 DEBUG: Staff message received:', {
+      type: messageData.type,
+      timestamp: new Date().toISOString(),
+      messageId: messageData.id || 'no-id',
+      driverName: messageData.driverName,
+      sealCode: messageData.newSealCode
+    });
+    
     switch (messageData.type) {
       case 'SEAL_CONFIRMATION':
+        // Create unique identifier for this seal confirmation
+        const confirmationKey = `${messageData.driverName}_${messageData.newSealCode}_${messageData.vehicleAssignmentId}`;
+        
+        // Check if we already processed this confirmation
+        if (processedSealConfirmationsRef.current.has(confirmationKey)) {
+          console.log('🚫 DEBUG: Duplicate seal confirmation detected and ignored:', confirmationKey);
+          return;
+        }
+        
+        // Check if modal is already showing the same confirmation
+        if (sealConfirmationData && 
+            sealConfirmationData.driverName === messageData.driverName &&
+            sealConfirmationData.newSealCode === messageData.newSealCode &&
+            sealConfirmationData.vehicleAssignmentId === messageData.vehicleAssignmentId) {
+          console.log('🚫 DEBUG: Modal already showing same seal confirmation:', confirmationKey);
+          return;
+        }
+        
+        // Add to processed set
+        processedSealConfirmationsRef.current.add(confirmationKey);
+        
+        // Clean up old entries (prevent memory leak - keep last 50 entries)
+        if (processedSealConfirmationsRef.current.size > 50) {
+          const entries = Array.from(processedSealConfirmationsRef.current);
+          processedSealConfirmationsRef.current = new Set(entries.slice(-25));
+        }
+        
+        console.log('✅ DEBUG: Processing new seal confirmation:', confirmationKey);
         // Play notification sound for seal confirmation
         playNotificationSound(NotificationSoundType.SEAL_CONFIRM);
-        
-        // Show antd message first
-        message.success({
-          content: `✅ Driver ${messageData.driverName} đã gắn seal ${messageData.newSealCode} thành công`,
-          duration: 8,
-        });
         
         // Show browser notification if supported
         if ('Notification' in window) {
@@ -445,7 +495,13 @@ export const IssuesProvider: React.FC<IssuesProviderProps> = ({ children }) => {
           }
         }
         
-        // Set data for custom modal component
+        // Set data for custom modal component (this will show the success message inside the modal)
+        console.log('🔔 DEBUG: Setting seal confirmation modal data:', {
+          driverName: messageData.driverName,
+          sealCode: messageData.newSealCode,
+          currentModalState: sealConfirmationData ? 'already-set' : 'null'
+        });
+        
         setSealConfirmationData({
           driverName: messageData.driverName,
           newSealCode: messageData.newSealCode,
@@ -453,7 +509,7 @@ export const IssuesProvider: React.FC<IssuesProviderProps> = ({ children }) => {
           timestamp: messageData.timestamp,
           sealImageUrl: messageData.sealImageUrl,
           oldSealImage: messageData.oldSealImage,
-          message: messageData.message,
+          message: messageData.message || `Driver ${messageData.driverName} đã gắn seal ${messageData.newSealCode} thành công`,
           journeyCode: messageData.journeyCode,
           trackingCode: messageData.trackingCode,
           vehicleAssignmentId: messageData.vehicleAssignmentId,
@@ -641,8 +697,14 @@ export const IssuesProvider: React.FC<IssuesProviderProps> = ({ children }) => {
 
   // Hide seal confirmation modal
   const hideSealConfirmationModal = useCallback(() => {
+    // Clear the current confirmation from processed set to allow future confirmations for same driver/seal
+    if (sealConfirmationData) {
+      const confirmationKey = `${sealConfirmationData.driverName}_${sealConfirmationData.newSealCode}_${sealConfirmationData.vehicleAssignmentId}`;
+      processedSealConfirmationsRef.current.delete(confirmationKey);
+      console.log('🧹 DEBUG: Cleared seal confirmation from processed set:', confirmationKey);
+    }
     setSealConfirmationData(null);
-  }, []);
+  }, [sealConfirmationData]);
 
   // Auto-connect WebSocket on mount for staff users only
   useEffect(() => {
@@ -683,6 +745,7 @@ export const IssuesProvider: React.FC<IssuesProviderProps> = ({ children }) => {
     markAsProcessed,
     getQueueCount,
     getHighPriorityCount,
+    clearIssueFromQueueByIssueId,
   };
 
   return (

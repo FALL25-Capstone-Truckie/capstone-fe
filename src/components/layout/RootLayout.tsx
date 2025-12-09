@@ -2,10 +2,10 @@ import React, { useEffect, useState } from 'react';
 import { Outlet } from 'react-router-dom';
 import { useLogoutListener } from '@/hooks/useLogoutListener';
 import { useAuth } from '@/context';
-import { IssuesProvider } from '@/context/IssuesContext';
 import CustomerChatWidget from '@/components/userChat/CustomerChatWidget';
 import StaffUserChatWidget from '@/components/userChat/StaffUserChatWidget';
 import { AIChatbot } from '@/components/ai-chatbot';
+import ScrollToTop from '@/components/common/ScrollToTop';
 
 /**
  * Root layout component that wraps all routes
@@ -48,7 +48,8 @@ const RootLayout: React.FC = () => {
   // WebSocket connections are now handled by GlobalWebSocketProvider at app root
 
   return (
-    <IssuesProvider>
+    <>
+      <ScrollToTop />
       <Outlet />
       {/* Chat Widgets - Ẩn hoàn toàn với admin, chỉ hiển thị cho staff hoặc customer/guest */}
       {!isAdmin && (
@@ -69,7 +70,7 @@ const RootLayout: React.FC = () => {
           </>
         )
       )}
-    </IssuesProvider>
+    </>
   );
 };
 

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Card, Typography } from 'antd';
-import { RobotOutlined, BulbOutlined } from '@ant-design/icons';
+import { StarFilled } from '@ant-design/icons';
 
 const { Text } = Typography;
 
@@ -41,17 +41,16 @@ const LoadingDots: React.FC = () => {
 const AiSummaryCard: React.FC<AiSummaryCardProps> = ({ summary, loading }) => {
   return (
     <Card 
-      className="mb-6 bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200 shadow-sm hover:shadow-md transition-shadow"
+      className="mb-6 bg-gradient-to-r from-purple-50 to-blue-50 border-purple-200 shadow-sm hover:shadow-md transition-shadow"
       styles={{ body: { padding: '16px 20px' } }}
     >
       <div className="flex items-start gap-3">
-        <div className="flex-shrink-0 w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center">
-          <RobotOutlined className="text-white text-lg" />
+        <div className="flex-shrink-0 w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
+          <StarFilled className="text-purple-600 text-lg" />
         </div>
         <div className="flex-1">
           <div className="flex items-center gap-2 mb-2">
-            <BulbOutlined className="text-blue-600" />
-            <Text strong className="text-blue-800">Tóm tắt AI</Text>
+            <Text strong className="text-purple-700">Tóm tắt AI</Text>
           </div>
           <div className="text-gray-700 leading-relaxed">
             {loading ? (

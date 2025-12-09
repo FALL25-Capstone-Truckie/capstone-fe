@@ -1,20 +1,23 @@
 export enum IssueEnum {
-    OPEN = 'OPEN',
-    IN_PROGRESS = 'IN_PROGRESS',
-    RESOLVED = 'RESOLVED',
-    PAYMENT_OVERDUE = 'PAYMENT_OVERDUE'
+  OPEN = 'OPEN',
+  IN_PROGRESS = 'IN_PROGRESS',
+  RESOLVED = 'RESOLVED',
+  CLOSED_FRAUD = 'CLOSED_FRAUD',
+  EXPIRED = 'EXPIRED',
 }
 
-export const IssueStatusColors = {
-    [IssueEnum.OPEN]: 'bg-yellow-500 text-white',
-    [IssueEnum.IN_PROGRESS]: 'bg-blue-500 text-white',
-    [IssueEnum.RESOLVED]: 'bg-green-500 text-white',
-    [IssueEnum.PAYMENT_OVERDUE]: 'bg-red-500 text-white'
+export const IssueStatusColors: Record<IssueEnum, string> = {
+  [IssueEnum.OPEN]: 'blue',
+  [IssueEnum.IN_PROGRESS]: 'orange',
+  [IssueEnum.RESOLVED]: 'green',
+  [IssueEnum.CLOSED_FRAUD]: 'red',
+  [IssueEnum.EXPIRED]: 'default',
 };
 
-export const IssueStatusLabels = {
-    [IssueEnum.OPEN]: 'Mở',
-    [IssueEnum.IN_PROGRESS]: 'Đang xử lý',
-    [IssueEnum.RESOLVED]: 'Đã giải quyết',
-    [IssueEnum.PAYMENT_OVERDUE]: 'Quá hạn thanh toán'
+export const IssueStatusLabels: Record<IssueEnum, string> = {
+  [IssueEnum.OPEN]: 'Chờ xử lý',
+  [IssueEnum.IN_PROGRESS]: 'Đang xử lý',
+  [IssueEnum.RESOLVED]: 'Đã giải quyết',
+  [IssueEnum.CLOSED_FRAUD]: 'Đóng do gian lận',
+  [IssueEnum.EXPIRED]: 'Hết hạn khiếu nại',
 };

@@ -1,20 +1,17 @@
 import httpClient from '../api/httpClient';
-import type { Penalty, PenaltyCreateDto, PenaltyUpdateDto } from '@/models/Penalty';
+import type { Penalty } from '@/models/Penalty';
 import type {
     GetPenaltiesResponse,
-    GetPenaltyResponse,
-    CreatePenaltyResponse,
-    UpdatePenaltyResponse,
-    DeletePenaltyResponse
+    GetPenaltyResponse
 } from './types';
 import { handleApiError } from '../api/errorHandler';
 
 /**
- * Service for handling penalty API calls
+ * Service for handling traffic violation API calls
  */
 const penaltyService = {
     /**
-     * Get all penalties
+     * Get all traffic violations
      * @returns Promise with penalties response
      */
     getPenalties: async (): Promise<GetPenaltiesResponse> => {
@@ -23,13 +20,13 @@ const penaltyService = {
             return response.data;
         } catch (error) {
             console.error('Get penalties error:', error);
-            throw handleApiError(error, 'Không thể lấy danh sách vi phạm');
+            throw handleApiError(error, 'Không thể lấy danh sách vi phạm giao thông');
         }
     },
 
     /**
-     * Get penalty by ID
-     * @param id Penalty ID
+     * Get traffic violation by ID
+     * @param id Traffic violation ID
      * @returns Promise with penalty response
      */
     getPenaltyById: async (id: string): Promise<GetPenaltyResponse> => {
@@ -38,55 +35,39 @@ const penaltyService = {
             return response.data;
         } catch (error) {
             console.error('Get penalty error:', error);
-            throw handleApiError(error, 'Không thể lấy thông tin vi phạm');
+            throw handleApiError(error, 'Không thể lấy thông tin vi phạm giao thông');
         }
     },
 
     /**
-     * Create a new penalty
-     * @param penaltyData Penalty data to create
-     * @returns Promise with created penalty response
+     * Get traffic violations by driver
+     * @param driverId Driver ID
+     * @returns Promise with penalties response
      */
-    createPenalty: async (penaltyData: PenaltyCreateDto): Promise<CreatePenaltyResponse> => {
+    getPenaltiesByDriver: async (driverId: string): Promise<GetPenaltiesResponse> => {
         try {
-            const response = await httpClient.post<CreatePenaltyResponse>('/penalties', penaltyData);
+            const response = await httpClient.get<GetPenaltiesResponse>(`/penalties/driver/${driverId}`);
             return response.data;
         } catch (error) {
-            console.error('Create penalty error:', error);
-            throw handleApiError(error, 'Không thể tạo vi phạm mới');
+            console.error('Get penalties by driver error:', error);
+            throw handleApiError(error, 'Không thể lấy danh sách vi phạm của tài xế');
         }
     },
 
     /**
-     * Update an existing penalty
-     * @param id Penalty ID
-     * @param penaltyData Updated penalty data
-     * @returns Promise with updated penalty response
+     * Get traffic violations by vehicle assignment
+     * @param vehicleAssignmentId Vehicle assignment ID
+     * @returns Promise with penalties response
      */
-    updatePenalty: async (id: string, penaltyData: PenaltyUpdateDto): Promise<UpdatePenaltyResponse> => {
+    getPenaltiesByVehicleAssignment: async (vehicleAssignmentId: string): Promise<GetPenaltiesResponse> => {
         try {
-            const response = await httpClient.put<UpdatePenaltyResponse>(`/penalties/${id}`, penaltyData);
+            const response = await httpClient.get<GetPenaltiesResponse>(`/admin/penalties/vehicle-assignment/${vehicleAssignmentId}`);
             return response.data;
         } catch (error) {
-            console.error('Update penalty error:', error);
-            throw handleApiError(error, 'Không thể cập nhật vi phạm');
+            console.error('Get penalties by vehicle assignment error:', error);
+            throw handleApiError(error, 'Không thể lấy danh sách vi phạm của chuyến xe');
         }
     },
-
-    /**
-     * Delete a penalty
-     * @param id Penalty ID
-     * @returns Promise with delete response
-     */
-    deletePenalty: async (id: string): Promise<DeletePenaltyResponse> => {
-        try {
-            const response = await httpClient.delete<DeletePenaltyResponse>(`/penalties/${id}`);
-            return response.data;
-        } catch (error) {
-            console.error('Delete penalty error:', error);
-            throw handleApiError(error, 'Không thể xóa vi phạm');
-        }
-    }
 };
 
-export default penaltyService; 
+export default penaltyService;

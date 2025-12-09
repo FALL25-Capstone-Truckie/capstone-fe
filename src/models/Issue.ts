@@ -9,6 +9,7 @@ export interface Issue {
     reportedAt?: string;
     resolvedAt?: string;
     vehicleAssignmentEntity?: VehicleAssignment; // Full vehicle assignment with tracking code, vehicle, drivers
+    vehicleAssignment?: VehicleAssignment; // Alias for vehicleAssignmentEntity for backward compatibility
     staff?: IssueUser;
     issueTypeEntity?: IssueTypeEntity;
     
@@ -22,6 +23,7 @@ export interface Issue {
     // Damage issue specific fields
     issueImages?: string[];
     orderDetail?: OrderDetailForIssue;
+    orderDetailEntity?: OrderDetailInfo; // Full order detail entity for DAMAGE issues
     sender?: CustomerInfo;
     
     // ORDER_REJECTION specific fields
@@ -336,6 +338,12 @@ export const getIssueCategoryLabel = (category: IssueCategory): string => {
             return 'Vấn đề hàng hóa';
         case 'DAMAGE':
             return 'Hàng hóa hư hại';
+        case 'MISSING_ITEMS':
+            return 'Thiếu hàng';
+        case 'WRONG_ITEMS':
+            return 'Giao sai hàng';
+        case 'ORDER_REJECTION':
+            return 'Từ chối nhận hàng';
         case 'PENALTY':
             return 'Vi phạm giao thông';
         case 'REROUTE':
@@ -363,6 +371,12 @@ export const getIssueCategoryColor = (category: IssueCategory): string => {
             return 'gold';
         case 'DAMAGE':
             return 'volcano';
+        case 'MISSING_ITEMS':
+            return 'orange';
+        case 'WRONG_ITEMS':
+            return 'orange';
+        case 'ORDER_REJECTION':
+            return 'red';
         case 'PENALTY':
             return 'magenta';
         case 'REROUTE':

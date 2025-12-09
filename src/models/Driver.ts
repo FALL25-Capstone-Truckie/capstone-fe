@@ -36,13 +36,15 @@ export interface DriverModel {
     penaltyHistories?: Penalty[];
 }
 
-export interface DriverRegisterRequest {
+/**
+ * Request for admin to create a new driver.
+ * Password is NOT required - BE will generate a random temporary password.
+ */
+export interface AdminCreateDriverRequest {
     username: string;
     email: string;
-    password: string;
     gender: boolean;
     dateOfBirth: string;
-    imageUrl: string;
     fullName: string;
     phoneNumber: string;
     identityNumber: string;
@@ -55,6 +57,16 @@ export interface DriverRegisterRequest {
     dateOfPassing: string;
 }
 
+/**
+ * Response when admin creates a new driver.
+ * Contains driver info and temporary password.
+ */
+export interface DriverCreatedResponse {
+    driver: DriverModel;
+    temporaryPassword: string;
+    loginInstructions: string;
+}
+
 export interface DriverStatusUpdateRequest {
     status: string;
-} 
+}

@@ -67,7 +67,7 @@ const EditProfileForm: React.FC<EditProfileFormProps> = ({ customerData, onSucce
             }}
             className="mt-4"
         >
-            <Divider orientation="left">
+            <Divider titlePlacement="start">
                 <div className="flex items-center gap-2">
                     <BankOutlined className="text-blue-600" />
                     <Text strong>Thông tin công ty</Text>
@@ -104,7 +104,7 @@ const EditProfileForm: React.FC<EditProfileFormProps> = ({ customerData, onSucce
                 </Col>
             </Row>
 
-            <Divider orientation="left">
+            <Divider titlePlacement="start">
                 <div className="flex items-center gap-2">
                     <UserOutlined className="text-blue-600" />
                     <Text strong>Thông tin người đại diện</Text>
@@ -144,7 +144,7 @@ const EditProfileForm: React.FC<EditProfileFormProps> = ({ customerData, onSucce
                 </Col>
             </Row>
 
-            <Divider orientation="left">
+            <Divider titlePlacement="start">
                 <div className="flex items-center gap-2">
                     <EnvironmentOutlined className="text-blue-600" />
                     <Text strong>Địa chỉ</Text>

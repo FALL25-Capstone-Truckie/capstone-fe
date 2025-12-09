@@ -75,6 +75,12 @@ export interface FleetHealthSummary {
   upcomingMaintenances: MaintenanceAlert[];
 }
 
+export interface RegistrationData {
+  customerRegistrations: TrendDataPoint[];
+  staffRegistrations: TrendDataPoint[];
+  driverRegistrations: TrendDataPoint[];
+}
+
 export interface AdminDashboardResponse {
   aiSummary: string;
   kpiSummary: AdminKpiSummary;
@@ -84,8 +90,10 @@ export interface AdminDashboardResponse {
   issueRefundSummary: IssueRefundSummary;
   topCustomers: TopPerformer[];
   topDrivers: TopPerformer[];
+  topStaff: TopPerformer[];
   fleetHealth: FleetHealthSummary;
   orderStatusDistribution: Record<string, number>;
+  registrationData: RegistrationData;
 }
 
 // Staff Dashboard Types
@@ -537,44 +545,20 @@ export interface DriverDashboardResponse {
 
 // Dashboard Service
 const dashboardService = {
-  /**
-   * Get Admin Dashboard
-   */
+  // Admin Dashboard - Single API call
   getAdminDashboard: async (filter: DashboardFilter): Promise<AdminDashboardResponse> => {
     try {
-      const params = new URLSearchParams({
-        range: filter.range,
-        ...(filter.fromDate && { fromDate: filter.fromDate }),
-        ...(filter.toDate && { toDate: filter.toDate }),
+      const response = await httpClient.get('/dashboard/admin', {
+        params: {
+          range: filter.range,
+          fromDate: filter.fromDate,
+          toDate: filter.toDate,
+        },
       });
-      
-      const response = await httpClient.get<{ data: AdminDashboardResponse }>(`/dashboard/admin?${params}`);
       return response.data.data;
     } catch (error) {
       console.error('Error fetching admin dashboard:', error);
-      throw handleApiError(error, 'Không thể tải dữ liệu dashboard');
-    }
-  },
-
-  /**
-   * Get Admin Dashboard AI Summary
-   */
-  getAdminAiSummary: async (filter: DashboardFilter, signal?: AbortSignal): Promise<string> => {
-    try {
-      const params = new URLSearchParams({
-        range: filter.range,
-        ...(filter.fromDate && { fromDate: filter.fromDate }),
-        ...(filter.toDate && { toDate: filter.toDate }),
-      });
-      
-      const response = await httpClient.get<{ data: string }>(
-        `/dashboard/admin/ai-summary?${params}`,
-        { signal } // Pass abort signal to request
-      );
-      return response.data.data;
-    } catch (error) {
-      console.error('Error fetching admin AI summary:', error);
-      throw handleApiError(error, 'Không thể tải tóm tắt AI');
+      throw handleApiError(error, 'Không thể tải dashboard quản trị');
     }
   },
 

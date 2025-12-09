@@ -103,7 +103,7 @@ export const TripSelectionStep: React.FC<TripSelectionStepProps> = ({
                                             </div>
                                             <div className="bg-white p-2 rounded">
                                                 <span className="text-gray-600">Loại:</span>
-                                                <div className="font-semibold text-gray-800">{recommendedVehicle.vehicleTypeName}</div>
+                                                <div className="font-semibold text-gray-800">{recommendedVehicle.vehicleTypeDescription ?? recommendedVehicle.vehicleTypeName}</div>
                                             </div>
                                         </div>
                                     </div>
@@ -143,18 +143,16 @@ export const TripSelectionStep: React.FC<TripSelectionStepProps> = ({
                                 {/* Order Details Preview */}
                                 <div className="bg-gray-50 p-3 rounded-lg border border-gray-200">
                                     <div className="text-xs font-medium text-gray-700 mb-2">Kiện hàng:</div>
-                                    <div className="space-y-1 max-h-24 overflow-y-auto">
-                                        {group.orderDetails.slice(0, 3).map((detail) => (
+                                    <div className="space-y-1">
+                                        {group.orderDetails.map((detail) => (
                                             <div key={detail.id} className="text-xs text-gray-600 flex justify-between items-center">
-                                                <span className="font-medium text-blue-600">{detail.trackingCode}</span>
-                                                <span className="text-gray-500">{detail.totalWeight} kg</span>
+                                                <div className="flex flex-col">
+                                                    <span className="font-medium text-blue-600">{detail.trackingCode}</span>
+                                                    <span className="text-gray-500">{detail.description}</span>
+                                                </div>
+                                                <span className="text-gray-500">{detail.weightBaseUnit} {detail.unit}</span>
                                             </div>
                                         ))}
-                                        {group.orderDetails.length > 3 && (
-                                            <div className="text-xs text-gray-500 italic">
-                                                +{group.orderDetails.length - 3} kiện khác
-                                            </div>
-                                        )}
                                     </div>
                                 </div>
                             </div>

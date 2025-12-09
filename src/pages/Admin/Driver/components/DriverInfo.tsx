@@ -19,7 +19,6 @@ import {
 import type { DriverModel } from '../../../../services/driver';
 import { LicenseClassEnum, CommonStatusEnum } from '@/constants/enums';
 import { LicenseClassTag, CommonStatusTag } from '@/components/common/tags';
-import { PenaltyStatus, penaltyStatusColors } from '@/models/Penalty';
 import { formatCurrency } from '@/utils/formatters';
 
 const { Title, Text } = Typography;
@@ -50,23 +49,6 @@ const DriverInfo: React.FC<DriverInfoProps> = ({
         }
     };
 
-    const getPenaltyStatusText = (status: string) => {
-        switch (status.toUpperCase()) {
-            case PenaltyStatus.PENDING:
-                return 'Chờ xử lý';
-            case PenaltyStatus.PAID:
-                return 'Đã thanh toán';
-            case PenaltyStatus.DISPUTED:
-                return 'Đang khiếu nại';
-            case PenaltyStatus.RESOLVED:
-                return 'Đã giải quyết';
-            case PenaltyStatus.CANCELLED:
-                return 'Đã hủy';
-            default:
-                return status;
-        }
-    };
-
     const penaltyColumns = [
         {
             title: 'Loại vi phạm',
@@ -75,43 +57,20 @@ const DriverInfo: React.FC<DriverInfoProps> = ({
             render: (text: string) => <Text strong>{text}</Text>
         },
         {
-            title: 'Mô tả',
-            dataIndex: 'violationDescription',
-            key: 'violationDescription',
-            ellipsis: true,
-        },
-        {
-            title: 'Số tiền phạt',
-            dataIndex: 'penaltyAmount',
-            key: 'penaltyAmount',
-            render: (amount: number) => (
-                <Text type="danger" strong>
-                    <DollarOutlined className="mr-1" />
-                    {formatCurrency(amount)}
-                </Text>
-            )
-        },
-        {
             title: 'Ngày vi phạm',
             dataIndex: 'penaltyDate',
             key: 'penaltyDate',
             render: (date: string) => formatDate(date)
         },
         {
-            title: 'Địa điểm',
-            dataIndex: 'location',
-            key: 'location',
-            ellipsis: true,
+            title: 'ID Tài xế',
+            dataIndex: 'driverId',
+            key: 'driverId',
         },
         {
-            title: 'Trạng thái',
-            dataIndex: 'status',
-            key: 'status',
-            render: (status: string) => (
-                <Tag color={penaltyStatusColors[status.toUpperCase() as keyof typeof penaltyStatusColors]}>
-                    {getPenaltyStatusText(status)}
-                </Tag>
-            )
+            title: 'ID Phân công xe',
+            dataIndex: 'vehicleAssignmentId',
+            key: 'vehicleAssignmentId',
         },
     ];
 

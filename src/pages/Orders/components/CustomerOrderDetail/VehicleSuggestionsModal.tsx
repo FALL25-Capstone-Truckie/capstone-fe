@@ -352,8 +352,17 @@ const VehicleSuggestionsModal: React.FC<VehicleSuggestionsModalProps> = ({
             setSelectedVehicle(null);
           }}
           packages={selectedVehicle.packedDetailDetails}
-          vehicleName={
-            selectedVehicle.sizeRuleName || "Xe tải"
+          vehicleName={selectedVehicle.sizeRuleName || "Xe tải"}
+          containerDimensions={
+            selectedVehicle.maxLength &&
+            selectedVehicle.maxWidth &&
+            selectedVehicle.maxHeight
+              ? {
+                  length: selectedVehicle.maxLength,
+                  width: selectedVehicle.maxWidth,
+                  height: selectedVehicle.maxHeight,
+                }
+              : undefined
           }
         />
       )}

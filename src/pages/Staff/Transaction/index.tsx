@@ -11,7 +11,6 @@ import {
   Tooltip,
   Row,
   Col,
-  Statistic,
   DatePicker,
   Select,
   Skeleton,
@@ -20,6 +19,7 @@ import {
   Descriptions,
   Divider
 } from 'antd';
+import StatCard from '../../../components/common/StatCard';
 import { 
   DollarOutlined, 
   SearchOutlined, 
@@ -239,24 +239,40 @@ const TransactionListPage: React.FC = () => {
       {/* Stats */}
       <Row gutter={[16, 16]} className="mb-6">
         <Col xs={12} sm={6}>
-          <Card className="text-center shadow-sm border-t-4 border-t-blue-500">
-            <Statistic title="Tổng giao dịch" value={stats.total} prefix={<DollarOutlined />} />
-          </Card>
+          <StatCard 
+            title="Tổng giao dịch" 
+            value={stats.total} 
+            prefix={<DollarOutlined />} 
+            borderColor="#1890ff"
+            loading={isLoading}
+          />
         </Col>
         <Col xs={12} sm={6}>
-          <Card className="text-center shadow-sm border-t-4 border-t-green-500">
-            <Statistic title="Thành công" value={stats.completed} valueStyle={{ color: '#52c41a' }} />
-          </Card>
+          <StatCard 
+            title="Thành công" 
+            value={stats.completed} 
+            valueStyle={{ color: '#52c41a' }} 
+            borderColor="#52c41a"
+            loading={isLoading}
+          />
         </Col>
         <Col xs={12} sm={6}>
-          <Card className="text-center shadow-sm border-t-4 border-t-yellow-500">
-            <Statistic title="Chờ xử lý" value={stats.pending} valueStyle={{ color: '#faad14' }} />
-          </Card>
+          <StatCard 
+            title="Chờ xử lý" 
+            value={stats.pending} 
+            valueStyle={{ color: '#faad14' }} 
+            borderColor="#faad14"
+            loading={isLoading}
+          />
         </Col>
         <Col xs={12} sm={6}>
-          <Card className="text-center shadow-sm border-t-4 border-t-red-500">
-            <Statistic title="Thất bại" value={stats.failed} valueStyle={{ color: '#f5222d' }} />
-          </Card>
+          <StatCard 
+            title="Thất bại" 
+            value={stats.failed} 
+            valueStyle={{ color: '#f5222d' }} 
+            borderColor="#f5222d"
+            loading={isLoading}
+          />
         </Col>
       </Row>
 

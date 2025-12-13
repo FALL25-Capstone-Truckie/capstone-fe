@@ -201,6 +201,7 @@ const contractService = {
     expirationDate: string;
     adjustedValue: number;
     description: string;
+    customDepositPercent?: number | null;
   }) => {
     try {
       const response = await httpClient.post(

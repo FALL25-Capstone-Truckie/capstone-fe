@@ -10,18 +10,18 @@ const ServicesSection: React.FC<ServicesSectionProps> = () => {
     const services = [
         {
             image: service1,
-            title: "Giao nhận vận chuyển",
-            description: "Chúng tôi xử lý tất cả các hoạt động logistics từ điểm xuất phát đến điểm đến, đảm bảo giao hàng đúng hẹn."
+            title: "Vận chuyển nội thành bằng xe tải",
+            description: "Phù hợp giao nhận trong TP.HCM với nhiều tải trọng, linh hoạt theo chuyến hoặc theo lịch cố định."
         },
         {
             image: service2,
-            title: "Kho bãi",
-            description: "Giải pháp lưu trữ an toàn với hệ thống quản lý kho hàng tiên tiến."
+            title: "Theo dõi lộ trình theo thời gian thực",
+            description: "Theo dõi vị trí xe và tiến độ giao nhận liên tục, giúp bạn chủ động kế hoạch và xử lý phát sinh."
         },
         {
             image: service3,
-            title: "Giao hàng chặng cuối",
-            description: "Giao hàng nhanh chóng và đáng tin cậy đến khách hàng của bạn với theo dõi thời gian thực."
+            title: "Quản lý đơn hàng & trạng thái minh bạch",
+            description: "Cập nhật trạng thái lấy hàng, đang giao, đã giao và lịch sử hành trình rõ ràng cho từng đơn."
         }
     ];
 
@@ -33,7 +33,7 @@ const ServicesSection: React.FC<ServicesSectionProps> = () => {
                 </div>
 
                 <h2 className="text-3xl font-bold mb-8">
-                    Cách chúng tôi mang đến sự xuất sắc trong logistics
+                    Dịch vụ tối ưu cho vận tải nội thành TP.HCM
                 </h2>
 
                 <Row gutter={[24, 24]}>
@@ -49,7 +49,7 @@ const ServicesSection: React.FC<ServicesSectionProps> = () => {
                                 }
                             >
                                 <div className="mb-2">
-                                    <span className="text-blue-600 font-medium">Dịch vụ {index + 1}</span>
+                                    <span className="text-blue-600 font-medium">Tính năng {index + 1}</span>
                                 </div>
                                 <h3 className="text-lg font-semibold mb-2">{service.title}</h3>
                                 <p className="text-gray-600">{service.description}</p>

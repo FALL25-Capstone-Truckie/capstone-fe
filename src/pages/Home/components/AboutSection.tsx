@@ -9,35 +9,34 @@ const AboutSection: React.FC<AboutSectionProps> = () => {
         <div className="py-16 bg-white">
             <div className="container mx-auto px-4">
                 <div className="mb-3">
-                    <p className="text-blue-600 uppercase font-medium text-sm">Thương hiệu của chúng tôi</p>
+                    <p className="text-blue-600 uppercase font-medium text-sm">Giải pháp vận tải nội thành</p>
                 </div>
 
                 <div className="flex flex-col md:flex-row gap-10">
                     <div className="md:w-1/2">
                         <h2 className="text-3xl font-bold mb-6">
-                            Thiết kế ảnh hưởng đến cách mọi người làm việc, học tập, sống và trải nghiệm thế giới
+                            Tối ưu giao nhận nội thành TP.HCM bằng xe tải
                         </h2>
 
                         <p className="text-gray-600 mb-4">
-                            Tại Truckie, chúng tôi tập trung vào các thách thức kinh doanh của khách hàng.
-                            Chúng tôi hợp tác với khách hàng để thiết kế giải pháp đáp ứng nhu cầu kinh doanh,
-                            tạo giá trị cho khách hàng của họ và thúc đẩy tăng trưởng.
+                            Truckie giúp doanh nghiệp và chủ shop vận chuyển hàng hóa nội thành nhanh hơn với hệ thống điều phối và theo dõi theo thời gian thực.
+                            Bạn có thể nắm rõ trạng thái lấy hàng, đang giao và hoàn tất ngay trên một nền tảng.
                         </p>
 
                         <p className="text-gray-600 mb-4">
-                            Khi đã xây dựng kế hoạch, chúng tôi thực hiện. Luôn tỉ mỉ, với giao tiếp rõ ràng trong suốt quá trình. Và không dừng lại ở đó. Chúng tôi tiếp tục hỗ trợ khách hàng khi họ phát triển và thay đổi.
+                            Chúng tôi tập trung vào lộ trình tối ưu trong nội đô, thời gian giao nhận rõ ràng và cập nhật liên tục để giảm rủi ro trễ hẹn.
                         </p>
 
                         <p className="text-gray-600 mb-6">
-                            Chúng tôi làm việc với khách hàng về kế hoạch phát triển, sử dụng các phân tích dựa trên dữ liệu để xác định cơ hội. Phương pháp hợp tác của chúng tôi đảm bảo thành công của khách hàng cũng là thành công của chúng tôi. Chúng tôi không chỉ là nhà cung cấp; chúng tôi là đối tác trong hành trình của họ.
+                            Dù bạn cần chuyển hàng theo chuyến hay theo lịch cố định, Truckie hỗ trợ quản lý đơn, chứng từ và lịch sử giao nhận để vận hành ổn định.
                         </p>
 
                         <div className="flex items-center gap-4">
                             <Button type="default" className="border-blue-600 text-blue-600">
-                                Liên hệ ngay
+                                Tra cứu đơn hàng
                             </Button>
                             <Button type="primary" className="bg-blue-600">
-                                Liên hệ với chúng tôi
+                                Liên hệ tư vấn
                             </Button>
                         </div>
                     </div>
@@ -57,4 +56,4 @@ const AboutSection: React.FC<AboutSectionProps> = () => {
     );
 };
 
-export default AboutSection; 
+export default AboutSection;

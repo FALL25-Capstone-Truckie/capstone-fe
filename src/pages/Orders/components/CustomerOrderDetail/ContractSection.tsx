@@ -18,6 +18,7 @@ import {
   DollarOutlined,
   LoadingOutlined,
   InfoCircleOutlined,
+  SafetyOutlined,
 } from "@ant-design/icons";
 import { ContractStatusTag } from "../../../../components/common/tags";
 import InsuranceInfo from "../../../../components/common/InsuranceInfo";
@@ -25,6 +26,7 @@ import { ContractStatusEnum, OrderStatusEnum } from "../../../../constants/enums
 import { useRefreshOrderDetail, useContractOperations } from "../../../../hooks";
 import type { PriceDetails } from "../../../../services/contract/contractTypes";
 import contractSettingService from "../../../../services/contract/contractSettingService";
+import contractService from "../../../../services/contract/contractService";
 import type { ContractSettings } from "../../../../models/Contract";
 
 // Utility function to safely parse contract values
@@ -73,8 +75,10 @@ const ContractSection: React.FC<ContractProps> = ({
 }) => {
   const messageApi = App.useApp().message;
   const [contractSettings, setContractSettings] = useState<ContractSettings | null>(null);
+  const [fetchedPriceDetails, setFetchedPriceDetails] = useState<PriceDetails | null>(null);
+  const [loadingPriceData, setLoadingPriceData] = useState<boolean>(false);
   
-  // Fetch contract settings on component mount
+  // Fetch contract settings and price details on component mount
   useEffect(() => {
     const fetchContractSettings = async () => {
       try {
@@ -88,8 +92,25 @@ const ContractSection: React.FC<ContractProps> = ({
       }
     };
     
+    const fetchPriceDetails = async () => {
+      if (!contract?.id) return;
+      
+      setLoadingPriceData(true);
+      try {
+        const response = await contractService.getContractPdfData(contract.id);
+        if (response.data?.priceDetails) {
+          setFetchedPriceDetails(response.data.priceDetails);
+        }
+      } catch (error) {
+        console.error("Error fetching price details:", error);
+      } finally {
+        setLoadingPriceData(false);
+      }
+    };
+    
     fetchContractSettings();
-  }, []);
+    fetchPriceDetails();
+  }, [contract?.id]);
   
   const { refetch: refetchOrderDetail } = useRefreshOrderDetail('customer');
   const {
@@ -227,78 +248,188 @@ const ContractSection: React.FC<ContractProps> = ({
               <Alert
                 message="Thông tin thanh toán"
                 description={
-                  <Row gutter={[16, 16]} className="mt-3">
-                    {!hasAdjustedValue && (
-                      <Col xs={24} sm={12} md={6}>
-                        <Statistic
-                          title="Tổng giá trị đơn hàng"
-                          value={parseContractValue(
-                            contract.totalValue
-                          ).toLocaleString("vi-VN")}
-                          suffix="VNĐ"
-                          prefix={<DollarOutlined />}
-                          valueStyle={{ color: "#1890ff", fontSize: "18px", fontWeight: "600" }}
-                        />
-                      </Col>
-                    )}
-
-                    {hasAdjustedValue && (
-                      <>
+                  <div className="space-y-4">
+                    <Row gutter={[16, 16]} className="mt-3">
+                      {!hasAdjustedValue && (
                         <Col xs={24} sm={12} md={6}>
                           <Statistic
-                            title="Giá niêm yết"
-                            value={parseContractValue(contract.totalValue).toLocaleString(
-                              "vi-VN"
-                            )}
-                            suffix="VNĐ"
-                            prefix={<DollarOutlined />}
-                            valueStyle={{ color: "#8c8c8c", textDecoration: "line-through" }}
-                          />
-                        </Col>
-                        <Col xs={24} sm={12} md={6}>
-                          <Statistic
-                            title="Giá thực tế"
+                            title="Tổng giá trị đơn hàng"
                             value={parseContractValue(
-                              contract.adjustedValue
+                              contract.totalValue
                             ).toLocaleString("vi-VN")}
                             suffix="VNĐ"
                             prefix={<DollarOutlined />}
-                            valueStyle={{ color: "#722ed1", fontSize: "18px", fontWeight: "600" }}
+                            valueStyle={{ color: "#1890ff", fontSize: "18px", fontWeight: "600" }}
                           />
-                          <div className="text-xs text-gray-500 mt-1">
-                            Giá ưu đãi áp dụng cho hợp đồng này
-                          </div>
                         </Col>
-                      </>
+                      )}
+
+                      {hasAdjustedValue && (
+                        <>
+                          <Col xs={24} sm={12} md={6}>
+                            <Statistic
+                              title="Giá niêm yết"
+                              value={parseContractValue(contract.totalValue).toLocaleString(
+                                "vi-VN"
+                              )}
+                              suffix="VNĐ"
+                              prefix={<DollarOutlined />}
+                              valueStyle={{ color: "#8c8c8c", textDecoration: "line-through" }}
+                            />
+                          </Col>
+                          <Col xs={24} sm={12} md={6}>
+                            <Statistic
+                              title="Giá thực tế"
+                              value={parseContractValue(
+                                contract.adjustedValue
+                              ).toLocaleString("vi-VN")}
+                              suffix="VNĐ"
+                              prefix={<DollarOutlined />}
+                              valueStyle={{ color: "#722ed1", fontSize: "18px", fontWeight: "600" }}
+                            />
+                            <div className="text-xs text-gray-500 mt-1">
+                              Giá ưu đãi áp dụng cho hợp đồng này
+                            </div>
+                          </Col>
+                        </>
+                      )}
+
+                      <Col xs={24} sm={12} md={6}>
+                        <Statistic
+                          title="Số tiền cọc cần thanh toán"
+                          value={depositAmount.toLocaleString("vi-VN")}
+                          suffix="VNĐ"
+                          prefix={<CreditCardOutlined />}
+                          valueStyle={{ color: "#52c41a", fontSize: "18px", fontWeight: "bold" }}
+                        />
+                      </Col>
+
+                      <Col xs={24} sm={12} md={6}>
+                        <Statistic
+                          title="Số tiền còn lại"
+                          value={(() => {
+                            const baseValue = hasAdjustedValue
+                              ? parseContractValue(contract.adjustedValue)
+                              : parseContractValue(contract.totalValue);
+                            return (baseValue - depositAmount).toLocaleString(
+                              "vi-VN"
+                            );
+                          })()}
+                          suffix="VNĐ"
+                          prefix={<DollarOutlined />}
+                          valueStyle={{ color: "#faad14", fontSize: "18px", fontWeight: "600" }}
+                        />
+                      </Col>
+                    </Row>
+
+                    {/* Price Breakdown - Show detailed calculation */}
+                    {fetchedPriceDetails && fetchedPriceDetails.steps && fetchedPriceDetails.steps.length > 0 && (
+                      <div className="mt-4 pt-4 border-t border-blue-200">
+                        <div className="mb-3">
+                          <span className="font-semibold text-gray-700">Chi phí vận chuyển:</span>
+                        </div>
+                        
+                        {/* a) Base shipping cost by distance */}
+                        <div className="mb-3">
+                          <div className="text-sm text-gray-700 mb-2">
+                            a) Cước vận chuyển cơ bản theo quãng đường {fetchedPriceDetails.steps.reduce((sum, step) => sum + step.appliedKm, 0).toFixed(2)} km:
+                          </div>
+                          
+                          {/* Breakdown by vehicle type - Group by sizeRuleName */}
+                          <div className="space-y-2 ml-4">
+                            {(() => {
+                              // Group steps by sizeRuleName
+                              const groupedSteps = fetchedPriceDetails.steps.reduce((acc: any, step) => {
+                                if (!acc[step.sizeRuleName]) {
+                                  acc[step.sizeRuleName] = {
+                                    sizeRuleName: step.sizeRuleName,
+                                    numOfVehicles: step.numOfVehicles,
+                                    parts: [],
+                                    totalSubtotal: 0
+                                  };
+                                }
+                                acc[step.sizeRuleName].parts.push({
+                                  unitPrice: step.unitPrice,
+                                  appliedKm: step.appliedKm,
+                                  subtotal: step.subtotal
+                                });
+                                acc[step.sizeRuleName].totalSubtotal += step.subtotal;
+                                return acc;
+                              }, {});
+                              
+                              return Object.values(groupedSteps).map((group: any, index: number) => (
+                                <div key={index} className="text-sm text-gray-700">
+                                  - {group.sizeRuleName} ({group.numOfVehicles} xe): {group.parts.map((part: any) => 
+                                    `(${part.unitPrice.toLocaleString("vi-VN")}/km × ${part.appliedKm.toFixed(2)} km)`
+                                  ).join(" + ")} = <strong>{group.totalSubtotal.toLocaleString("vi-VN")}</strong>
+                                </div>
+                              ));
+                            })()}
+                          </div>
+                          
+                          {/* Total base cost */}
+                          <div className="text-sm text-gray-700 mt-2">
+                            Tổng cước cơ bản: {fetchedPriceDetails.steps.map(step => step.subtotal.toLocaleString("vi-VN")).join(" + ")} = <strong>{fetchedPriceDetails.steps.reduce((sum, step) => sum + step.subtotal, 0).toLocaleString("vi-VN")}</strong>
+                          </div>
+                        </div>
+
+                        {/* b) Category multiplier */}
+                        {fetchedPriceDetails.categoryMultiplier && fetchedPriceDetails.categoryMultiplier !== 1 && (
+                          <div className="text-sm text-gray-700 mb-2">
+                            b) Hệ số danh mục hàng hóa (Hàng dễ vỡ): × <strong>{fetchedPriceDetails.categoryMultiplier}</strong>
+                          </div>
+                        )}
+
+                        {/* c) Category extra fee */}
+                        {fetchedPriceDetails.categoryExtraFee && fetchedPriceDetails.categoryExtraFee > 0 && (
+                          <div className="text-sm text-gray-700 mb-3">
+                            c) Phụ thu danh mục (Hàng dễ vỡ): + <strong>{fetchedPriceDetails.categoryExtraFee.toLocaleString("vi-VN")}</strong>
+                          </div>
+                        )}
+
+                        {/* Total transport fee with dashed line */}
+                        <div className="border-t-2 border-dashed border-gray-400 pt-2 mt-2">
+                          <div className="text-base font-semibold text-gray-800">
+                            Tổng chi phí vận chuyển (A): <strong>{fetchedPriceDetails.finalTotal.toLocaleString("vi-VN")}</strong>
+                          </div>
+                        </div>
+                      </div>
                     )}
 
-                    <Col xs={24} sm={12} md={6}>
-                      <Statistic
-                        title="Số tiền cọc cần thanh toán"
-                        value={depositAmount.toLocaleString("vi-VN")}
-                        suffix="VNĐ"
-                        prefix={<CreditCardOutlined />}
-                        valueStyle={{ color: "#52c41a", fontSize: "18px", fontWeight: "bold" }}
-                      />
-                    </Col>
+                    {/* Insurance Breakdown - Show if order has insurance */}
+                    {hasInsurance && totalInsuranceFee && totalInsuranceFee > 0 && (
+                      <div className="mt-4 pt-4 border-t border-blue-200">
+                        <div className="mb-3">
+                          <span className="font-semibold text-gray-700">Chi phí bảo hiểm hàng hóa (B):</span>
+                        </div>
+                        <div className="space-y-2">
+                          <div className="text-sm text-gray-700">
+                            - Giá trị khai báo: <strong>{totalDeclaredValue?.toLocaleString("vi-VN")} VNĐ</strong>
+                          </div>
+                          <div className="text-sm text-gray-700">
+                            - Tỷ lệ bảo hiểm: <strong>{(() => {
+                              const baseRate = fetchedPriceDetails?.insuranceRate || contractSettings?.insuranceRateFragile || contractSettings?.insuranceRateNormal || 0.15;
+                              const vatRate = contractSettings?.vatRate || 10;
+                              const rateWithVat = baseRate * (1 + vatRate / 100);
+                              return rateWithVat.toFixed(5).replace('.', ',');
+                            })()}%</strong> (đã bao gồm 10% VAT)
+                          </div>
+                          <div className="text-sm text-gray-700">
+                            - Phí bảo hiểm: <strong>{totalInsuranceFee?.toLocaleString("vi-VN")} VNĐ</strong>
+                          </div>
+                        </div>
+                      </div>
+                    )}
 
-                    <Col xs={24} sm={12} md={6}>
-                      <Statistic
-                        title="Số tiền còn lại"
-                        value={(() => {
-                          const baseValue = hasAdjustedValue
-                            ? parseContractValue(contract.adjustedValue)
-                            : parseContractValue(contract.totalValue);
-                          return (baseValue - depositAmount).toLocaleString(
-                            "vi-VN"
-                          );
-                        })()}
-                        suffix="VNĐ"
-                        prefix={<DollarOutlined />}
-                        valueStyle={{ color: "#faad14", fontSize: "18px", fontWeight: "600" }}
-                      />
-                    </Col>
-                  </Row>
+                    {/* Grand Total - Show total contract value */}
+                    {fetchedPriceDetails && (
+                      <div className="mt-4 pt-4 border-t-2 border-black">
+                        <div className="text-base font-bold text-gray-900">
+                          TỔNG GIÁ TRỊ HỢP ĐỒNG (A + B): <span className="underline">{(fetchedPriceDetails.grandTotal || fetchedPriceDetails.finalTotal).toLocaleString("vi-VN")}</span> VNĐ
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 }
                 type="info"
                 icon={<InfoCircleOutlined />}

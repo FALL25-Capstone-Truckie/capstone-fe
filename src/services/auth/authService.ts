@@ -307,16 +307,116 @@ const authService = {
 
             throw handleApiError(error, 'Đổi mật khẩu thất bại');
         }
-    },
+    }, // <--- Added closing brace here
 
     /**
      * Debug function to check current token in memory
      * @returns Current token or null
      */
     debugGetToken: (): string | null => {
-        
         return authToken;
+    },
+
+    // ==================== FORGOT PASSWORD METHODS ====================
+
+    /**
+     * Step 1: Send OTP to user's email for password reset
+     * @param email User's email address
+     * @returns Promise with success message
+     */
+    sendForgotPasswordOtp: async (email: string): Promise<{ success: boolean; message: string }> => {
+        try {
+            const response = await httpClient.post<ApiResponse<string>>('/auths/forgot-password/send-otp', { email });
+            
+            if (!response.data.success) {
+                throw new Error(response.data.message || 'Gửi mã OTP thất bại');
+            }
+
+            return {
+                success: true,
+                message: response.data.data || 'Mã OTP đã được gửi đến email của bạn'
+            };
+        } catch (error: any) {
+            console.error('Send forgot password OTP error:', error);
+            
+            if (error.response?.data?.message) {
+                throw new Error(error.response.data.message);
+            }
+            
+            throw handleApiError(error, 'Gửi mã OTP thất bại');
+        }
+    },
+
+    /**
+     * Step 2: Verify OTP and get reset token
+     * @param email User's email address
+     * @param otp OTP code from email
+     * @returns Promise with reset token
+     */
+    verifyForgotPasswordOtp: async (email: string, otp: string): Promise<{ success: boolean; resetToken: string; message: string }> => {
+        try {
+            const response = await httpClient.post<ApiResponse<{ resetToken: string; message: string }>>('/auths/forgot-password/verify-otp', { email, otp });
+            
+            if (!response.data.success) {
+                throw new Error(response.data.message || 'Xác thực OTP thất bại');
+            }
+
+            return {
+                success: true,
+                resetToken: response.data.data.resetToken,
+                message: response.data.data.message || 'Xác thực OTP thành công'
+            };
+        } catch (error: any) {
+            console.error('Verify forgot password OTP error:', error);
+            
+            if (error.response?.data?.message) {
+                throw new Error(error.response.data.message);
+            }
+            
+            throw handleApiError(error, 'Xác thực OTP thất bại');
+        }
+    },
+
+    /**
+     * Step 3: Reset password with reset token
+     * @param email User's email address
+     * @param resetToken Token from OTP verification
+     * @param newPassword New password
+     * @param confirmPassword Confirm new password
+     * @returns Promise with success message
+     */
+    resetPassword: async (
+        email: string, 
+        resetToken: string, 
+        newPassword: string, 
+        confirmPassword: string
+    ): Promise<{ success: boolean; message: string }> => {
+        try {
+            const response = await httpClient.post<ApiResponse<string>>('/auths/forgot-password/reset-password', {
+                email,
+                resetToken,
+                newPassword,
+                confirmPassword
+            });
+            
+            if (!response.data.success) {
+                throw new Error(response.data.message || 'Đổi mật khẩu thất bại');
+            }
+
+            return {
+                success: true,
+                message: response.data.data || 'Đổi mật khẩu thành công'
+            };
+        } catch (error: any) {
+            console.error('Reset password error:', error);
+            
+            if (error.response?.data?.message) {
+                throw new Error(error.response.data.message);
+            }
+            
+            throw handleApiError(error, 'Đổi mật khẩu thất bại');
+        }
     }
 };
 
-export default authService; 
+export default authService;

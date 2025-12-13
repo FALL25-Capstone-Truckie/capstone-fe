@@ -15,9 +15,9 @@ import {
   Typography,
   Tooltip,
   Row,
-  Col,
-  Statistic
+  Col
 } from 'antd';
+import StatCard from '../../../components/common/StatCard';
 import { 
   SearchOutlined, 
   PlusOutlined, 
@@ -233,31 +233,31 @@ const IssueTypePage: React.FC = () => {
       {/* Statistics Cards */}
       <Row gutter={16} className="mb-6">
         <Col xs={24} sm={8}>
-          <Card className="shadow-sm" style={{ borderLeft: '4px solid #1890ff' }}>
-            <Statistic
-              title="Tổng loại sự cố"
-              value={stats.total}
-              prefix={<ExclamationCircleOutlined style={{ color: '#1890ff' }} />}
-            />
-          </Card>
+          <StatCard
+            title="Tổng loại sự cố"
+            value={stats.total}
+            prefix={<ExclamationCircleOutlined />}
+            borderColor="#1890ff"
+            loading={loading}
+          />
         </Col>
         <Col xs={24} sm={8}>
-          <Card className="shadow-sm" style={{ borderLeft: '4px solid #52c41a' }}>
-            <Statistic
-              title="Đang hoạt động"
-              value={stats.activeCount}
-              prefix={<CheckCircleOutlined style={{ color: '#52c41a' }} />}
-              valueStyle={{ color: '#52c41a' }}
-            />
-          </Card>
+          <StatCard
+            title="Đang hoạt động"
+            value={stats.activeCount}
+            prefix={<CheckCircleOutlined />}
+            valueStyle={{ color: '#52c41a' }}
+            borderColor="#52c41a"
+            loading={loading}
+          />
         </Col>
         <Col xs={24} sm={8}>
-          <Card className="shadow-sm" style={{ borderLeft: '4px solid #d9d9d9' }}>
-            <Statistic
-              title="Không hoạt động"
-              value={stats.inactiveCount}
-            />
-          </Card>
+          <StatCard
+            title="Không hoạt động"
+            value={stats.inactiveCount}
+            borderColor="#d9d9d9"
+            loading={loading}
+          />
         </Col>
       </Row>
 

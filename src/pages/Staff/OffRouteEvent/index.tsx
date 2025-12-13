@@ -11,9 +11,9 @@ import {
   Skeleton,
   Typography,
   Row,
-  Col,
-  Statistic
+  Col
 } from 'antd';
+import StatCard from '../../../components/common/StatCard';
 import { 
   SearchOutlined, 
   ReloadOutlined,
@@ -215,42 +215,42 @@ const OffRouteEventPage: React.FC = () => {
       {/* Statistics Cards */}
       <Row gutter={16} className="mb-6">
         <Col xs={24} sm={12} lg={6}>
-          <Card className="shadow-sm" style={{ borderLeft: '4px solid #1890ff' }}>
-            <Statistic
-              title="Tổng cảnh báo"
-              value={stats.total}
-              prefix={<EnvironmentOutlined style={{ color: '#1890ff' }} />}
-            />
-          </Card>
+          <StatCard
+            title="Tổng cảnh báo"
+            value={stats.total}
+            prefix={<EnvironmentOutlined />}
+            borderColor="#1890ff"
+            loading={loading}
+          />
         </Col>
         <Col xs={24} sm={12} lg={6}>
-          <Card className="shadow-sm" style={{ borderLeft: '4px solid #faad14' }}>
-            <Statistic
-              title="Cảnh báo vàng"
-              value={stats.yellowCount}
-              prefix={<AlertOutlined style={{ color: '#faad14' }} />}
-              valueStyle={{ color: stats.yellowCount > 0 ? '#faad14' : undefined }}
-            />
-          </Card>
+          <StatCard
+            title="Cảnh báo vàng"
+            value={stats.yellowCount}
+            prefix={<AlertOutlined />}
+            valueStyle={{ color: stats.yellowCount > 0 ? '#faad14' : undefined }}
+            borderColor="#faad14"
+            loading={loading}
+          />
         </Col>
         <Col xs={24} sm={12} lg={6}>
-          <Card className="shadow-sm" style={{ borderLeft: '4px solid #f5222d' }}>
-            <Statistic
-              title="Cảnh báo đỏ"
-              value={stats.redCount}
-              prefix={<ExclamationCircleOutlined style={{ color: '#f5222d' }} />}
-              valueStyle={{ color: stats.redCount > 0 ? '#f5222d' : undefined }}
-            />
-          </Card>
+          <StatCard
+            title="Cảnh báo đỏ"
+            value={stats.redCount}
+            prefix={<ExclamationCircleOutlined />}
+            valueStyle={{ color: stats.redCount > 0 ? '#f5222d' : undefined }}
+            borderColor="#f5222d"
+            loading={loading}
+          />
         </Col>
         <Col xs={24} sm={12} lg={6}>
-          <Card className="shadow-sm" style={{ borderLeft: '4px solid #52c41a' }}>
-            <Statistic
-              title="Đã giải quyết"
-              value={stats.resolvedCount}
-              prefix={<CheckCircleOutlined style={{ color: '#52c41a' }} />}
-            />
-          </Card>
+          <StatCard
+            title="Đã giải quyết"
+            value={stats.resolvedCount}
+            prefix={<CheckCircleOutlined />}
+            borderColor="#52c41a"
+            loading={loading}
+          />
         </Col>
       </Row>
 

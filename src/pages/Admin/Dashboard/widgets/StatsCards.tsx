@@ -1,5 +1,6 @@
 import React from 'react';
-import { Card, Row, Col, Statistic, Spin } from 'antd';
+import { Card, Row, Col, Spin } from 'antd';
+import StatCard from '../../../../components/common/StatCard';
 import {
   UserOutlined,
   TeamOutlined,
@@ -18,11 +19,11 @@ const StatsCards: React.FC<StatsCardsProps> = ({ data, loading }) => {
   const getIcon = (role: 'customers' | 'staff' | 'drivers') => {
     switch (role) {
       case 'customers':
-        return <UserOutlined style={{ fontSize: 24, color: '#1890ff' }} />;
+        return <UserOutlined />;
       case 'staff':
-        return <TeamOutlined style={{ fontSize: 24, color: '#52c41a' }} />;
+        return <TeamOutlined />;
       case 'drivers':
-        return <CarOutlined style={{ fontSize: 24, color: '#faad14' }} />;
+        return <CarOutlined />;
     }
   };
 
@@ -41,42 +42,34 @@ const StatsCards: React.FC<StatsCardsProps> = ({ data, loading }) => {
     const roleData = data?.[role];
     const deltaPercent = roleData?.deltaPercent || 0;
     const isPositive = deltaPercent >= 0;
+    const borderColor = role === 'customers' ? '#1890ff' : role === 'staff' ? '#52c41a' : '#faad14';
 
     return (
       <Col xs={24} sm={12} lg={8} key={role}>
-        <Card bordered={false} className="shadow-sm hover:shadow-md transition-shadow">
-          {loading ? (
-            <div className="flex justify-center items-center h-32">
-              <Spin />
+        <StatCard
+          title={getTitle(role)}
+          value={roleData?.count || 0}
+          prefix={getIcon(role)}
+          suffix={
+            <div className="flex items-center">
+              {isPositive ? (
+                <ArrowUpOutlined style={{ color: '#52c41a', marginRight: 4 }} />
+              ) : (
+                <ArrowDownOutlined style={{ color: '#ff4d4f', marginRight: 4 }} />
+              )}
+              <span
+                style={{
+                  color: isPositive ? '#52c41a' : '#ff4d4f',
+                  fontSize: 14,
+                }}
+              >
+                {Math.abs(deltaPercent).toFixed(1)}%
+              </span>
             </div>
-          ) : (
-            <div>
-              <div className="flex items-center justify-between mb-4">
-                <div>{getIcon(role)}</div>
-                <div className="text-right">
-                  <div className="text-gray-500 text-sm">{getTitle(role)}</div>
-                  <div className="text-2xl font-bold">{roleData?.count || 0}</div>
-                </div>
-              </div>
-              <div className="flex items-center">
-                {isPositive ? (
-                  <ArrowUpOutlined style={{ color: '#52c41a', marginRight: 4 }} />
-                ) : (
-                  <ArrowDownOutlined style={{ color: '#ff4d4f', marginRight: 4 }} />
-                )}
-                <span
-                  style={{
-                    color: isPositive ? '#52c41a' : '#ff4d4f',
-                    fontSize: 14,
-                  }}
-                >
-                  {Math.abs(deltaPercent).toFixed(1)}%
-                </span>
-                <span className="text-gray-500 text-sm ml-2">so với kỳ trước</span>
-              </div>
-            </div>
-          )}
-        </Card>
+          }
+          borderColor={borderColor}
+          loading={loading}
+        />
       </Col>
     );
   };

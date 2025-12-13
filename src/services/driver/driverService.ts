@@ -6,7 +6,8 @@ import type {
     DriverCreatedResponse,
     DriverResponse,
     DriversResponse,
-    DriverCreatedApiResponse
+    DriverCreatedApiResponse,
+    LicenseRenewalRequest
 } from './types';
 
 /**
@@ -97,6 +98,27 @@ const driverService = {
         } catch (error) {
             console.error('Error creating driver:', error);
             throw handleApiError(error, 'Không thể tạo tài xế');
+        }
+    },
+
+    /**
+     * Renew driver license (Admin/Staff only).
+     * Updates license information and reactivates driver if inactive due to expired license.
+     * 
+     * @param id Driver ID
+     * @param licenseData License renewal data
+     * @returns Promise with updated driver
+     */
+    renewDriverLicense: async (id: string, licenseData: LicenseRenewalRequest): Promise<DriverModel> => {
+        try {
+            const response = await httpClient.put<DriverResponse>(
+                `/drivers/${id}/renew-license`,
+                licenseData
+            );
+            return response.data.data;
+        } catch (error) {
+            console.error(`Error renewing driver license ${id}:`, error);
+            throw handleApiError(error, 'Không thể gia hạn bằng lái');
         }
     }
 };

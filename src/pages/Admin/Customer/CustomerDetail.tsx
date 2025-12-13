@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { App, Typography, Card, Tabs, Table, Badge, Button, Descriptions, Row, Col, Avatar, Divider, Tag, Skeleton } from 'antd';
+import { App, Typography, Card, Tabs, Button, Descriptions, Row, Col, Avatar, Divider, Tag, Skeleton } from 'antd';
 import {
     ShopOutlined,
     HomeOutlined,
     BankOutlined,
-    ShoppingCartOutlined,
     UserOutlined,
     MailOutlined,
     PhoneOutlined,
@@ -21,10 +20,8 @@ import {
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import userService from '../../../services/user';
 import customerService from '../../../services/customer/customerService';
-import orderService from '../../../services/order';
 import type { UserModel } from '../../../services/user/types';
 import type { Customer } from '../../../models/Customer';
-import type { Order } from '../../../models/Order';
 import { format } from 'date-fns';
 import { UserStatusEnum } from '@/constants/enums';
 import { UserStatusTag } from '@/components/common/tags';
@@ -39,8 +36,6 @@ const CustomerDetail: React.FC = () => {
     const queryClient = useQueryClient();
     const [customerData, setCustomerData] = useState<Customer | null>(null);
     const [customerLoading, setCustomerLoading] = useState<boolean>(false);
-    const [recentOrders, setRecentOrders] = useState<Order[]>([]);
-    const [ordersLoading, setOrdersLoading] = useState<boolean>(false);
 
     // Lấy thông tin user
     const { data: userData, isLoading: userLoading, error: userError } = useQuery({
@@ -66,25 +61,6 @@ const CustomerDetail: React.FC = () => {
         };
 
         fetchCustomerData();
-    }, [userData, id]);
-
-    // Lấy đơn hàng gần đây
-    useEffect(() => {
-        const fetchRecentOrders = async () => {
-            if (userData && id) {
-                try {
-                    setOrdersLoading(true);
-                    const orders = await orderService.getOrdersByUserId(id);
-                    setRecentOrders(orders);
-                } catch (err) {
-                    console.error('Error fetching recent orders:', err);
-                } finally {
-                    setOrdersLoading(false);
-                }
-            }
-        };
-
-        fetchRecentOrders();
     }, [userData, id]);
 
     const updateStatusMutation = useMutation({
@@ -139,28 +115,6 @@ const CustomerDetail: React.FC = () => {
         }
     };
 
-    const getOrderStatusColor = (status: string) => {
-        switch (status?.toLowerCase()) {
-            case 'pending': return 'orange';
-            case 'accepted': return 'blue';
-            case 'in_progress': return 'purple';
-            case 'delivered': return 'green';
-            case 'cancelled': return 'red';
-            default: return 'default';
-        }
-    };
-
-    const getOrderStatusText = (status: string) => {
-        switch (status?.toLowerCase()) {
-            case 'pending': return 'Chờ xử lý';
-            case 'accepted': return 'Đã nhận';
-            case 'in_progress': return 'Đang giao';
-            case 'delivered': return 'Đã giao';
-            case 'cancelled': return 'Đã hủy';
-            default: return status;
-        }
-    };
-
     const formatDate = (dateString: string) => {
         try {
             return format(new Date(dateString), 'dd/MM/yyyy');
@@ -168,66 +122,6 @@ const CustomerDetail: React.FC = () => {
             return dateString;
         }
     };
-
-    const formatDateTime = (dateString: string) => {
-        try {
-            return format(new Date(dateString), 'HH:mm - dd/MM/yyyy');
-        } catch (error) {
-            return dateString;
-        }
-    };
-
-    const orderColumns = [
-        {
-            title: 'Mã đơn hàng',
-            dataIndex: 'id',
-            key: 'id',
-            render: (id: string) => (
-                <Button
-                    type="link"
-                    onClick={() => navigate(`/admin/orders/${id}`)}
-                    className="p-0"
-                >
-                    {id.substring(0, 8)}...
-                </Button>
-            ),
-        },
-        {
-            title: 'Ngày tạo',
-            dataIndex: 'createdAt',
-            key: 'createdAt',
-            render: (date: string) => formatDateTime(date),
-        },
-        {
-            title: 'Địa chỉ giao hàng',
-            dataIndex: 'deliveryAddress',
-            key: 'deliveryAddress',
-            render: (address: string) => (
-                <div className="max-w-xs truncate">{address}</div>
-            ),
-        },
-        {
-            title: 'Tổng tiền',
-            dataIndex: 'totalPrice',
-            key: 'totalPrice',
-            render: (price: number) => (
-                <span className="font-medium">
-                    {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(price)}
-                </span>
-            ),
-        },
-        {
-            title: 'Trạng thái',
-            dataIndex: 'status',
-            key: 'status',
-            render: (status: string) => (
-                <Badge
-                    color={getOrderStatusColor(status)}
-                    text={getOrderStatusText(status)}
-                />
-            ),
-        },
-    ];
 
     // Render skeleton loading
     const renderSkeletonLoading = () => {
@@ -273,9 +167,6 @@ const CustomerDetail: React.FC = () => {
                             <Skeleton.Input style={{ width: 200 }} active size="small" className="mb-4" />
                             <Tabs defaultActiveKey="1">
                                 <TabPane tab="Thông tin doanh nghiệp" key="1">
-                                    <Skeleton active paragraph={{ rows: 8 }} />
-                                </TabPane>
-                                <TabPane tab="Đơn hàng gần đây" key="2">
                                     <Skeleton active paragraph={{ rows: 8 }} />
                                 </TabPane>
                             </Tabs>
@@ -476,6 +367,7 @@ const CustomerDetail: React.FC = () => {
                                                 <Text className="text-lg">{customerData.companyName}</Text>
                                             </Card>
                                         </Col>
+
                                         <Col xs={24} md={12}>
                                             <Card className="bg-gray-50 border-0" size="small">
                                                 <div className="flex items-center mb-2">
@@ -516,34 +408,6 @@ const CustomerDetail: React.FC = () => {
                                 ) : (
                                     <div className="py-8 text-center">
                                         <Text type="secondary">Không tìm thấy thông tin doanh nghiệp</Text>
-                                    </div>
-                                )}
-                            </TabPane>
-
-                            <TabPane
-                                tab={
-                                    <div className="flex items-center">
-                                        <ShoppingCartOutlined className="mr-2" />
-                                        <span>Đơn hàng gần đây</span>
-                                    </div>
-                                }
-                                key="orders"
-                            >
-                                {ordersLoading ? (
-                                    <div className="py-8 flex justify-center">
-                                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
-                                    </div>
-                                ) : recentOrders && recentOrders.length > 0 ? (
-                                    <Table
-                                        dataSource={recentOrders}
-                                        columns={orderColumns}
-                                        rowKey="id"
-                                        pagination={{ pageSize: 5 }}
-                                        className="mt-4"
-                                    />
-                                ) : (
-                                    <div className="py-8 text-center">
-                                        <Text type="secondary">Khách hàng chưa có đơn hàng nào</Text>
                                     </div>
                                 )}
                             </TabPane>

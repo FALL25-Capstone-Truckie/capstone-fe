@@ -28,7 +28,7 @@ const userService = {
     getUserById: async (id: string): Promise<UserModel> => {
         try {
             const response = await httpClient.get<UserResponse>(`/users/${id}`);
-            return response.data;
+            return response.data.data;
         } catch (error) {
             console.error(`Error fetching user ${id}:`, error);
             throw handleApiError(error, 'Không thể tải thông tin người dùng');
@@ -48,7 +48,7 @@ const userService = {
                 null,
                 { params: { status } }
             );
-            return response.data;
+            return response.data.data;
         } catch (error) {
             console.error(`Error updating user status ${id}:`, error);
             throw handleApiError(error, 'Không thể cập nhật trạng thái người dùng');
@@ -84,7 +84,7 @@ const userService = {
                 employeeData,
                 { params: { roleTypeEnum: 'STAFF' } }
             );
-            return response.data;
+            return response.data.data;
         } catch (error) {
             console.error('Error registering employee:', error);
             throw handleApiError(error, 'Không thể đăng ký nhân viên mới');
@@ -100,7 +100,7 @@ const userService = {
     updateUserProfile: async (id: string, userData: UserUpdateRequest): Promise<UserModel> => {
         try {
             const response = await httpClient.put<UserResponse>(`/users/${id}`, userData);
-            return response.data;
+            return response.data.data;
         } catch (error) {
             console.error(`Error updating user profile ${id}:`, error);
             throw handleApiError(error, 'Không thể cập nhật thông tin cá nhân');

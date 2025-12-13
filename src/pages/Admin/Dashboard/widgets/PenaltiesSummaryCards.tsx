@@ -1,5 +1,6 @@
 import React from 'react';
-import { Card, Statistic, Row, Col } from 'antd';
+import { Card, Row, Col } from 'antd';
+import StatCard from '../../../../components/common/StatCard';
 import { ExclamationCircleOutlined, ArrowUpOutlined, ArrowDownOutlined } from '@ant-design/icons';
 import type { PenaltiesSummary } from '../../../../models/AdminDashboard';
 
@@ -43,10 +44,10 @@ const PenaltiesSummaryCards: React.FC<PenaltiesSummaryCardsProps> = ({ data, loa
     >
       <Row gutter={16}>
         <Col span={24}>
-          <Statistic
+          <StatCard
             title="Tổng số vi phạm"
             value={data.totalPenalties}
-            valueStyle={{ color: '#1890ff', fontSize: '24px', fontWeight: 'bold' }}
+            valueStyle={{ color: '#1890ff' }}
             suffix={
               <span style={{ fontSize: '14px', color: getDeltaColor(data.deltaPercent) }}>
                 {getDeltaIcon(data.deltaPercent)}
@@ -54,6 +55,8 @@ const PenaltiesSummaryCards: React.FC<PenaltiesSummaryCardsProps> = ({ data, loa
                 <span style={{ marginLeft: 4, fontSize: '12px' }}>so với kỳ trước</span>
               </span>
             }
+            borderColor="#1890ff"
+            loading={loading}
           />
         </Col>
       </Row>

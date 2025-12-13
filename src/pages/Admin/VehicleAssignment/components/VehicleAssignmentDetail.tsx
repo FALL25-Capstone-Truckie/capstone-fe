@@ -95,7 +95,7 @@ const VehicleAssignmentDetail: React.FC<VehicleAssignmentDetailProps> = ({
             title={
                 <div className="flex items-center">
                     <CarOutlined className="text-blue-500 text-xl mr-2" />
-                    <span className="text-lg font-semibold">Chi tiết phân công xe</span>
+                    <span className="text-lg font-semibold">Chi tiết chuyến xe</span>
                 </div>
             }
             open={visible}

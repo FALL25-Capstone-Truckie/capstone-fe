@@ -162,12 +162,12 @@ const VehicleAssignmentDetailPage: React.FC = () => {
                     <Breadcrumb
                         items={[
                             { title: 'Trang chủ', href: '/admin/dashboard' },
-                            { title: 'Phân công xe', href: '/admin/vehicle-assignments' },
-                            { title: 'Chi tiết phân công' },
+                            { title: 'Chuyến xe xe', href: '/admin/vehicle-assignments' },
+                            { title: 'Chi tiết chuyến xe' },
                         ]}
                         className="mb-2"
                     />
-                    <h1 className="text-2xl font-bold text-gray-800">Chi tiết phân công xe</h1>
+                    <h1 className="text-2xl font-bold text-gray-800">Chi tiết chuyến xe</h1>
                 </div>
                 <div className="flex gap-2">
                     <Button

@@ -17,6 +17,7 @@ export interface ContractData {
   priceDetails: PriceDetails;
   assignResult: AssignResult[];
   contractSettings: ContractSettings;
+  customDepositPercent?: number | null; // Custom deposit percent for this contract (overrides contractSettings.depositPercent if set)
 }
 
 export interface CarrierInfo {

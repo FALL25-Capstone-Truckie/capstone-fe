@@ -11,11 +11,11 @@ import {
   Tooltip,
   Row,
   Col,
-  Statistic,
   Select,
   Skeleton,
   Empty
 } from 'antd';
+import StatCard from '../../../components/common/StatCard';
 import { 
   FileTextOutlined, 
   SearchOutlined, 
@@ -230,43 +230,42 @@ const ContractListPage: React.FC = () => {
       </div>
 
       {/* Stats */}
-      <Row gutter={[16, 16]} className="mb-6" align="stretch">
+      <Row gutter={[16, 16]} className="mb-6">
         <Col xs={12} sm={6}>
-          <Card
-            className="text-center shadow-sm border-t-4 border-t-blue-500"
-            style={{ height: '100%' }}
-          >
-            <Statistic title="Tổng hợp đồng" value={stats.total} prefix={<FileTextOutlined />} />
-          </Card>
+          <StatCard 
+            title="Tổng hợp đồng" 
+            value={stats.total} 
+            prefix={<FileTextOutlined />} 
+            borderColor="#1890ff"
+            loading={isLoading}
+          />
         </Col>
         <Col xs={12} sm={6}>
-          <Card
-            className="text-center shadow-sm border-t-4 border-t-green-500"
-            style={{ height: '100%' }}
-          >
-            <Statistic title="Đang hoạt động" value={stats.active} valueStyle={{ color: '#52c41a' }} />
-          </Card>
+          <StatCard 
+            title="Đang hoạt động" 
+            value={stats.active} 
+            valueStyle={{ color: '#52c41a' }} 
+            borderColor="#52c41a"
+            loading={isLoading}
+          />
         </Col>
         <Col xs={12} sm={6}>
-          <Card
-            className="text-center shadow-sm border-t-4 border-t-yellow-500"
-            style={{ height: '100%' }}
-          >
-            <Statistic title="Chờ xử lý" value={stats.pending} valueStyle={{ color: '#faad14' }} />
-          </Card>
+          <StatCard 
+            title="Chờ xử lý" 
+            value={stats.pending} 
+            valueStyle={{ color: '#faad14' }} 
+            borderColor="#faad14"
+            loading={isLoading}
+          />
         </Col>
         <Col xs={12} sm={6}>
-          <Card
-            className="text-center shadow-sm border-t-4 border-t-purple-500"
-            style={{ height: '100%' }}
-          >
-            <Statistic 
-              title="Tổng giá trị" 
-              value={stats.totalValue} 
-              prefix={<DollarOutlined />}
-              formatter={(value) => `${Number(value).toLocaleString('vi-VN')} đ`}
-            />
-          </Card>
+          <StatCard 
+            title="Tổng giá trị" 
+            value={`${stats.totalValue.toLocaleString('vi-VN')} đ`}
+            prefix={<DollarOutlined />}
+            borderColor="#722ed1"
+            loading={isLoading}
+          />
         </Col>
       </Row>
 

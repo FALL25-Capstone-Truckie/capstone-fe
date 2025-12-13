@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Form, Input, Button, Card, Space, Empty, Divider } from "antd";
+import { Form, Input, Button, Card, Space, Empty, Divider, Alert } from "antd";
 import { PlusOutlined, DeleteOutlined, SafetyOutlined } from "@ant-design/icons";
 import type { Seal } from "../../../../models/VehicleAssignment";
 
@@ -20,6 +20,8 @@ const SealAssignmentStep: React.FC<SealAssignmentStepProps> = ({
         initialSeals.length > 0 ? initialSeals : [{ sealCode: "", description: "" }]
     );
 
+    const [submitError, setSubmitError] = useState<string | null>(null);
+
     const handleAddSeal = () => {
         setSeals([...seals, { sealCode: "", description: "" }]);
     };
@@ -36,10 +38,21 @@ const SealAssignmentStep: React.FC<SealAssignmentStepProps> = ({
     };
 
     const handleSubmit = () => {
-        // Filter out empty seals
-        const validSeals = seals.filter(
-            seal => seal.sealCode.trim() !== "" || seal.description.trim() !== ""
-        );
+        setSubmitError(null);
+
+        const validSeals = seals
+            .map((seal) => ({
+                ...seal,
+                sealCode: seal.sealCode.trim(),
+                description: seal.description.trim()
+            }))
+            .filter((seal) => seal.sealCode !== "");
+
+        if (validSeals.length < 4) {
+            setSubmitError("Mỗi chuyến xe phải có ít nhất 4 seal hợp lệ (có mã seal).");
+            return;
+        }
+
         onComplete(validSeals);
     };
 
@@ -64,9 +77,18 @@ const SealAssignmentStep: React.FC<SealAssignmentStepProps> = ({
                         <strong>Lưu ý:</strong> Seal (niêm phong) được sử dụng để đảm bảo an toàn và tính toàn vẹn của hàng hóa trong quá trình vận chuyển.
                     </p>
                     <p className="text-sm text-blue-700">
-                        Bạn có thể thêm nhiều seal cho một chuyến hàng.
+                        Mỗi chuyến xe cần ít nhất 4 seal.
                     </p>
                 </div>
+
+                {submitError && (
+                    <Alert
+                        type="error"
+                        message={submitError}
+                        showIcon
+                        className="mb-4"
+                    />
+                )}
 
                 {seals.length === 0 ? (
                     <Empty
@@ -162,7 +184,7 @@ const SealAssignmentStep: React.FC<SealAssignmentStepProps> = ({
                             type="primary"
                             onClick={handleSubmit}
                             className="bg-blue-500 hover:bg-blue-600"
-                            disabled={seals.length === 0 || seals.every(s => !s.sealCode.trim())}
+                            disabled={seals.filter((s) => s.sealCode.trim() !== "").length < 4}
                         >
                             Hoàn thành
                         </Button>

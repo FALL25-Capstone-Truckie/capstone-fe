@@ -12,6 +12,7 @@ interface DateSelectGroupProps {
     mode?: 'birthdate' | 'delivery';
     maxYear?: number;
     minYear?: number;
+    showTime?: boolean;
 }
 
 const DateSelectGroup: React.FC<DateSelectGroupProps> = ({
@@ -22,6 +23,7 @@ const DateSelectGroup: React.FC<DateSelectGroupProps> = ({
     mode = 'delivery',
     maxYear = dayjs().year(),
     minYear = maxYear - 100,
+    showTime = true,
 }) => {
     // Initialize with appropriate default date based on mode
     const getDefaultDate = () => {
@@ -37,8 +39,8 @@ const DateSelectGroup: React.FC<DateSelectGroupProps> = ({
     const [selectedDay, setSelectedDay] = useState<number>(initialDate.date());
     const [selectedMonth, setSelectedMonth] = useState<number>(initialDate.month() + 1); // dayjs months are 0-indexed
     const [selectedYear, setSelectedYear] = useState<number>(initialDate.year());
-    const [selectedHour, setSelectedHour] = useState<number>(initialDate.hour());
-    const [selectedMinute, setSelectedMinute] = useState<number>(initialDate.minute());
+    const [selectedHour, setSelectedHour] = useState<number>(showTime ? initialDate.hour() : 0);
+    const [selectedMinute, setSelectedMinute] = useState<number>(showTime ? initialDate.minute() : 0);
     // Always use 0 for seconds
     const selectedSecond = 0;
 
@@ -53,10 +55,15 @@ const DateSelectGroup: React.FC<DateSelectGroupProps> = ({
             setSelectedDay(value.date());
             setSelectedMonth(value.month() + 1);
             setSelectedYear(value.year());
-            setSelectedHour(value.hour());
-            setSelectedMinute(value.minute());
+            if (showTime) {
+                setSelectedHour(value.hour());
+                setSelectedMinute(value.minute());
+            } else {
+                setSelectedHour(0);
+                setSelectedMinute(0);
+            }
         }
-    }, [value]);
+    }, [value, showTime]);
 
     // Trigger onChange with the initial value when component mounts
     useEffect(() => {
@@ -182,7 +189,7 @@ const DateSelectGroup: React.FC<DateSelectGroupProps> = ({
                 ))}
             </Select>
 
-            {mode === 'delivery' && (
+            {mode === 'delivery' && showTime && (
                 <>
                     <span>-</span>
                     <Select
@@ -212,4 +219,4 @@ const DateSelectGroup: React.FC<DateSelectGroupProps> = ({
     );
 };
 
-export default DateSelectGroup; 
+export default DateSelectGroup;

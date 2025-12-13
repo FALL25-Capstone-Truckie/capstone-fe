@@ -1,9 +1,10 @@
 import React from 'react';
-import { Table, Button, Space, Tag, Avatar, Tooltip, Skeleton } from 'antd';
-import { EyeOutlined, SwapOutlined, IdcardOutlined, CarOutlined, PhoneOutlined, MailOutlined } from '@ant-design/icons';
+import { Table, Button, Space, Tag, Avatar, Tooltip, Skeleton, Badge } from 'antd';
+import { EyeOutlined, SwapOutlined, IdcardOutlined, CarOutlined, PhoneOutlined, MailOutlined, WarningOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
 import type { DriverModel } from '../../../../services/driver';
 import { UserStatusEnum } from '@/constants/enums';
 import { UserStatusTag } from '@/components/common/tags';
+import { getLicenseExpiryWarningLevel, getDaysUntilExpiry } from '@/utils/licenseClassHelper';
 
 interface DriverTableProps {
     data: DriverModel[];
@@ -92,6 +93,45 @@ const DriverTable: React.FC<DriverTableProps> = ({
                     </div>
                 </div>
             ),
+        },
+        {
+            title: 'Hạn bằng lái',
+            key: 'licenseExpiry',
+            render: (record: DriverModel) => {
+                const warningLevel = getLicenseExpiryWarningLevel(record.dateOfExpiry);
+                const daysUntil = getDaysUntilExpiry(record.dateOfExpiry);
+                
+                if (warningLevel === 'expired') {
+                    return (
+                        <Tooltip title={`Đã hết hạn ${Math.abs(daysUntil)} ngày`}>
+                            <Tag color="red" icon={<ExclamationCircleOutlined />}>
+                                Hết hạn
+                            </Tag>
+                        </Tooltip>
+                    );
+                }
+                if (warningLevel === 'critical') {
+                    return (
+                        <Tooltip title={`Còn ${daysUntil} ngày`}>
+                            <Tag color="red" icon={<WarningOutlined />}>
+                                Còn {daysUntil} ngày
+                            </Tag>
+                        </Tooltip>
+                    );
+                }
+                if (warningLevel === 'warning') {
+                    return (
+                        <Tooltip title={`Còn ${daysUntil} ngày`}>
+                            <Tag color="orange" icon={<WarningOutlined />}>
+                                Còn {daysUntil} ngày
+                            </Tag>
+                        </Tooltip>
+                    );
+                }
+                return (
+                    <Tag color="green">Còn hạn</Tag>
+                );
+            },
         },
         {
             title: 'Trạng thái',

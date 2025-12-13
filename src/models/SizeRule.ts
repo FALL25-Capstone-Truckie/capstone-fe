@@ -14,6 +14,10 @@ export interface DistanceRule {
     id: string;
     fromKm: number;
     toKm: number;
+    displayOrder: number;
+    displayName: string;
+    isBasePrice: boolean;
+    status: string;
 }
 
 export interface BasingPrice {

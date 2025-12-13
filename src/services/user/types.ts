@@ -1,4 +1,5 @@
-import type { UserModel, UserResponse, UsersResponse, RegisterEmployeeRequest } from '../../models/User';
+import type { UserModel, RegisterEmployeeRequest } from '../../models/User';
+import type { ApiResponse } from '../api/types';
 
 export interface UserUpdateRequest {
     fullName?: string;
@@ -9,4 +10,8 @@ export interface UserUpdateRequest {
     imageUrl?: string;
 }
 
-export type { UserModel, UserResponse, UsersResponse, RegisterEmployeeRequest }; 
+export type UserResponse = ApiResponse<UserModel>;
+
+export type UsersResponse = ApiResponse<UserModel[]>;
+
+export type { UserModel, RegisterEmployeeRequest };

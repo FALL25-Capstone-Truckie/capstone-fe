@@ -57,6 +57,7 @@ const VehicleAssignmentModal: React.FC<VehicleAssignmentModalProps> = ({
     const [currentTripIndex, setCurrentTripIndex] = useState(0);
     const [currentSubStep, setCurrentSubStep] = useState(1);
     const [showConfirmation, setShowConfirmation] = useState(false);
+    const [skipVehicleSelection, setSkipVehicleSelection] = useState(false); // Skip step 1 for all trips when accepting suggestions
     
     // Form state for current trip
     const [selectedVehicleId, setSelectedVehicleId] = useState<string | undefined>();
@@ -116,6 +117,7 @@ const VehicleAssignmentModal: React.FC<VehicleAssignmentModalProps> = ({
         setCurrentTripIndex(0);
         setCurrentSubStep(1);
         setSelectedVehicleId(undefined);
+        setSkipVehicleSelection(false);
         form.resetFields();
     };
 
@@ -197,6 +199,45 @@ const VehicleAssignmentModal: React.FC<VehicleAssignmentModalProps> = ({
         setCurrentStep(1);
         setCurrentTripIndex(0);
         setCurrentSubStep(1);
+    };
+
+    // Accept all suggestions and skip step 1 (vehicle/driver selection) - go directly to step 2 (routing)
+    const handleAcceptAllSuggestions = () => {
+        const indices = Array.from({ length: detailGroups.length }, (_, i) => i);
+        
+        const assignments: TripAssignment[] = indices.map(index => {
+            const group = detailGroups[index];
+            const suggestions = suggestionsMap[index] || [];
+            
+            const recommendedVehicle = suggestions.find(v => v.isRecommended);
+            
+            let recommendedDriver1: string | undefined;
+            let recommendedDriver2: string | undefined;
+            
+            if (recommendedVehicle) {
+                const recommendedDrivers = recommendedVehicle.suggestedDrivers
+                    .filter(d => d.isRecommended)
+                    .slice(0, 2);
+                recommendedDriver1 = recommendedDrivers[0]?.id;
+                recommendedDriver2 = recommendedDrivers[1]?.id;
+            }
+            
+            return {
+                groupIndex: index,
+                group,
+                vehicleId: recommendedVehicle?.id,
+                driverId_1: recommendedDriver1,
+                driverId_2: recommendedDriver2,
+                completed: false
+            };
+        });
+
+        setTripAssignments(assignments);
+        setCurrentStep(1);
+        setCurrentTripIndex(0);
+        setCurrentSubStep(2); // Skip step 1, go directly to step 2 (routing)
+        setSkipVehicleSelection(true); // Mark to skip step 1 for all subsequent trips
+        messageApi.success(`✅ Đã chấp nhận đề xuất cho ${detailGroups.length} chuyến. Tiếp tục định tuyến...`);
     };
 
     const getCurrentTrip = (): TripAssignment | null => {
@@ -354,7 +395,8 @@ const VehicleAssignmentModal: React.FC<VehicleAssignmentModalProps> = ({
             messageApi.success(`✅ Hoàn thành chuyến ${currentTripIndex + 1}/${tripAssignments.length}`);
             setTripAssignments(updatedAssignments);
             setCurrentTripIndex(currentTripIndex + 1);
-            setCurrentSubStep(1);
+            // If user accepted all suggestions, skip step 1 for subsequent trips too
+            setCurrentSubStep(skipVehicleSelection ? 2 : 1);
             setSelectedVehicleId(undefined);
             form.resetFields();
         } else {
@@ -453,6 +495,7 @@ const VehicleAssignmentModal: React.FC<VehicleAssignmentModalProps> = ({
                 suggestionsMap={suggestionsMap}
                 loading={loading}
                 onSelectTrips={handleSelectTrips}
+                onAcceptAllSuggestions={handleAcceptAllSuggestions}
             />
         );
     };

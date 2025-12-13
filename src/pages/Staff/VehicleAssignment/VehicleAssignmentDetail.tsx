@@ -35,7 +35,7 @@ import {
     CalendarOutlined,
     RightOutlined,
 } from "@ant-design/icons";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { vehicleAssignmentService } from "../../../services/vehicle-assignment";
 import { VehicleAssignmentTag, OrderStatusTag } from '@/components/common/tags';
 import { VehicleAssignmentEnum, OrderStatusEnum } from '@/constants/enums';
@@ -47,6 +47,7 @@ import timezone from "dayjs/plugin/timezone";
 import RouteMapSection from "../../Admin/Order/components/StaffOrderDetail/RouteMapSection";
 import vietmapService from '@/services/vietmap/vietmapService';
 import OrderDetailStatusCard from "../../../components/common/OrderDetailStatusCard";
+import type { ApiResponse } from "../../../services/api/types";
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -90,17 +91,30 @@ const VehicleAssignmentDetailPage: React.FC = () => {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
     const [activeTab, setActiveTab] = useState("vehicle");
+    const queryClient = useQueryClient();
 
     // Fetch vehicle assignment details with full data using new API
     const {
         data: assignmentData,
         isLoading,
         isError
-    } = useQuery({
+    } = useQuery<ApiResponse<any> | null>({
         queryKey: ["staffVehicleAssignmentFull", id],
         queryFn: () => id ? vehicleAssignmentService.getFullById(id) : null,
         enabled: !!id,
     });
+
+    // Use effect to log the data when it arrives
+    React.useEffect(() => {
+        if (assignmentData) {
+            console.log("🔍 DEBUG: API Response received:", assignmentData);
+            console.log("🔍 DEBUG: Devices in response:", assignmentData?.data?.devices);
+            console.log("🔍 DEBUG: Device count:", assignmentData?.data?.devices?.length);
+            if (assignmentData?.data?.devices?.length > 0) {
+                console.log("🔍 DEBUG: Device details:", assignmentData.data.devices);
+            }
+        }
+    }, [assignmentData]);
 
     // Use any type since backend returns full data
     const va: any = assignmentData?.data;
@@ -829,7 +843,7 @@ const VehicleAssignmentDetailPage: React.FC = () => {
                 <Breadcrumb
                     items={[
                         { title: 'Trang chủ', href: '/staff/dashboard' },
-                        { title: 'Phân công xe', href: '/staff/vehicle-assignments' },
+                        { title: 'Chuyến xe', href: '/staff/vehicle-assignments' },
                         { title: va?.trackingCode || 'Chi tiết chuyến xe' },
                     ]}
                     className="mb-2"

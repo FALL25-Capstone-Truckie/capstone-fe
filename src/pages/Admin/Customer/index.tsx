@@ -8,7 +8,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import CustomerTable from './components/CustomerTable';
 import StatusChangeModal from '../../../components/common/StatusChangeModal';
 import type { StatusOption } from '../../../components/common/StatusChangeModal';
-import UserStatCards from './components/UserStatCards';
+import UserStatCards from '../../../components/common/UserStatCards';
 import { UserStatusEnum } from '../../../constants/enums/UserStatusEnum';
 
 const { Title, Text } = Typography;

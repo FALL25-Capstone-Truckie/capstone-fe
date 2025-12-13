@@ -1,5 +1,6 @@
 import React from 'react';
-import { Card, Row, Col, Statistic, Spin, Empty } from 'antd';
+import { Card, Row, Col, Spin, Empty } from 'antd';
+import StatCard from '../../../../components/common/StatCard';
 import { Line } from '@ant-design/plots';
 import { 
   ExclamationCircleOutlined, 
@@ -114,13 +115,13 @@ const PenaltiesStatsCard: React.FC<PenaltiesStatsCardProps> = ({ data, loading }
     >
       <Row gutter={[16, 16]} className="mb-4">
         <Col xs={24} sm={12}>
-          <Statistic
+          <StatCard
             title="Tổng vi phạm"
             value={data.totalPenalties}
-            valueStyle={{ color: '#ff4d4f', fontSize: '24px', fontWeight: 'bold' }}
+            valueStyle={{ color: '#ff4d4f' }}
             suffix={
               deltaPercent !== 0 && (
-                <span style={{ fontSize: '14px', marginLeft: 8 }}>
+                <span style={{ fontSize: '14px' }}>
                   {isPositive ? (
                     <ArrowUpOutlined style={{ color: '#ff4d4f', marginRight: 4 }} />
                   ) : (
@@ -132,13 +133,17 @@ const PenaltiesStatsCard: React.FC<PenaltiesStatsCardProps> = ({ data, loading }
                 </span>
               )
             }
+            borderColor="#ff4d4f"
+            loading={loading}
           />
         </Col>
         <Col xs={24} sm={12}>
-          <Statistic
+          <StatCard
             title="Chưa xử lý"
             value={data.unresolvedPenalties}
-            valueStyle={{ color: '#faad14', fontSize: '24px', fontWeight: 'bold' }}
+            valueStyle={{ color: '#faad14' }}
+            borderColor="#faad14"
+            loading={loading}
           />
         </Col>
       </Row>

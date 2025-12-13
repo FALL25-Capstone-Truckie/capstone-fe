@@ -10,9 +10,9 @@ import {
   Skeleton,
   Typography,
   Row,
-  Col,
-  Statistic
+  Col
 } from 'antd';
+import StatCard from '../../../components/common/StatCard';
 import { 
   SearchOutlined, 
   ReloadOutlined,
@@ -234,45 +234,43 @@ const CompensationAssessmentPage: React.FC = () => {
       {/* Statistics Cards */}
       <Row gutter={16} className="mb-6">
         <Col xs={24} sm={12} lg={6}>
-          <Card className="shadow-sm" style={{ borderLeft: '4px solid #1890ff' }}>
-            <Statistic
-              title="Tổng thẩm định"
-              value={stats.total}
-              prefix={<FileTextOutlined style={{ color: '#1890ff' }} />}
-            />
-          </Card>
+          <StatCard
+            title="Tổng thẩm định"
+            value={stats.total}
+            prefix={<FileTextOutlined />}
+            borderColor="#1890ff"
+            loading={loading}
+          />
         </Col>
         <Col xs={24} sm={12} lg={6}>
-          <Card className="shadow-sm" style={{ borderLeft: '4px solid #f5222d' }}>
-            <Statistic
-              title="Phát hiện gian lận"
-              value={stats.fraudCount}
-              prefix={<WarningOutlined style={{ color: '#f5222d' }} />}
-              valueStyle={{ color: stats.fraudCount > 0 ? '#f5222d' : undefined }}
-            />
-          </Card>
+          <StatCard
+            title="Phát hiện gian lận"
+            value={stats.fraudCount}
+            prefix={<WarningOutlined />}
+            valueStyle={{ color: stats.fraudCount > 0 ? '#f5222d' : undefined }}
+            borderColor="#f5222d"
+            loading={loading}
+          />
         </Col>
         <Col xs={24} sm={12} lg={6}>
-          <Card className="shadow-sm" style={{ borderLeft: '4px solid #52c41a' }}>
-            <Statistic
-              title="Tỷ lệ TB"
-              value={stats.avgRate * 100}
-              precision={1}
-              suffix="%"
-              prefix={<CheckCircleOutlined style={{ color: '#52c41a' }} />}
-            />
-          </Card>
+          <StatCard
+            title="Tỷ lệ TB"
+            value={stats.avgRate * 100}
+            precision={1}
+            suffix="%"
+            prefix={<CheckCircleOutlined />}
+            borderColor="#52c41a"
+            loading={loading}
+          />
         </Col>
         <Col xs={24} sm={12} lg={6}>
-          <Card className="shadow-sm" style={{ borderLeft: '4px solid #faad14' }}>
-            <Statistic
-              title="Tổng bồi thường"
-              value={stats.totalCompensation}
-              precision={0}
-              prefix={<DollarOutlined style={{ color: '#faad14' }} />}
-              formatter={(value) => `${Number(value).toLocaleString('vi-VN')} ₫`}
-            />
-          </Card>
+          <StatCard
+            title="Tổng bồi thường"
+            value={`${stats.totalCompensation.toLocaleString('vi-VN')} ₫`}
+            prefix={<DollarOutlined />}
+            borderColor="#faad14"
+            loading={loading}
+          />
         </Col>
       </Row>
 

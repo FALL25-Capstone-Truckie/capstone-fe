@@ -1,5 +1,5 @@
 import React from 'react';
-import { Card, Badge, Typography, Skeleton, Row, Col } from 'antd';
+import { Card, Typography, Skeleton, Row, Col } from 'antd';
 import {
     CheckCircleOutlined,
     StopOutlined,
@@ -75,6 +75,8 @@ const statCardConfigs: StatCardConfig[] = [
     }
 ];
 
+const CARD_MIN_HEIGHT = 80;
+
 const UserStatCards: React.FC<UserStatCardsProps> = ({ users, loading, userType = 'customer' }) => {
     const getCountByStatus = (status: UserStatusEnum): number => {
         return users.filter(user => 
@@ -97,10 +99,13 @@ const UserStatCards: React.FC<UserStatCardsProps> = ({ users, loading, userType 
 
     if (loading) {
         return (
-            <Row gutter={[16, 16]} className="mb-6">
+            <Row gutter={[12, 12]} className="mb-6">
                 {statCardConfigs.map((config, index) => (
-                    <Col xs={24} sm={12} md={8} lg={4} xl={4} key={index}>
-                        <Card className="shadow-sm h-full">
+                    <Col xs={12} sm={8} md={6} lg={4} xl={4} key={index}>
+                        <Card 
+                            className="shadow-sm" 
+                            bodyStyle={{ padding: '12px 16px', minHeight: CARD_MIN_HEIGHT }}
+                        >
                             <Skeleton active paragraph={{ rows: 1 }} />
                         </Card>
                     </Col>
@@ -110,37 +115,47 @@ const UserStatCards: React.FC<UserStatCardsProps> = ({ users, loading, userType 
     }
 
     return (
-        <Row gutter={[16, 16]} className="mb-6">
+        <Row gutter={[12, 12]} className="mb-6">
             {statCardConfigs.map((config) => {
                 const count = getCountByStatus(config.status);
                 return (
-                    <Col xs={24} sm={12} md={8} lg={4} xl={4} key={config.status}>
+                    <Col xs={12} sm={8} md={6} lg={4} xl={4} key={config.status}>
                         <Card
-                            className="shadow-sm hover:shadow-md transition-shadow cursor-pointer h-full"
+                            className="shadow-sm hover:shadow-md transition-shadow cursor-pointer"
                             style={{
                                 borderLeft: `4px solid ${config.borderColor}`,
                                 backgroundColor: config.bgColor
                             }}
+                            bodyStyle={{ 
+                                padding: '12px 16px', 
+                                minHeight: CARD_MIN_HEIGHT,
+                                display: 'flex',
+                                alignItems: 'center'
+                            }}
                         >
-                            <div className="flex items-center justify-between h-full">
-                                <div className="flex-1">
-                                    <Text type="secondary" className="text-xs block mb-1">
+                            <div className="flex items-center justify-between w-full">
+                                <div className="flex-1 min-w-0">
+                                    <Text type="secondary" className="text-xs block mb-1 truncate">
                                         {config.label}
                                     </Text>
                                     <div className="flex items-center gap-2">
-                                        <Badge
-                                            count={count}
-                                            showZero
-                                            style={{ backgroundColor: config.color }}
-                                            overflowCount={999}
-                                        />
-                                        <Text className="text-xs text-gray-500">
+                                        <Text 
+                                            strong 
+                                            style={{ 
+                                                fontSize: '20px', 
+                                                color: config.color,
+                                                lineHeight: 1
+                                            }}
+                                        >
+                                            {count}
+                                        </Text>
+                                        <Text className="text-xs text-gray-500 truncate">
                                             {getUserTypeLabel()}
                                         </Text>
                                     </div>
                                 </div>
                                 <div
-                                    className="text-xl"
+                                    className="text-2xl flex-shrink-0 ml-2"
                                     style={{ color: config.color }}
                                 >
                                     {config.icon}

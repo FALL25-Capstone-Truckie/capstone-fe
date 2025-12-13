@@ -13,6 +13,28 @@ import type { VehicleServiceRecord } from '../../models';
 
 const { Text, Title } = Typography;
 
+// Service type mapping - centralized for consistency
+const SERVICE_TYPE_MAP: { [key: string]: string } = {
+    'INSPECTION': 'Đăng kiểm định kỳ',
+    'MAINTENANCE_PERIODIC': 'Bảo dưỡng định kỳ',
+    'INSURANCE_RENEWAL': 'Gia hạn bảo hiểm',
+    'MAINTENANCE_REPAIR': 'Sửa chữa',
+    'OTHER': 'Khác'
+};
+
+// Helper function to get display name from service type code
+const getServiceTypeDisplayName = (serviceType: string | undefined): string => {
+    if (!serviceType) return 'Bảo dưỡng định kỳ';
+    
+    // If it's a code, map it to display name
+    if (SERVICE_TYPE_MAP[serviceType]) {
+        return SERVICE_TYPE_MAP[serviceType];
+    }
+    
+    // Already a display name or unknown, return as-is
+    return serviceType;
+};
+
 interface MaintenanceAlertBannerProps {
     onCreateSchedule?: (vehicleId: string, serviceType: string) => void;
     className?: string;
@@ -81,13 +103,22 @@ const MaintenanceAlertBanner: React.FC<MaintenanceAlertBannerProps> = ({
     };
 
     const handleCreateSchedule = (vehicle: any, serviceType: string) => {
+        // Debug: Log what we're sending to parent
+        console.log('🔍 DEBUG MaintenanceAlertBanner handleCreateSchedule:', {
+            vehicleId: vehicle?.id,
+            vehicleLicensePlate: vehicle?.licensePlateNumber,
+            serviceTypeReceived: serviceType,
+            isCodeInMap: SERVICE_TYPE_MAP[serviceType] !== undefined,
+            mappedDisplayName: SERVICE_TYPE_MAP[serviceType] || 'NOT_FOUND'
+        });
+        
         if (onCreateSchedule && vehicle?.id) {
             onCreateSchedule(vehicle.id, serviceType);
         }
     };
 
     const getServiceTypeFromVehicle = (vehicle: any) => {
-        if (!vehicle) return 'Bảo dưỡng định kỳ';
+        if (!vehicle) return 'MAINTENANCE_PERIODIC';
         
         const today = dayjs();
         const inspectionExpiry = vehicle.inspectionExpiryDate ? dayjs(vehicle.inspectionExpiryDate) : null;
@@ -96,16 +127,16 @@ const MaintenanceAlertBanner: React.FC<MaintenanceAlertBannerProps> = ({
 
         // Priority: Inspection > Insurance > Maintenance
         if (inspectionExpiry && (inspectionExpiry.isBefore(today) || inspectionExpiry.diff(today, 'day') <= 30)) {
-            return 'Đăng kiểm định kỳ';
+            return 'INSPECTION';
         }
         if (insuranceExpiry && (insuranceExpiry.isBefore(today) || insuranceExpiry.diff(today, 'day') <= 30)) {
-            return 'Gia hạn bảo hiểm';
+            return 'INSURANCE_RENEWAL';
         }
         if (maintenanceNext && (maintenanceNext.isBefore(today) || maintenanceNext.diff(today, 'day') <= 30)) {
-            return 'Bảo dưỡng định kỳ';
+            return 'MAINTENANCE_PERIODIC';
         }
         
-        return 'Bảo dưỡng định kỳ';
+        return 'MAINTENANCE_PERIODIC';
     };
 
     const getDaysUntilDue = (date: string) => {
@@ -140,7 +171,9 @@ const MaintenanceAlertBanner: React.FC<MaintenanceAlertBannerProps> = ({
         // Sử dụng nextServiceDate thay vì plannedDate để tính ngày còn lại
         const targetDate = service.nextServiceDate || service.plannedDate;
         const daysUntil = targetDate ? getDaysUntilDue(targetDate) : 0;
-        const serviceType = getServiceTypeFromVehicle(vehicle);
+        
+        // Use centralized helper function for service type display
+        const serviceTypeDisplayName = getServiceTypeDisplayName(service.serviceType);
         const alertLevel = isOverdue ? 'overdue' : getAlertLevel(daysUntil);
         const alertStyle = getAlertStyle(alertLevel);
 
@@ -163,7 +196,7 @@ const MaintenanceAlertBanner: React.FC<MaintenanceAlertBannerProps> = ({
                                     alertLevel === 'critical' ? 'red' : 
                                     alertLevel === 'warning' ? 'orange' : 'default'
                                 }>
-                                    {service.serviceType || serviceType}
+                                    {serviceTypeDisplayName}
                                 </Tag>
                             </Space>
                             <Space>
@@ -183,7 +216,7 @@ const MaintenanceAlertBanner: React.FC<MaintenanceAlertBannerProps> = ({
                             type="primary"
                             size="small"
                             icon={<PlusOutlined />}
-                            onClick={() => handleCreateSchedule(vehicle, serviceType)}
+                            onClick={() => handleCreateSchedule(vehicle, service.serviceType || 'Bảo dưỡng định kỳ')}
                             className={
                                 alertLevel === 'overdue' ? 'bg-red-600 hover:bg-red-700' :
                                 alertLevel === 'critical' ? 'bg-red-500 hover:bg-red-600' :
@@ -404,14 +437,14 @@ const MaintenanceAlertBanner: React.FC<MaintenanceAlertBannerProps> = ({
                                                             getAlertLevel(getDaysUntilDue(service.nextServiceDate || service.plannedDate || '')) === 'critical' ? 'red' : 
                                                             'orange'
                                                         }>
-                                                            {service.serviceType || getServiceTypeFromVehicle(service.vehicleEntity)}
+                                                            {getServiceTypeDisplayName(service.serviceType)}
                                                         </Tag>
                                                     </div>
                                                     <Button
                                                         type="primary"
                                                         size="small"
                                                         icon={<PlusOutlined />}
-                                                        onClick={() => handleCreateSchedule(service.vehicleEntity, getServiceTypeFromVehicle(service.vehicleEntity))}
+                                                        onClick={() => handleCreateSchedule(service.vehicleEntity, service.serviceType || 'Bảo dưỡng định kỳ')}
                                                         className={
                                                             isOverdue ? 'bg-red-600 hover:bg-red-700' :
                                                             getAlertLevel(getDaysUntilDue(service.nextServiceDate || service.plannedDate || '')) === 'critical' ? 'bg-red-500 hover:bg-red-600' :

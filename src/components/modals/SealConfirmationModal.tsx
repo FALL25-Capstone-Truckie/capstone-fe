@@ -79,7 +79,6 @@ export const SealConfirmationModal: React.FC<SealConfirmationModalProps> = ({
       centered
       styles={{
         wrapper: {
-          backgroundColor: '#1890ff',
           padding: 0,
           overflow: 'hidden'
         },

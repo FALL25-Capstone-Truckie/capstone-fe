@@ -39,16 +39,23 @@ export const vehicleAssignmentService = {
      */
     getFullById: async (id: string): Promise<ApiResponse<any>> => {
         try {
+            console.log("🔍 DEBUG: API Service - Calling getFullById for ID:", id);
             const response = await httpClient.get<ApiResponse<any>>(`${BASE_URL}/${id}/full`);
+            console.log("🔍 DEBUG: API Service - Raw response:", response);
+            console.log("🔍 DEBUG: API Service - Response data:", response.data);
             return response.data;
         } catch (error) {
+            console.error("🔍 DEBUG: API Service - Error in getFullById:", error);
             throw error;
         }
     },
 
     create: async (data: CreateVehicleAssignmentRequest): Promise<VehicleAssignmentDetailResponse> => {
         try {
+            console.log("🔍 DEBUG: API Service - Calling create for data:", data);
             const response = await httpClient.post<VehicleAssignmentDetailResponse>(BASE_URL, data);
+            console.log("🔍 DEBUG: API Service - Raw response:", response);
+            console.log("🔍 DEBUG: API Service - Response data:", response.data);
             return response.data;
         } catch (error) {
             throw error;

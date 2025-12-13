@@ -1,5 +1,6 @@
 import React from 'react';
-import { Card, Row, Col, Statistic, Spin } from 'antd';
+import { Card, Row, Col, Spin } from 'antd';
+import StatCard from '../../../../components/common/StatCard';
 import {
   CarOutlined,
   HddOutlined,
@@ -19,13 +20,13 @@ const DeviceStatsCards: React.FC<DeviceStatsCardsProps> = ({ data, loading }) =>
   const getIcon = (type: 'vehicles' | 'devices' | 'maintenances' | 'penalties') => {
     switch (type) {
       case 'vehicles':
-        return <CarOutlined style={{ fontSize: 24, color: '#1890ff' }} />;
+        return <CarOutlined />;
       case 'devices':
-        return <HddOutlined style={{ fontSize: 24, color: '#52c41a' }} />;
+        return <HddOutlined />;
       case 'maintenances':
-        return <ToolOutlined style={{ fontSize: 24, color: '#faad14' }} />;
+        return <ToolOutlined />;
       case 'penalties':
-        return <ExclamationCircleOutlined style={{ fontSize: 24, color: '#ff4d4f' }} />;
+        return <ExclamationCircleOutlined />;
     }
   };
 
@@ -46,42 +47,36 @@ const DeviceStatsCards: React.FC<DeviceStatsCardsProps> = ({ data, loading }) =>
     const statsData = data?.[type];
     const deltaPercent = statsData?.deltaPercent || 0;
     const isPositive = deltaPercent >= 0;
+    const borderColor = type === 'vehicles' ? '#1890ff' : 
+                       type === 'devices' ? '#52c41a' : 
+                       type === 'maintenances' ? '#faad14' : '#ff4d4f';
 
     return (
       <Col xs={24} sm={12} lg={6} key={type}>
-        <Card bordered={false} className="shadow-sm hover:shadow-md transition-shadow">
-          {loading ? (
-            <div className="flex justify-center items-center h-32">
-              <Spin />
+        <StatCard
+          title={getTitle(type)}
+          value={statsData?.count || 0}
+          prefix={getIcon(type)}
+          suffix={
+            <div className="flex items-center">
+              {isPositive ? (
+                <ArrowUpOutlined style={{ color: '#52c41a', marginRight: 4 }} />
+              ) : (
+                <ArrowDownOutlined style={{ color: '#ff4d4f', marginRight: 4 }} />
+              )}
+              <span
+                style={{
+                  color: isPositive ? '#52c41a' : '#ff4d4f',
+                  fontSize: 14,
+                }}
+              >
+                {Math.abs(deltaPercent).toFixed(1)}%
+              </span>
             </div>
-          ) : (
-            <div>
-              <div className="flex items-center justify-between mb-4">
-                <div>{getIcon(type)}</div>
-                <div className="text-right">
-                  <div className="text-gray-500 text-sm">{getTitle(type)}</div>
-                  <div className="text-2xl font-bold">{statsData?.count || 0}</div>
-                </div>
-              </div>
-              <div className="flex items-center">
-                {isPositive ? (
-                  <ArrowUpOutlined style={{ color: '#52c41a', marginRight: 4 }} />
-                ) : (
-                  <ArrowDownOutlined style={{ color: '#ff4d4f', marginRight: 4 }} />
-                )}
-                <span
-                  style={{
-                    color: isPositive ? '#52c41a' : '#ff4d4f',
-                    fontSize: 14,
-                  }}
-                >
-                  {Math.abs(deltaPercent).toFixed(1)}%
-                </span>
-                <span className="text-gray-500 text-sm ml-2">so với kỳ trước</span>
-              </div>
-            </div>
-          )}
-        </Card>
+          }
+          borderColor={borderColor}
+          loading={loading}
+        />
       </Col>
     );
   };

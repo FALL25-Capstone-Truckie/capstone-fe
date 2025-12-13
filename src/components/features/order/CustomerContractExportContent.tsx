@@ -539,31 +539,29 @@ const CustomerContractExportContent: React.FC<CustomerContractExportContentProps
           <p>
             <strong>Điều kiện thanh toán:</strong>
           </p>
-          <p>
-            - Đặt cọc: {contractData.contractSettings.depositPercent}% (
-            {formatCurrency(
-              ((contractSettings?.vatRate 
-                ? contractData.priceDetails.finalTotal * (1 + contractSettings.vatRate)
-                : contractData.priceDetails.finalTotal) *
-                contractData.contractSettings.depositPercent) /
-              100
-            )}) trong vòng{" "}
-            {contractData.contractSettings.expiredDepositDate} ngày
-          </p>
-          <p>
-            - Thanh toán còn lại:{" "}
-            {formatCurrency(
-              (contractSettings?.vatRate 
-                ? contractData.priceDetails.finalTotal * (1 + contractSettings.vatRate)
-                : contractData.priceDetails.finalTotal) -
-                ((contractSettings?.vatRate 
-                  ? contractData.priceDetails.finalTotal * (1 + contractSettings.vatRate)
-                  : contractData.priceDetails.finalTotal) *
-                  contractData.contractSettings.depositPercent) /
-                  100
-            )}{" "}
-            khi hoàn thành dịch vụ
-          </p>
+          {(() => {
+            // Use custom deposit percent if available, otherwise use global setting
+            const effectiveDepositPercent = (contractData.customDepositPercent && contractData.customDepositPercent > 0 && contractData.customDepositPercent <= 100)
+              ? contractData.customDepositPercent
+              : contractData.contractSettings.depositPercent;
+            const baseTotal = contractSettings?.vatRate 
+              ? contractData.priceDetails.finalTotal * (1 + contractSettings.vatRate)
+              : contractData.priceDetails.finalTotal;
+            const depositAmount = (baseTotal * effectiveDepositPercent) / 100;
+            const remainingAmount = baseTotal - depositAmount;
+            
+            return (
+              <>
+                <p>
+                  - Đặt cọc: {effectiveDepositPercent}% ({formatCurrency(depositAmount)}) trong vòng{" "}
+                  {contractData.contractSettings.expiredDepositDate} ngày
+                </p>
+                <p>
+                  - Thanh toán còn lại: {formatCurrency(remainingAmount)} khi hoàn thành dịch vụ
+                </p>
+              </>
+            );
+          })()}
           <p>- Phương thức thanh toán: Chuyển khoản</p>
           <p>
             - Phí bảo hiểm: Hàng thông thường {(contractData.contractSettings.insuranceRateNormal || 0.0008) * 100}%, hàng dễ vỡ {(contractData.contractSettings.insuranceRateFragile || 0.0015) * 100}% giá

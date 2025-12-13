@@ -65,20 +65,6 @@ const CustomerTable: React.FC<CustomerTableProps> = ({
             render: (phone: string) => phone || 'N/A',
         },
         {
-            title: 'Địa chỉ',
-            dataIndex: 'address',
-            key: 'address',
-            width: 200,
-            ellipsis: {
-                showTitle: false,
-            },
-            render: (address: string) => (
-                <Tooltip placement="topLeft" title={address}>
-                    {address || 'N/A'}
-                </Tooltip>
-            ),
-        },
-        {
             title: 'Trạng thái',
             dataIndex: 'status',
             key: 'status',

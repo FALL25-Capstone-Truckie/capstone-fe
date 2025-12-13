@@ -7,3 +7,9 @@ export type DriverResponse = ApiResponse<DriverModel>;
 export type DriversResponse = ApiResponse<DriverModel[]>;
 export type PaginatedDriversResponse = ApiResponse<PaginatedResponse<DriverModel>>;
 export type DriverCreatedApiResponse = ApiResponse<DriverCreatedResponse>;
+
+export interface LicenseRenewalRequest {
+    dateOfPassing: string;
+    dateOfIssue: string;
+    dateOfExpiry: string;
+}

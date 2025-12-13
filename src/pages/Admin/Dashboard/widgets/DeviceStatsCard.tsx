@@ -1,5 +1,6 @@
 import React from 'react';
-import { Card, Row, Col, Statistic, Spin } from 'antd';
+import { Card, Row, Col, Spin } from 'antd';
+import StatCard from '../../../../components/common/StatCard';
 import { 
   MobileOutlined, 
   CheckCircleOutlined, 
@@ -51,35 +52,43 @@ const DeviceStatsCard: React.FC<DeviceStatsCardProps> = ({ data, loading }) => {
     >
       <Row gutter={[16, 16]}>
         <Col xs={12} sm={6}>
-          <Statistic
+          <StatCard
             title="Tổng thiết bị"
             value={stats.totalDevices}
-            prefix={<MobileOutlined style={{ color: '#1890ff' }} />}
-            valueStyle={{ color: '#1890ff', fontWeight: 'bold' }}
+            prefix={<MobileOutlined />}
+            valueStyle={{ color: '#1890ff' }}
+            borderColor="#1890ff"
+            loading={loading}
           />
         </Col>
         <Col xs={12} sm={6}>
-          <Statistic
+          <StatCard
             title="Đang hoạt động"
             value={stats.activeDevices}
-            prefix={<CheckCircleOutlined style={{ color: '#52c41a' }} />}
-            valueStyle={{ color: '#52c41a', fontWeight: 'bold' }}
+            prefix={<CheckCircleOutlined />}
+            valueStyle={{ color: '#52c41a' }}
+            borderColor="#52c41a"
+            loading={loading}
           />
         </Col>
         <Col xs={12} sm={6}>
-          <Statistic
+          <StatCard
             title="Không hoạt động"
             value={stats.inactiveDevices}
-            prefix={<CloseCircleOutlined style={{ color: '#ff4d4f' }} />}
-            valueStyle={{ color: '#ff4d4f', fontWeight: 'bold' }}
+            prefix={<CloseCircleOutlined />}
+            valueStyle={{ color: '#ff4d4f' }}
+            borderColor="#ff4d4f"
+            loading={loading}
           />
         </Col>
         <Col xs={12} sm={6}>
-          <Statistic
+          <StatCard
             title="Đã gắn xe"
             value={stats.assignedDevices}
-            prefix={<LinkOutlined style={{ color: '#722ed1' }} />}
-            valueStyle={{ color: '#722ed1', fontWeight: 'bold' }}
+            prefix={<LinkOutlined />}
+            valueStyle={{ color: '#722ed1' }}
+            borderColor="#722ed1"
+            loading={loading}
           />
         </Col>
       </Row>

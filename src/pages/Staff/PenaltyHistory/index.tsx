@@ -8,13 +8,15 @@ import {
     Result,
     Skeleton,
     Badge,
-    Statistic,
     Segmented,
     Space,
     App,
     ConfigProvider,
-    theme
+    theme,
+    Row,
+    Col
 } from 'antd';
+import StatCard from '../../../components/common/StatCard';
 import {
     SearchOutlined,
     ReloadOutlined,
@@ -37,7 +39,6 @@ const PenaltyHistory: React.FC = () => {
     const [isModalVisible, setIsModalVisible] = useState<boolean>(false);
     const [currentPenalty, setCurrentPenalty] = useState<Penalty | null>(null);
     const [isFetching, setIsFetching] = useState<boolean>(false);
-    const [statusFilter, setStatusFilter] = useState<string>('all');
     const { isAuthenticated } = useAuth();
 
     // Sử dụng React Query để fetch penalties
@@ -74,19 +75,11 @@ const PenaltyHistory: React.FC = () => {
         setIsModalVisible(false);
     };
 
-    // Filter penalties based on search text and status
+    // Filter penalties based on search text
     const filteredPenalties = useMemo(() => {
         if (!penaltiesResponse?.data) return [];
 
-        let penalties = penaltiesResponse.data;
-        
-        // Apply status filter
-        if (statusFilter !== 'all') {
-            penalties = penalties.filter((penalty: Penalty) => {
-                // Add status filtering logic when penalty has status field
-                return true; // Placeholder - update when status field is available
-            });
-        }
+        const penalties = penaltiesResponse.data;
 
         const keyword = searchText.trim().toLowerCase();
         if (!keyword) return penalties;
@@ -104,7 +97,7 @@ const PenaltyHistory: React.FC = () => {
                 phone.includes(keyword)
             );
         });
-    }, [penaltiesResponse?.data, searchText, statusFilter]);
+    }, [penaltiesResponse?.data, searchText]);
 
     // Thống kê vi phạm theo trạng thái
     const getPenaltyStats = () => {
@@ -120,41 +113,44 @@ const PenaltyHistory: React.FC = () => {
 
     const stats = getPenaltyStats();
 
-    // Render stats card với Statistic component
+    // Render stats card với StatCard component
     const renderStatCards = () => (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-            <Card className="shadow-sm hover:shadow-md transition-all duration-300">
-                <Statistic
+        <Row gutter={[16, 16]} className="mb-6">
+            <Col xs={24} sm={8}>
+                <StatCard
                     title="Tổng số vi phạm"
                     value={stats.totalCount}
                     prefix={<WarningOutlined />}
                     valueStyle={{ color: token.colorPrimary }}
+                    borderColor={token.colorPrimary}
                     loading={isLoading}
                 />
-            </Card>
-            <Card className="shadow-sm hover:shadow-md transition-all duration-300">
-                <Statistic
+            </Col>
+            <Col xs={24} sm={8}>
+                <StatCard
                     title="Vi phạm trong tháng"
-                    value={penaltiesResponse?.data?.filter(p => 
+                    value={penaltiesResponse?.data?.filter(p =>
                         dayjs(p.penaltyDate).isSame(dayjs(), 'month')
                     ).length || 0}
                     prefix={<WarningOutlined />}
                     valueStyle={{ color: token.colorWarning }}
+                    borderColor={token.colorWarning}
                     loading={isLoading}
                 />
-            </Card>
-            <Card className="shadow-sm hover:shadow-md transition-all duration-300">
-                <Statistic
+            </Col>
+            <Col xs={24} sm={8}>
+                <StatCard
                     title="Vi phạm trong tuần"
-                    value={penaltiesResponse?.data?.filter(p => 
+                    value={penaltiesResponse?.data?.filter(p =>
                         dayjs(p.penaltyDate).isSame(dayjs(), 'week')
                     ).length || 0}
                     prefix={<WarningOutlined />}
                     valueStyle={{ color: token.colorError }}
+                    borderColor={token.colorError}
                     loading={isLoading}
                 />
-            </Card>
-        </div>
+            </Col>
+        </Row>
     );
 
     const columns = [
@@ -172,14 +168,34 @@ const PenaltyHistory: React.FC = () => {
             sorter: (a: Penalty, b: Penalty) => dayjs(a.penaltyDate).unix() - dayjs(b.penaltyDate).unix(),
         },
         {
-            title: 'ID Tài xế',
-            dataIndex: 'driverId',
-            key: 'driverId',
+            title: 'Thông tin tài xế',
+            key: 'driverInfo',
+            render: (_: any, record: Penalty) => {
+                const driver = record.driverSummary;
+                if (!driver) return '-';
+                return (
+                    <div>
+                        <div className="font-medium">{driver.fullName || '-'}</div>
+                        <div className="text-sm text-gray-500">{driver.phoneNumber || '-'}</div>
+                    </div>
+                );
+            },
         },
         {
-            title: 'ID Phân công xe',
-            dataIndex: 'vehicleAssignmentId',
-            key: 'vehicleAssignmentId',
+            title: 'Mã chuyến xe',
+            key: 'trackingCode',
+            render: (_: any, record: Penalty) => {
+                return record.vehicleAssignment?.trackingCode || '-';
+            },
+        },
+        {
+            title: 'Action',
+            key: 'action',
+            render: (_: any, record: Penalty) => (
+                <Space size="middle">
+                    <Button type="link" onClick={() => handleViewPenalty(record)}>View</Button>
+                </Space>
+            ),
         },
     ];
 
@@ -251,25 +267,15 @@ const PenaltyHistory: React.FC = () => {
                                     Hiển thị {filteredPenalties.length} trên {penaltiesResponse?.data?.length || 0} vi phạm
                                 </Text>
                             </div>
-                            <Space.Compact className="w-full lg:w-auto">
-                                <Segmented
-                                    options={[
-                                        { label: 'Tất cả', value: 'all' },
-                                        { label: 'Nghiêm trọng', value: 'serious' },
-                                        { label: 'Thông thường', value: 'normal' }
-                                    ]}
-                                    value={statusFilter}
-                                    onChange={setStatusFilter}
-                                    className="mb-0"
-                                />
+                            <div className="w-full lg:w-auto">
                                 <Input
                                     placeholder="Tìm kiếm theo loại vi phạm, tài xế, mã chuyến..."
                                     prefix={<SearchOutlined />}
                                     onChange={e => debouncedSearch(e.target.value)}
-                                    className="flex-1 min-w-[300px]"
+                                    className="w-full lg:w-auto min-w-[300px]"
                                     disabled={isLoading}
                                 />
-                            </Space.Compact>
+                            </div>
                         </div>
 
                         <Table

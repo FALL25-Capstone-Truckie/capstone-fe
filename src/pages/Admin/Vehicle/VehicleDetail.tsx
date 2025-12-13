@@ -335,11 +335,34 @@ const VehicleDetailPage: React.FC = () => {
     const handleCreateMaintenanceSchedule = (serviceType?: string) => {
         if (!vehicle) return;
         
+        // Map service type codes to display names (matching backend properties)
+        const serviceTypeMap: { [key: string]: string } = {
+            'INSPECTION': 'Đăng kiểm định kỳ',
+            'MAINTENANCE_PERIODIC': 'Bảo dưỡng định kỳ',
+            'INSURANCE_RENEWAL': 'Gia hạn bảo hiểm',
+            'MAINTENANCE_REPAIR': 'Sửa chữa',
+            'OTHER': 'Khác'
+        };
+        
+        const displayServiceType = serviceTypeMap[serviceType || ''] || serviceType || 'bảo trì';
+        
+        // For insurance renewal, use current expiry date as planned date
+        let plannedDate = dayjs().add(1, 'day');
+        let additionalFields = {};
+        
+        if (serviceType === 'INSURANCE_RENEWAL' && vehicle.insuranceExpiryDate) {
+            plannedDate = dayjs(vehicle.insuranceExpiryDate);
+            additionalFields = {
+                insurancePolicyNumber: vehicle.insurancePolicyNumber || ''
+            };
+        }
+        
         const initialValues = {
             vehicleId: vehicle.id,
-            serviceType: serviceType || '',
-            plannedDate: dayjs().add(1, 'day'),
-            description: `Lịch ${serviceType || 'bảo trì'} cho xe ${vehicle.licensePlateNumber}`
+            serviceType: displayServiceType, // Use display name instead of code
+            plannedDate,
+            description: `Lịch ${displayServiceType} cho xe ${vehicle.licensePlateNumber}`,
+            ...additionalFields
         };
         
         setSelectedMaintenance(initialValues as any);
@@ -495,6 +518,16 @@ const VehicleDetailPage: React.FC = () => {
                         description={`Xe ${vehicle.licensePlateNumber} đã quá hạn bảo hiểm ${Math.abs(daysUntil)} ngày`}
                         type="error"
                         showIcon
+                        action={
+                            <Button 
+                                size="small" 
+                                type="primary"
+                                danger
+                                onClick={() => handleCreateMaintenanceSchedule('INSURANCE_RENEWAL')}
+                            >
+                                Đặt lịch bảo hiểm
+                            </Button>
+                        }
                         style={{ marginBottom: 8 }}
                     />
                 );
@@ -507,6 +540,16 @@ const VehicleDetailPage: React.FC = () => {
                         description={`Xe ${vehicle.licensePlateNumber} sẽ đến hạn bảo hiểm trong ${daysUntil} ngày nữa`}
                         type="error"
                         showIcon
+                        action={
+                            <Button 
+                                size="small" 
+                                type="primary"
+                                danger
+                                onClick={() => handleCreateMaintenanceSchedule('INSURANCE_RENEWAL')}
+                            >
+                                Đặt lịch bảo hiểm
+                            </Button>
+                        }
                         style={{ marginBottom: 8 }}
                     />
                 );
@@ -519,6 +562,15 @@ const VehicleDetailPage: React.FC = () => {
                         description={`Xe ${vehicle.licensePlateNumber} sẽ đến hạn bảo hiểm trong ${daysUntil} ngày nữa`}
                         type="warning"
                         showIcon
+                        action={
+                            <Button 
+                                size="small" 
+                                type="primary"
+                                onClick={() => handleCreateMaintenanceSchedule('INSURANCE_RENEWAL')}
+                            >
+                                Đặt lịch bảo hiểm
+                            </Button>
+                        }
                         style={{ marginBottom: 8 }}
                     />
                 );
@@ -544,7 +596,7 @@ const VehicleDetailPage: React.FC = () => {
                                 size="small" 
                                 type="primary" 
                                 danger
-                                onClick={() => handleCreateMaintenanceSchedule('MAINTENANCE')}
+                                onClick={() => handleCreateMaintenanceSchedule('MAINTENANCE_PERIODIC')}
                             >
                                 Đặt lịch bảo dưỡng
                             </Button>
@@ -566,7 +618,7 @@ const VehicleDetailPage: React.FC = () => {
                                 size="small" 
                                 type="primary"
                                 danger
-                                onClick={() => handleCreateMaintenanceSchedule('MAINTENANCE')}
+                                onClick={() => handleCreateMaintenanceSchedule('MAINTENANCE_PERIODIC')}
                             >
                                 Đặt lịch bảo dưỡng
                             </Button>
@@ -587,7 +639,7 @@ const VehicleDetailPage: React.FC = () => {
                             <Button 
                                 size="small" 
                                 type="primary"
-                                onClick={() => handleCreateMaintenanceSchedule('MAINTENANCE')}
+                                onClick={() => handleCreateMaintenanceSchedule('MAINTENANCE_PERIODIC')}
                             >
                                 Đặt lịch bảo dưỡng
                             </Button>
@@ -1331,8 +1383,10 @@ const VehicleDetailPage: React.FC = () => {
             >
                 {selectedMaintenance && (
                     <MaintenanceForm
+                        key={`maintenance-form-${(selectedMaintenance as any).serviceType}-${(selectedMaintenance as any).vehicleId || 'new'}`}
                         initialValues={selectedMaintenance}
                         isEditMode={false}
+                        preSelectedServiceType={(selectedMaintenance as any).serviceType}
                         onSubmit={handleMaintenanceFormSubmit}
                         onCancel={() => {
                             setIsCreateMaintenanceModalOpen(false);

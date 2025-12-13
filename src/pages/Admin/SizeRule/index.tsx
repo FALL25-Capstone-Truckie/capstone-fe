@@ -15,7 +15,11 @@ import {
     Row,
     Col,
     Statistic,
-    Divider
+    Divider,
+    Modal,
+    Form,
+    Tooltip,
+    Popconfirm
 } from 'antd';
 import { 
     DollarOutlined, 
@@ -23,10 +27,15 @@ import {
     TruckOutlined,
     CarOutlined,
     SaveOutlined,
-    InfoCircleOutlined
+    InfoCircleOutlined,
+    PlusOutlined,
+    EditOutlined,
+    DeleteOutlined,
+    WarningOutlined
 } from '@ant-design/icons';
-import type { SizeRule, BasingPrice } from '../../../models';
+import type { SizeRule, BasingPrice, DistanceRule } from '../../../models';
 import sizeRuleService from '../../../services/size-rule/sizeRuleService';
+import distanceRuleService from '../../../services/distance-rule/distanceRuleService';
 
 const { Title, Text } = Typography;
 const { TabPane } = Tabs;
@@ -54,6 +63,11 @@ const SizeRulePage: React.FC = () => {
     const queryClient = useQueryClient();
     const [activeCategory, setActiveCategory] = useState<string>('');
     const [editingPrices, setEditingPrices] = useState<Map<string, EditingPrice>>(new Map());
+    
+    // Distance range edit states
+    const [editingDistanceRule, setEditingDistanceRule] = useState<DistanceRule | null>(null);
+    const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+    const [distanceForm] = Form.useForm();
 
     const {
         data: sizeRules = [],
@@ -65,6 +79,79 @@ const SizeRulePage: React.FC = () => {
         queryKey: ['sizeRules'],
         queryFn: () => sizeRuleService.getSizeRulesFull(),
     });
+
+    // Fetch distance rules
+    const {
+        data: distanceRules = [],
+        refetch: refetchDistanceRules,
+        isError: isDistanceRulesError,
+        error: distanceRulesError
+    } = useQuery({
+        queryKey: ['distanceRules'],
+        queryFn: () => distanceRuleService.getAllDistanceRules(),
+    });
+
+    // Log for debugging
+    React.useEffect(() => {
+        console.log('Distance Rules:', distanceRules);
+        console.log('Active Distance Rules:', distanceRules.filter((r: DistanceRule) => r.status === 'ACTIVE'));
+        if (isDistanceRulesError) {
+            console.error('Distance Rules Error:', distanceRulesError);
+        }
+    }, [distanceRules, isDistanceRulesError, distanceRulesError]);
+
+    // Distance rule mutations
+    const createDistanceRuleMutation = useMutation({
+        mutationFn: (data: { fromKm: number; toKm: number }) => 
+            distanceRuleService.createDistanceRule(data),
+        onSuccess: () => {
+            message.success('Thêm khoảng cách thành công');
+            refetchDistanceRules();
+            refetch();
+            setIsAddModalOpen(false);
+            distanceForm.resetFields();
+        },
+        onError: (error: any) => {
+            message.error(error?.response?.data?.message || 'Không thể thêm khoảng cách');
+        }
+    });
+
+    const updateDistanceRuleMutation = useMutation({
+        mutationFn: ({ id, data }: { id: string; data: { fromKm: number; toKm: number } }) =>
+            distanceRuleService.updateDistanceRule(id, data),
+        onSuccess: () => {
+            message.success('Cập nhật khoảng cách thành công');
+            refetchDistanceRules();
+            refetch();
+            setEditingDistanceRule(null);
+            distanceForm.resetFields();
+        },
+        onError: (error: any) => {
+            message.error(error?.response?.data?.message || 'Không thể cập nhật khoảng cách');
+        }
+    });
+
+    const deleteDistanceRuleMutation = useMutation({
+        mutationFn: (id: string) => distanceRuleService.deleteDistanceRule(id),
+        onSuccess: () => {
+            message.success('Xóa khoảng cách thành công');
+            refetchDistanceRules();
+            refetch();
+        },
+        onError: (error: any) => {
+            message.error(error?.response?.data?.message || 'Không thể xóa khoảng cách');
+        }
+    });
+
+    // Active distance rules sorted by displayOrder (treat null status as ACTIVE for backward compatibility)
+    const activeDistanceRules = distanceRules
+        .filter((rule: DistanceRule) => rule.status === 'ACTIVE' || rule.status === null || rule.status === undefined)
+        .sort((a: DistanceRule, b: DistanceRule) => {
+            // Sort by displayOrder if available, otherwise by fromKm
+            const orderA = a.displayOrder ?? a.fromKm;
+            const orderB = b.displayOrder ?? b.fromKm;
+            return orderA - orderB;
+        });
 
     const updatePriceMutation = useMutation({
         mutationFn: async (data: { id?: string; basePrice: number; sizeRuleId: string; distanceRuleId: string }) => {
@@ -305,6 +392,101 @@ const SizeRulePage: React.FC = () => {
         },
     ];
 
+    // Handle distance rule edit
+    const handleEditDistanceRule = (rule: DistanceRule) => {
+        setEditingDistanceRule(rule);
+        distanceForm.setFieldsValue({
+            fromKm: rule.fromKm,
+            toKm: rule.toKm < 99999 ? rule.toKm : undefined
+        });
+    };
+
+    const handleDistanceRuleSubmit = async () => {
+        try {
+            // Check if editing last range or adding new range (only fromKm required)
+            const isEditingLastRange = editingDistanceRule && 
+                activeDistanceRules.length > 0 && 
+                editingDistanceRule.id === activeDistanceRules[activeDistanceRules.length - 1]?.id;
+            const isAddingNewRange = !editingDistanceRule && isAddModalOpen;
+
+            // Only validate fromKm for last range or new range
+            const fieldsToValidate = (isEditingLastRange || isAddingNewRange) ? ['fromKm'] : ['fromKm', 'toKm'];
+            const values = await distanceForm.validateFields(fieldsToValidate);
+
+            if (editingDistanceRule) {
+                // For last range, keep existing toKm (99999999)
+                const toKmValue = isEditingLastRange ? 99999999 : (values.toKm || 99999999);
+                await updateDistanceRuleMutation.mutateAsync({
+                    id: editingDistanceRule.id,
+                    data: { fromKm: values.fromKm, toKm: toKmValue }
+                });
+            } else {
+                // For new range, backend will auto-set toKm to 99999999 if it's the last range
+                await createDistanceRuleMutation.mutateAsync({
+                    fromKm: values.fromKm,
+                    toKm: values.toKm || 99999999
+                });
+            }
+        } catch (error) {
+            // Validation error
+        }
+    };
+
+    const handleDeleteDistanceRule = async (id: string) => {
+        await deleteDistanceRuleMutation.mutateAsync(id);
+    };
+
+    // Render editable distance header
+    const renderDistanceHeader = (rule: DistanceRule, index: number) => {
+        const displayName = rule.displayName || formatDistanceRange(rule.fromKm, rule.toKm);
+        const isBasePrice = rule.isBasePrice || rule.fromKm === 0;
+        const canDelete = activeDistanceRules.length > 1 && !isBasePrice;
+        const isLoading = updateDistanceRuleMutation.isPending || deleteDistanceRuleMutation.isPending;
+
+        return (
+            <div className="flex flex-col items-center gap-1">
+                <div className="flex items-center gap-1">
+                    <span style={{ color: '#fff', fontSize: '12px', fontWeight: 'bold' }}>
+                        {displayName}
+                    </span>
+                    <Tooltip title="Chỉnh sửa khoảng cách">
+                        <Button
+                            type="text"
+                            size="small"
+                            icon={<EditOutlined style={{ color: '#fff', fontSize: '10px' }} />}
+                            onClick={() => handleEditDistanceRule(rule)}
+                            loading={isLoading}
+                            style={{ padding: '0 2px', height: '16px', minWidth: '16px' }}
+                        />
+                    </Tooltip>
+                    {canDelete && (
+                        <Popconfirm
+                            title="Xóa khoảng cách này?"
+                            description="Hệ thống sẽ tự động điều chỉnh các khoảng cách còn lại"
+                            onConfirm={() => handleDeleteDistanceRule(rule.id)}
+                            okText="Xóa"
+                            cancelText="Hủy"
+                            okButtonProps={{ danger: true }}
+                        >
+                            <Tooltip title="Xóa khoảng cách">
+                                <Button
+                                    type="text"
+                                    size="small"
+                                    icon={<DeleteOutlined style={{ color: '#ff7875', fontSize: '10px' }} />}
+                                    loading={isLoading}
+                                    style={{ padding: '0 2px', height: '16px', minWidth: '16px' }}
+                                />
+                            </Tooltip>
+                        </Popconfirm>
+                    )}
+                </div>
+                {isBasePrice && (
+                    <span style={{ color: '#ffd666', fontSize: '9px' }}>Giá gốc</span>
+                )}
+            </div>
+        );
+    };
+
     // Create columns for price table with editable cells
     const createPriceColumns = () => {
         const columns: any[] = [
@@ -330,19 +512,30 @@ const SizeRulePage: React.FC = () => {
             },
         ];
 
-        priceTableResult.distanceRanges.forEach(range => {
-            const columnKey = `${range.from}-${range.to}`;
-            const isBasing = isBasingPrice(range.from);
+        // Use activeDistanceRules for dynamic columns
+        activeDistanceRules.forEach((distanceRule: DistanceRule, index: number) => {
+            const columnKey = `${distanceRule.fromKm}-${distanceRule.toKm}`;
+            const isBasing = isBasingPrice(distanceRule.fromKm);
             columns.push({
-                title: formatDistanceRange(range.from, range.to),
+                title: renderDistanceHeader(distanceRule, index),
                 dataIndex: columnKey,
                 key: columnKey,
-                width: 160,
-                align: 'right' as const,
+                width: 180,
+                align: 'center' as const,
+                onHeaderCell: () => ({
+                    style: { 
+                        backgroundColor: '#52c41a',
+                        padding: '8px 4px'
+                    }
+                }),
                 render: (priceData: { id: string | null; value: number | null; distanceRuleId: string }, record: TableDataItem) => {
-                    const editKey = `${record.rule.id}-${columnKey}`;
+                    // Find price for this distance rule
+                    const price = record.rule.basingPrices?.find(
+                        (p: BasingPrice) => p.distanceRuleResponse.id === distanceRule.id
+                    );
+                    const editKey = `${record.rule.id}-${distanceRule.id}`;
                     const editingValue = editingPrices.get(editKey);
-                    const currentValue = editingValue?.value ?? priceData?.value;
+                    const currentValue = editingValue?.value ?? (price ? parseInt(price.basePrice) : null);
                     const isEdited = editingPrices.has(editKey);
 
                     return (
@@ -350,9 +543,9 @@ const SizeRulePage: React.FC = () => {
                             value={currentValue}
                             onChange={(value) => handlePriceChange(
                                 record.rule.id,
-                                columnKey,
-                                priceData?.id,
-                                priceData?.distanceRuleId || range.id,
+                                distanceRule.id,
+                                price?.id || null,
+                                distanceRule.id,
                                 value
                             )}
                             formatter={(value) => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
@@ -369,6 +562,32 @@ const SizeRulePage: React.FC = () => {
                     );
                 },
             });
+        });
+
+        // Add column for adding new distance range
+        columns.push({
+            title: (
+                <Tooltip title="Thêm khoảng cách mới">
+                    <Button
+                        type="primary"
+                        size="small"
+                        icon={<PlusOutlined />}
+                        onClick={() => setIsAddModalOpen(true)}
+                        loading={createDistanceRuleMutation.isPending}
+                        style={{ backgroundColor: '#52c41a', borderColor: '#52c41a' }}
+                    />
+                </Tooltip>
+            ),
+            key: 'add-column',
+            width: 60,
+            align: 'center' as const,
+            onHeaderCell: () => ({
+                style: { 
+                    backgroundColor: '#52c41a',
+                    padding: '8px 4px'
+                }
+            }),
+            render: () => null,
         });
 
         return columns;
@@ -435,7 +654,7 @@ const SizeRulePage: React.FC = () => {
                     <Card className="text-center shadow-sm border-t-4 border-t-orange-500">
                         <Statistic
                             title="Mức khoảng cách"
-                            value={priceTableResult.distanceRanges.length}
+                            value={activeDistanceRules.length}
                             prefix={<InfoCircleOutlined className="text-orange-500" />}
                             suffix="mức"
                         />
@@ -553,6 +772,106 @@ const SizeRulePage: React.FC = () => {
                     </div>
                 )}
             </Card>
+
+            {/* Modal chỉnh sửa khoảng cách */}
+            <Modal
+                title={editingDistanceRule ? `Chỉnh sửa: ${editingDistanceRule.displayName || formatDistanceRange(editingDistanceRule.fromKm, editingDistanceRule.toKm)}` : 'Thêm khoảng cách mới'}
+                open={!!editingDistanceRule || isAddModalOpen}
+                onCancel={() => {
+                    setEditingDistanceRule(null);
+                    setIsAddModalOpen(false);
+                    distanceForm.resetFields();
+                }}
+                onOk={handleDistanceRuleSubmit}
+                confirmLoading={updateDistanceRuleMutation.isPending || createDistanceRuleMutation.isPending}
+                okText={editingDistanceRule ? 'Lưu' : 'Thêm'}
+                cancelText="Hủy"
+            >
+                <Alert
+                    message="Hệ thống sẽ tự động điều chỉnh các khoảng cách liền kề và tính toán lại tên hiển thị"
+                    type="info"
+                    showIcon
+                    className="mb-4"
+                />
+                <Form form={distanceForm} layout="vertical">
+                    {/* Check if editing/adding last range */}
+                    {(() => {
+                        const isEditingLastRange = editingDistanceRule && 
+                            activeDistanceRules.length > 0 && 
+                            editingDistanceRule.id === activeDistanceRules[activeDistanceRules.length - 1]?.id;
+                        const isAddingNewRange = !editingDistanceRule && isAddModalOpen;
+                        const currentLastRange = activeDistanceRules[activeDistanceRules.length - 1];
+                        
+                        return (
+                            <>
+                                <Form.Item
+                                    name="fromKm"
+                                    label="Từ (km)"
+                                    rules={[
+                                        { required: true, message: 'Vui lòng nhập khoảng cách bắt đầu' },
+                                        { type: 'number', min: 0, message: 'Giá trị phải >= 0' }
+                                    ]}
+                                >
+                                    <InputNumber
+                                        min={0}
+                                        precision={2}
+                                        style={{ width: '100%' }}
+                                        placeholder={isAddingNewRange 
+                                            ? `Ví dụ: ${currentLastRange ? Math.round(currentLastRange.fromKm) + 50 : 100} (sẽ tạo range mới ở cuối)`
+                                            : "Ví dụ: 0, 4, 15, 100"
+                                        }
+                                        disabled={editingDistanceRule?.isBasePrice || editingDistanceRule?.fromKm === 0}
+                                    />
+                                </Form.Item>
+                                
+                                {/* Hide toKm for last range or when adding new range at end */}
+                                {isEditingLastRange ? (
+                                    <Alert
+                                        message="Khoảng cách cuối cùng"
+                                        description="Đây là khoảng cách cuối cùng (không giới hạn). Bạn chỉ cần chỉnh sửa điểm bắt đầu, hệ thống sẽ tự động điều chỉnh các khoảng cách liền kề."
+                                        type="info"
+                                        showIcon
+                                        className="mb-4"
+                                    />
+                                ) : isAddingNewRange ? (
+                                    <Alert
+                                        message="Thêm khoảng cách mới"
+                                        description={`Nhập điểm bắt đầu lớn hơn ${currentLastRange ? Math.round(currentLastRange.fromKm) : 0}km để tạo khoảng cách mới ở cuối (không giới hạn). Hệ thống sẽ tự động cắt khoảng cách trước đó.`}
+                                        type="info"
+                                        showIcon
+                                        className="mb-4"
+                                    />
+                                ) : (
+                                    <Form.Item
+                                        name="toKm"
+                                        label="Đến (km)"
+                                        rules={[
+                                            { required: true, message: 'Vui lòng nhập khoảng cách kết thúc' }
+                                        ]}
+                                    >
+                                        <InputNumber
+                                            min={0}
+                                            precision={2}
+                                            style={{ width: '100%' }}
+                                            placeholder="Ví dụ: 3.99, 14.99, 99.99"
+                                        />
+                                    </Form.Item>
+                                )}
+                            </>
+                        );
+                    })()}
+                </Form>
+
+                {editingDistanceRule?.isBasePrice && (
+                    <Alert
+                        message="Đây là khoảng cách giá gốc"
+                        description="Khoảng cách bắt đầu (từ 0km) không thể thay đổi điểm bắt đầu"
+                        type="warning"
+                        showIcon
+                        icon={<WarningOutlined />}
+                    />
+                )}
+            </Modal>
         </div>
     );
 };

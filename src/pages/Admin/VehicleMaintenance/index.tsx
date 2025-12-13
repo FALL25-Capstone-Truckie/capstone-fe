@@ -198,19 +198,86 @@ const VehicleMaintenancePage: React.FC = () => {
             return;
         }
 
+        // Map service type codes to display names (matching backend properties)
+        const serviceTypeCodeToDisplay: { [key: string]: string } = {
+            'INSPECTION': 'Đăng kiểm định kỳ',
+            'MAINTENANCE_PERIODIC': 'Bảo dưỡng định kỳ',
+            'INSURANCE_RENEWAL': 'Gia hạn bảo hiểm',
+            'MAINTENANCE_REPAIR': 'Sửa chữa',
+            'OTHER': 'Khác'
+        };
+        
+        // Valid Vietnamese display names from backend config
+        const validDisplayNames = Object.values(serviceTypeCodeToDisplay);
+        
+        // Normalize serviceType (trim whitespace, handle case)
+        const normalizedServiceType = serviceType?.trim() || '';
+        const upperServiceType = normalizedServiceType.toUpperCase();
+        
+        // Determine display name: if already Vietnamese, use as-is; if code, map to Vietnamese
+        let displayServiceType: string;
+        if (validDisplayNames.includes(normalizedServiceType)) {
+            // Already a valid Vietnamese display name
+            displayServiceType = normalizedServiceType;
+        } else if (serviceTypeCodeToDisplay[normalizedServiceType]) {
+            // It's a code (exact match), map to display name
+            displayServiceType = serviceTypeCodeToDisplay[normalizedServiceType];
+        } else if (serviceTypeCodeToDisplay[upperServiceType]) {
+            // It's a code (case-insensitive), map to display name
+            displayServiceType = serviceTypeCodeToDisplay[upperServiceType];
+        } else {
+            // Unknown, use as-is or default
+            displayServiceType = normalizedServiceType || 'Bảo dưỡng định kỳ';
+        }
+        
+        console.log('🔍 DEBUG handleCreateScheduleFromBanner mapping:', {
+            serviceTypeCode: serviceType,
+            serviceTypeLength: serviceType?.length,
+            serviceTypeCharCodes: serviceType ? Array.from(serviceType).map(c => c.charCodeAt(0)) : [],
+            mappingKeyExists: serviceType in serviceTypeCodeToDisplay,
+            directLookup: serviceTypeCodeToDisplay[serviceType],
+            displayServiceType: displayServiceType,
+            validDisplayNamesCheck: validDisplayNames.includes(serviceType)
+        });
+
+        console.log('🔍 DEBUG handleCreateScheduleFromBanner:', {
+            receivedServiceType: serviceType,
+            displayServiceType: displayServiceType,
+            vehicleLicensePlate: vehicle.licensePlateNumber
+        });
+
+        // For insurance renewal, use current expiry date as planned date
+        let plannedDate = dayjs().add(1, 'day');
+        let additionalFields = {};
+        
+        // Check for insurance renewal (both code and Vietnamese display name)
+        const isInsuranceRenewal = normalizedServiceType === 'INSURANCE_RENEWAL' || 
+                                   normalizedServiceType === 'Gia hạn bảo hiểm' ||
+                                   displayServiceType === 'Gia hạn bảo hiểm';
+        
+        if (isInsuranceRenewal && vehicle.insuranceExpiryDate) {
+            plannedDate = dayjs(vehicle.insuranceExpiryDate);
+            additionalFields = {
+                insurancePolicyNumber: vehicle.insurancePolicyNumber || ''
+            };
+        }
+
         // Tạo initial values để pre-fill form (create mode)
         const initialValues: any = {
             vehicleId,
-            serviceType,
-            plannedDate: dayjs().add(1, 'day'),
-            description: `Lịch ${serviceType} cho xe ${vehicle.licensePlateNumber}`,
+            serviceType: displayServiceType, // Use display name instead of code
+            plannedDate,
+            description: `Lịch ${displayServiceType} cho xe ${vehicle.licensePlateNumber}`,
+            ...additionalFields
         };
+
+        console.log('🔍 DEBUG initialValues created:', initialValues);
 
         // Đảm bảo ở chế độ tạo mới
         setSelectedMaintenance(initialValues);
         setIsModalOpen(true);
 
-        message.info(`Tạo lịch ${serviceType} cho xe ${vehicle.licensePlateNumber}`);
+        message.info(`Tạo lịch ${displayServiceType} cho xe ${vehicle.licensePlateNumber}`);
     };
 
     const filteredMaintenances = maintenances.filter(maintenance => {
@@ -388,18 +455,26 @@ const VehicleMaintenancePage: React.FC = () => {
             <Modal
                 title={selectedMaintenance ? 'Chỉnh sửa lịch bảo trì' : 'Thêm lịch bảo trì mới'}
                 open={isModalOpen}
-                onCancel={() => setIsModalOpen(false)}
+                onCancel={() => {
+                    setIsModalOpen(false);
+                    setSelectedMaintenance(null);
+                }}
                 footer={null}
                 maskClosable={false}
                 width={1200}
                 styles={{ body: { maxHeight: '80vh', overflowY: 'auto' } }}
             >
                 <MaintenanceForm
+                    key={`maintenance-form-${(selectedMaintenance as any)?.serviceType}-${(selectedMaintenance as any)?.vehicleId || 'new'}`}
                     initialValues={selectedMaintenance}
                     // isEditMode chỉ bật khi có id (bản ghi thật từ backend)
                     isEditMode={!!(selectedMaintenance && (selectedMaintenance as any).id)}
+                    preSelectedServiceType={(selectedMaintenance as any)?.serviceType}
                     onSubmit={handleFormSubmit}
-                    onCancel={() => setIsModalOpen(false)}
+                    onCancel={() => {
+                        setIsModalOpen(false);
+                        setSelectedMaintenance(null);
+                    }}
                     vehicles={vehicles}
                 />
             </Modal>

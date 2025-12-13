@@ -1,6 +1,6 @@
 import { createBrowserRouter, Outlet } from "react-router-dom";
 import HomePage from "../pages/Home";
-import { LoginPage, RegisterPage } from "../pages/Auth";
+import { LoginPage, RegisterPage, ForgotPasswordPage } from "../pages/Auth";
 import { PaymentReturn } from "../pages/Payment";
 import RecipientOrderTracking from "../pages/RecipientTracking";
 import Dashboard from "../pages/Dashboard";
@@ -8,9 +8,10 @@ import AdminDashboard from "../pages/Admin/Dashboard";
 import PenaltyHistory from "../pages/Staff/PenaltyHistory";
 import ProfilePage from "../pages/Profile";
 import { OrderList as StaffOrderList } from "../pages/Staff/Order";
+import { AdminOrderList, AdminOrderDetailPage } from "../pages/Admin/Order";
 import { IssueList, IssueDetail } from "../pages/Staff/Issue";
 import {
-  OrderPage as AdminOrderList,
+  OrderPage as AdminOrderListOld,
   OrderEdit as AdminOrderEdit,
 } from "../pages/Admin/Order";
 import StaffOrderDetailPage from "../pages/Admin/Order/StaffOrderDetailPage";
@@ -94,6 +95,23 @@ const router = createBrowserRouter([
             }}
           >
             <RegisterPage />
+          </PermissionRoute>
+        ),
+      },
+      {
+        path: "/auth/forgot-password",
+        element: (
+          <PermissionRoute
+            authenticationRequired="unauthenticated"
+            authRedirectPath={(auth) => {
+              // Chuyển hướng dựa trên vai trò nếu đã đăng nhập
+              if (auth?.user?.role === "admin") return "/admin/dashboard";
+              if (auth?.user?.role === "staff") return "/staff/dashboard";
+              if (auth?.user?.role === "driver") return "/driver/dashboard";
+              return "/"; // Mặc định cho customer
+            }}
+          >
+            <ForgotPasswordPage />
           </PermissionRoute>
         ),
       },
@@ -411,6 +429,14 @@ const router = createBrowserRouter([
           {
             path: "dashboard",
             element: <AdminDashboard />,
+          },
+          {
+            path: "orders",
+            element: <AdminOrderList />,
+          },
+          {
+            path: "orders/:id",
+            element: <AdminOrderDetailPage />,
           },
           {
             path: "drivers",

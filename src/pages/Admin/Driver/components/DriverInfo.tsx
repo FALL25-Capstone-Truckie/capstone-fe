@@ -1,5 +1,5 @@
 import React from 'react';
-import { Card, Descriptions, Button, Tag, Row, Col, Typography, Avatar, Divider, Timeline, Tooltip, Table, Empty, Badge } from 'antd';
+import { Card, Descriptions, Button, Tag, Row, Col, Typography, Avatar, Divider, Timeline, Tooltip, Table, Empty, Badge, Alert, Space } from 'antd';
 import {
     IdcardOutlined,
     CalendarOutlined,
@@ -14,12 +14,21 @@ import {
     WarningOutlined,
     DollarOutlined,
     SafetyCertificateOutlined,
-    CarOutlined
+    CarOutlined,
+    EditOutlined,
+    ExclamationCircleOutlined
 } from '@ant-design/icons';
 import type { DriverModel } from '../../../../services/driver';
 import { LicenseClassEnum, CommonStatusEnum } from '@/constants/enums';
 import { LicenseClassTag, CommonStatusTag } from '@/components/common/tags';
 import { formatCurrency } from '@/utils/formatters';
+import {
+    getAllowedVehicleTypes,
+    getLicenseExpiryWarningLevel,
+    getLicenseExpiryWarningMessage,
+    getDaysUntilExpiry,
+    type LicenseExpiryWarningLevel
+} from '@/utils/licenseClassHelper';
 
 const { Title, Text } = Typography;
 
@@ -29,6 +38,7 @@ interface DriverInfoProps {
     getStatusColor: (status: string) => string;
     onStatusChange: (status: string) => void;
     isStatusUpdating?: boolean;
+    onRenewLicense?: () => void;
 }
 
 const DriverInfo: React.FC<DriverInfoProps> = ({
@@ -36,8 +46,51 @@ const DriverInfo: React.FC<DriverInfoProps> = ({
     formatDate,
     getStatusColor,
     onStatusChange,
-    isStatusUpdating = false
+    isStatusUpdating = false,
+    onRenewLicense
 }) => {
+    const allowedVehicleTypes = getAllowedVehicleTypes(driver.licenseClass);
+    const licenseWarningLevel = getLicenseExpiryWarningLevel(driver.dateOfExpiry);
+    const licenseWarningMessage = getLicenseExpiryWarningMessage(driver.dateOfExpiry);
+    const daysUntilExpiry = getDaysUntilExpiry(driver.dateOfExpiry);
+
+    const renderLicenseWarningBanner = () => {
+        if (licenseWarningLevel === 'none') return null;
+
+        const alertType = licenseWarningLevel === 'expired' || licenseWarningLevel === 'critical' ? 'error' : 'warning';
+        const alertMessage = licenseWarningLevel === 'expired' 
+            ? 'Bằng lái đã hết hạn' 
+            : licenseWarningLevel === 'critical'
+                ? 'Bằng lái sắp hết hạn (còn dưới 1 tuần)'
+                : 'Bằng lái sắp hết hạn (còn dưới 2 tháng)';
+
+        return (
+            <Alert
+                message={alertMessage}
+                description={
+                    <div className="flex justify-between items-center">
+                        <span>{licenseWarningMessage}</span>
+                        {onRenewLicense && (
+                            <Button
+                                type="primary"
+                                size="small"
+                                icon={<EditOutlined />}
+                                onClick={onRenewLicense}
+                                className={alertType === 'error' ? 'bg-red-500 hover:bg-red-600' : 'bg-yellow-500 hover:bg-yellow-600'}
+                            >
+                                Gia hạn bằng lái
+                            </Button>
+                        )}
+                    </div>
+                }
+                type={alertType}
+                showIcon
+                icon={<ExclamationCircleOutlined />}
+                className="mb-4"
+            />
+        );
+    };
+
     const getStatusText = (status: string) => {
         switch (status.toLowerCase()) {
             case 'active':
@@ -76,6 +129,9 @@ const DriverInfo: React.FC<DriverInfoProps> = ({
 
     return (
         <Row gutter={[24, 24]}>
+            <Col xs={24}>
+                {renderLicenseWarningBanner()}
+            </Col>
             <Col xs={24} lg={8}>
                 <Card className="shadow-sm hover:shadow-md transition-shadow">
                     <div className="flex flex-col items-center text-center mb-6">
@@ -195,13 +251,12 @@ const DriverInfo: React.FC<DriverInfoProps> = ({
                                 </Text>
                                 <Text className="text-gray-500 block">
                                     {driver.licenseClass === LicenseClassEnum.B2
-                                        ? 'Xe ô tô tải dưới 3.5 tấn hoặc chở dưới 9 người'
-                                        : 'Xe ô tô tải trên 3.5 tấn hoặc xe khách lớn'}
+                                        ? 'Xe tải từ 3.5 tấn trở xuống (yêu cầu 18 tuổi trở lên)'
+                                        : 'Tất cả các loại xe tải (yêu cầu 24 tuổi trở lên)'}
                                 </Text>
                             </div>
                             <div className="ml-4">
-                                <div className={`flex items-center justify-center w-16 h-16 rounded-full ${driver.licenseClass === LicenseClassEnum.C ? 'bg-purple-500' : 'bg-blue-500'
-                                    } text-white text-2xl font-bold shadow-md`}>
+                                <div className={`flex items-center justify-center w-16 h-16 rounded-full ${driver.licenseClass === LicenseClassEnum.C ? 'bg-purple-500' : 'bg-blue-500'} text-white text-2xl font-bold shadow-md`}>
                                     <CarOutlined className="text-2xl" />
                                 </div>
                             </div>
@@ -209,18 +264,34 @@ const DriverInfo: React.FC<DriverInfoProps> = ({
 
                         <Divider className="my-3" />
 
-                        <div className="flex justify-between">
+                        <div className="mb-3">
+                            <Text type="secondary" className="block mb-2">Các loại xe được phép lái:</Text>
+                            <div className="flex flex-wrap gap-2">
+                                {allowedVehicleTypes.map((vt) => (
+                                    <Tag
+                                        key={vt.code}
+                                        color={driver.licenseClass === LicenseClassEnum.C ? 'purple' : 'blue'}
+                                        className="text-sm px-2 py-1"
+                                    >
+                                        <CarOutlined className="mr-1" />
+                                        {vt.label}
+                                    </Tag>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className="flex justify-between items-center">
                             <div>
-                                <Text type="secondary">Loại phương tiện:</Text>
+                                <Text type="secondary">Tổng số loại xe:</Text>
                                 <Text strong className="ml-2">
-                                    {driver.licenseClass === LicenseClassEnum.B2 ? 'Xe tải nhẹ, xe khách nhỏ' : 'Xe tải nặng, xe khách lớn'}
+                                    {allowedVehicleTypes.length} loại
                                 </Text>
                             </div>
                             <Tag
                                 color={driver.licenseClass === LicenseClassEnum.C ? 'purple' : 'blue'}
                                 className="text-sm px-3 py-1"
                             >
-                                {driver.licenseClass === LicenseClassEnum.B2 ? 'Dưới 3.5 tấn' : 'Trên 3.5 tấn'}
+                                {driver.licenseClass === LicenseClassEnum.B2 ? 'Dưới 3.5 tấn' : 'Tất cả loại xe'}
                             </Tag>
                         </div>
                     </div>

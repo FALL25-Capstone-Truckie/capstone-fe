@@ -1,6 +1,6 @@
-import React from "react";
-import { Card, Button, Tag, Divider, Empty, Skeleton } from "antd";
-import { CarOutlined, CheckCircleOutlined } from "@ant-design/icons";
+import React, { useMemo } from "react";
+import { Card, Button, Tag, Divider, Empty, Skeleton, Tooltip } from "antd";
+import { CarOutlined, CheckCircleOutlined, ThunderboltOutlined } from "@ant-design/icons";
 import type { OrderDetailGroup, VehicleSuggestion } from "../../../../../models/VehicleAssignment";
 
 interface TripSelectionStepProps {
@@ -8,14 +8,31 @@ interface TripSelectionStepProps {
     suggestionsMap: Record<number, VehicleSuggestion[]>;
     loading: boolean;
     onSelectTrips: (indices: number[]) => void;
+    onAcceptAllSuggestions?: () => void;
 }
 
 export const TripSelectionStep: React.FC<TripSelectionStepProps> = ({
     detailGroups,
     suggestionsMap,
     loading,
-    onSelectTrips
+    onSelectTrips,
+    onAcceptAllSuggestions
 }) => {
+    // Check if all trips have complete suggestions (vehicle + 2 drivers)
+    const allTripsHaveCompleteSuggestions = useMemo(() => {
+        if (detailGroups.length === 0) return false;
+        
+        return detailGroups.every((_, index) => {
+            const suggestions = suggestionsMap[index] || [];
+            const recommendedVehicle = suggestions.find(v => v.isRecommended);
+            if (!recommendedVehicle) return false;
+            
+            const recommendedDrivers = recommendedVehicle.suggestedDrivers
+                .filter(d => d.isRecommended);
+            return recommendedDrivers.length >= 2;
+        });
+    }, [detailGroups, suggestionsMap]);
+
     if (loading) {
         return (
             <div className="p-6 space-y-4">
@@ -161,8 +178,21 @@ export const TripSelectionStep: React.FC<TripSelectionStepProps> = ({
                 })}
             </div>
 
-            {/* Action Button */}
-            <div className="mt-8 flex justify-end pt-4 border-t">
+            {/* Action Buttons */}
+            <div className="mt-8 flex justify-end gap-3 pt-4 border-t">
+                {allTripsHaveCompleteSuggestions && onAcceptAllSuggestions && (
+                    <Tooltip title="Chấp nhận tất cả đề xuất xe và tài xế, bỏ qua bước chọn thủ công">
+                        <Button
+                            type="primary"
+                            size="large"
+                            onClick={onAcceptAllSuggestions}
+                            className="bg-green-600 hover:bg-green-700 px-6 font-semibold"
+                            icon={<ThunderboltOutlined />}
+                        >
+                            Đồng ý với đề xuất
+                        </Button>
+                    </Tooltip>
+                )}
                 <Button
                     type="primary"
                     size="large"
@@ -170,7 +200,7 @@ export const TripSelectionStep: React.FC<TripSelectionStepProps> = ({
                     className="bg-blue-600 hover:bg-blue-700 px-8 font-semibold"
                     icon={<CarOutlined />}
                 >
-                    Xác nhận phân công {detailGroups.length} chuyến
+                    {allTripsHaveCompleteSuggestions ? "Tùy chỉnh phân công" : `Xác nhận phân công ${detailGroups.length} chuyến`}
                 </Button>
             </div>
         </div>

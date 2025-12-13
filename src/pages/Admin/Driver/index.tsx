@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { App, Card, Typography, Input, Button } from 'antd';
 import { UserAddOutlined, IdcardOutlined, CheckCircleOutlined, StopOutlined, CarOutlined, SearchOutlined, ReloadOutlined, ClockCircleOutlined, LockOutlined, DeleteOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
@@ -6,10 +6,14 @@ import driverService from '../../../services/driver';
 import type { DriverModel } from '../../../services/driver';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import DriverTable from './components/DriverTable';
+import LicenseExpiryWarningList from './components/LicenseExpiryWarningList';
+import LicenseRenewalModal from './components/LicenseRenewalModal';
 import StatusChangeModal from '../../../components/common/StatusChangeModal';
 import type { StatusOption } from '../../../components/common/StatusChangeModal';
 import UserStatCards from '../../../components/common/UserStatCards';
 import { UserStatusEnum } from '../../../constants/enums/UserStatusEnum';
+import { getLicenseExpiryWarningLevel } from '@/utils/licenseClassHelper';
+import dayjs from 'dayjs';
 
 const { Title, Text } = Typography;
 
@@ -21,6 +25,8 @@ const DriverPage: React.FC = () => {
     const [selectedDriver, setSelectedDriver] = useState<DriverModel | null>(null);
     const [newStatus, setNewStatus] = useState<string>('');
     const [searchText, setSearchText] = useState('');
+    const [isRenewalModalVisible, setIsRenewalModalVisible] = useState(false);
+    const [selectedDriverForRenewal, setSelectedDriverForRenewal] = useState<DriverModel | null>(null);
 
     const { data: driversData, isLoading, error, refetch, isFetching } = useQuery({
         queryKey: ['drivers'],
@@ -57,6 +63,22 @@ const DriverPage: React.FC = () => {
 
     const handleAddDriver = () => {
         navigate('/admin/drivers/register');
+    };
+
+    const handleRenewLicense = (driver: DriverModel) => {
+        setSelectedDriverForRenewal(driver);
+        setIsRenewalModalVisible(true);
+    };
+
+    const handleRenewalSuccess = () => {
+        setIsRenewalModalVisible(false);
+        setSelectedDriverForRenewal(null);
+        queryClient.invalidateQueries({ queryKey: ['drivers'] });
+        message.success('Gia hạn bằng lái thành công');
+    };
+
+    const formatDate = (dateString: string) => {
+        return dayjs(dateString).format('DD/MM/YYYY');
     };
 
     const filteredDrivers = driversData?.filter(driver => {
@@ -139,6 +161,45 @@ const DriverPage: React.FC = () => {
         }
     ];
 
+    // Calculate license expiry warnings
+    const licenseExpiryStats = useMemo(() => {
+        if (!driversData) return { expired: 0, critical: 0, warning: 0, expiredDrivers: [], criticalDrivers: [], warningDrivers: [] };
+        
+        const expired: DriverModel[] = [];
+        const critical: DriverModel[] = [];
+        const warning: DriverModel[] = [];
+        
+        driversData.forEach(driver => {
+            const level = getLicenseExpiryWarningLevel(driver.dateOfExpiry);
+            if (level === 'expired') expired.push(driver);
+            else if (level === 'critical') critical.push(driver);
+            else if (level === 'warning') warning.push(driver);
+        });
+        
+        return {
+            expired: expired.length,
+            critical: critical.length,
+            warning: warning.length,
+            expiredDrivers: expired,
+            criticalDrivers: critical,
+            warningDrivers: warning
+        };
+    }, [driversData]);
+
+    const renderLicenseExpiryWarningBanner = () => {
+        const { expiredDrivers, criticalDrivers, warningDrivers } = licenseExpiryStats;
+        
+        return (
+            <LicenseExpiryWarningList
+                expiredDrivers={expiredDrivers}
+                criticalDrivers={criticalDrivers}
+                warningDrivers={warningDrivers}
+                onRenewLicense={handleRenewLicense}
+                formatDate={formatDate}
+            />
+        );
+    };
+
     if (error) {
         return (
             <div className="p-6 flex flex-col items-center justify-center h-64">
@@ -173,6 +234,9 @@ const DriverPage: React.FC = () => {
                         Thêm tài xế mới
                     </Button>
                 </div>
+
+                {/* Hiển thị cảnh báo bằng lái sắp hết hạn */}
+                {renderLicenseExpiryWarningBanner()}
 
                 {/* Hiển thị card thống kê cho tất cả các trạng thái tài xế */}
                 <UserStatCards 
@@ -228,6 +292,18 @@ const DriverPage: React.FC = () => {
                 onOk={handleStatusUpdate}
                 onCancel={() => setIsStatusModalVisible(false)}
             />
+
+            {selectedDriverForRenewal && (
+                <LicenseRenewalModal
+                    visible={isRenewalModalVisible}
+                    driver={selectedDriverForRenewal}
+                    onSuccess={handleRenewalSuccess}
+                    onCancel={() => {
+                        setIsRenewalModalVisible(false);
+                        setSelectedDriverForRenewal(null);
+                    }}
+                />
+            )}
         </div>
     );
 };

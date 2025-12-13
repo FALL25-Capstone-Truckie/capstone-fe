@@ -664,7 +664,7 @@ const PenaltyModal: React.FC<PenaltyModalProps> = ({
                                     <Descriptions.Item label="ID Tài xế">
                                         <Text code copyable>{penalty.driverId}</Text>
                                     </Descriptions.Item>
-                                    <Descriptions.Item label="ID Phân công xe">
+                                    <Descriptions.Item label="ID chuyến xe">
                                         <Text code copyable>{penalty.vehicleAssignmentId}</Text>
                                     </Descriptions.Item>
                                 </Descriptions>

@@ -33,6 +33,7 @@ interface ContractAndPaymentTabProps {
   hasInsurance?: boolean;
   totalInsuranceFee?: number;
   totalDeclaredValue?: number;
+  readOnly?: boolean;
 }
 
 const ContractAndPaymentTab: React.FC<ContractAndPaymentTabProps> = ({
@@ -44,6 +45,7 @@ const ContractAndPaymentTab: React.FC<ContractAndPaymentTabProps> = ({
   hasInsurance,
   totalInsuranceFee,
   totalDeclaredValue,
+  readOnly,
 }) => {
   return (
     <div>
@@ -54,6 +56,10 @@ const ContractAndPaymentTab: React.FC<ContractAndPaymentTabProps> = ({
           orderId={orderId} 
           depositAmount={depositAmount} 
           onRefetch={onRefetch}
+          hasInsurance={hasInsurance}
+          totalInsuranceFee={totalInsuranceFee}
+          totalDeclaredValue={totalDeclaredValue}
+          readOnly={readOnly}
         />
       )}
 

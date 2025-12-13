@@ -14,6 +14,8 @@ interface MaintenanceFormProps {
     isLoading?: boolean;
     // Cho phép ép mode tạo mới ngay cả khi có initialValues (ví dụ: prefill từ banner)
     isEditMode?: boolean;
+    // Pre-selected service type for auto-selection
+    preSelectedServiceType?: string;
 }
 
 const MaintenanceForm: React.FC<MaintenanceFormProps> = ({
@@ -24,6 +26,7 @@ const MaintenanceForm: React.FC<MaintenanceFormProps> = ({
     formId = 'maintenance-form',
     isLoading = false,
     isEditMode,
+    preSelectedServiceType,
 }) => {
     const [form] = Form.useForm();
     const [loading, setLoading] = useState<boolean>(false);
@@ -44,6 +47,8 @@ const MaintenanceForm: React.FC<MaintenanceFormProps> = ({
 
     // Update selected vehicle when form values change
     const vehicleId = Form.useWatch('vehicleId', form);
+    const serviceType = Form.useWatch('serviceType', form);
+    
     useEffect(() => {
         if (vehicleId && !effectiveIsEditMode) {
             const vehicle = vehicles.find(v => v.id === vehicleId);
@@ -52,14 +57,63 @@ const MaintenanceForm: React.FC<MaintenanceFormProps> = ({
             setSelectedVehicle(null);
         }
     }, [vehicleId, vehicles, initialValues]);
+    
+    // Auto-fill logic based on service type and vehicle
+    useEffect(() => {
+        if (!effectiveIsEditMode && selectedVehicle && serviceType) {
+            const formValues = form.getFieldsValue();
+            
+            // Auto-fill for insurance renewal
+            if (serviceType === 'Gia hạn bảo hiểm' || serviceType === 'INSURANCE_RENEWAL') {
+                if (selectedVehicle.insuranceExpiryDate) {
+                    form.setFieldValue('plannedDate', dayjs(selectedVehicle.insuranceExpiryDate));
+                }
+                if (selectedVehicle.insurancePolicyNumber) {
+                    form.setFieldValue('insurancePolicyNumber', selectedVehicle.insurancePolicyNumber);
+                }
+                // Clear next service date for insurance
+                form.setFieldValue('nextServiceDate', null);
+            }
+            
+            // Auto-fill for inspection
+            if (serviceType === 'Đăng kiểm định kỳ' || serviceType === 'INSPECTION') {
+                if (selectedVehicle.inspectionExpiryDate) {
+                    form.setFieldValue('nextServiceDate', dayjs(selectedVehicle.inspectionExpiryDate));
+                }
+                // Clear insurance policy number for non-insurance
+                form.setFieldValue('insurancePolicyNumber', '');
+            }
+            
+            // Auto-fill for maintenance
+            if (serviceType === 'Bảo dưỡng định kỳ' || serviceType === 'MAINTENANCE_PERIODIC') {
+                if (selectedVehicle.nextMaintenanceDate) {
+                    form.setFieldValue('nextServiceDate', dayjs(selectedVehicle.nextMaintenanceDate));
+                }
+                // Clear insurance policy number for non-insurance
+                form.setFieldValue('insurancePolicyNumber', '');
+            }
+            
+            // For repair and other, clear both optional fields
+            if (serviceType === 'Sửa chữa' || serviceType === 'MAINTENANCE_REPAIR' || 
+                serviceType === 'Khác' || serviceType === 'OTHER') {
+                form.setFieldValue('nextServiceDate', null);
+                form.setFieldValue('insurancePolicyNumber', '');
+            }
+        }
+    }, [selectedVehicle, serviceType, effectiveIsEditMode, form]);
 
     // Transform initialValues if it's a VehicleServiceRecord
     const transformedInitialValues = initialValues ? (() => {
+        console.log('🔍 DEBUG MaintenanceForm transformedInitialValues INPUT:', {
+            initialValues,
+            preSelectedServiceType
+        });
+        
         const result: any = {
             // Extract vehicleId from vehicleEntity OR use direct vehicleId (for banner pre-fill)
             vehicleId: (initialValues as any).vehicleId || initialValues.vehicleEntity?.id,
             // serviceType is already a string in the new model
-            serviceType: initialValues.serviceType,
+            serviceType: preSelectedServiceType || initialValues.serviceType,
             odometerReading: initialValues.odometerReading || 0,
         };
         
@@ -74,6 +128,8 @@ const MaintenanceForm: React.FC<MaintenanceFormProps> = ({
         if (initialValues.nextServiceDate) result.nextServiceDate = initialValues.nextServiceDate;
         if (initialValues.description) result.description = initialValues.description;
         if (initialValues.serviceStatus) result.serviceStatus = initialValues.serviceStatus;
+        
+        console.log('🔍 DEBUG MaintenanceForm transformedInitialValues OUTPUT:', result);
         
         return result;
     })() : null;
@@ -130,7 +186,8 @@ const MaintenanceForm: React.FC<MaintenanceFormProps> = ({
                     }
                     : {
                         plannedDate: dayjs(),
-                        serviceStatus: 'PLANNED'
+                        serviceStatus: 'PLANNED',
+                        serviceType: preSelectedServiceType || undefined
                     }
             }
             disabled={loading || effectiveIsEditMode}
@@ -230,32 +287,69 @@ const MaintenanceForm: React.FC<MaintenanceFormProps> = ({
                     />
                 </Form.Item>
 
-                <Form.Item
-                    name="nextServiceDate"
-                    label="Ngày bảo trì/kiểm định tiếp theo"
-                    rules={[
-                        ({ getFieldValue }) => ({
-                            validator(_, value) {
-                                if (!value) return Promise.resolve();
-                                const plannedDate = getFieldValue('plannedDate');
-                                if (plannedDate && value.isBefore(plannedDate)) {
-                                    return Promise.reject(new Error('Ngày bảo trì tiếp theo phải sau ngày dự kiến'));
-                                }
-                                if (value.isBefore(dayjs())) {
-                                    return Promise.reject(new Error('Ngày bảo trì tiếp theo phải sau ngày hiện tại'));
-                                }
-                                return Promise.resolve();
-                            },
-                        }),
-                    ]}
-                    dependencies={['plannedDate']}
-                >
-                    <DatePicker
-                        className="w-full"
-                        format="DD/MM/YYYY HH:mm"
-                        placeholder="Chọn ngày tiếp theo"
-                        showTime
-                    />
+                {/* Insurance Policy Number field - only show for insurance renewals */}
+                <Form.Item shouldUpdate={(prevValues, currentValues) => prevValues.serviceType !== currentValues.serviceType}>
+                    {({ getFieldValue }) => {
+                        const currentServiceType = getFieldValue('serviceType');
+                        return (currentServiceType === 'Gia hạn bảo hiểm' || currentServiceType === 'INSURANCE_RENEWAL') ? (
+                            <Form.Item
+                                name="insurancePolicyNumber"
+                                label="Số bảo hiểm"
+                                rules={[
+                                    { required: true, message: 'Vui lòng nhập số bảo hiểm' },
+                                    { max: 50, message: 'Số bảo hiểm không được quá 50 ký tự' }
+                                ]}
+                                className="col-span-1 md:col-span-2"
+                            >
+                                <Input placeholder="Nhập số bảo hiểm" />
+                            </Form.Item>
+                        ) : null;
+                    }}
+                </Form.Item>
+
+                {/* Next Service Date - show only for inspection and maintenance */}
+                <Form.Item shouldUpdate={(prevValues, currentValues) => prevValues.serviceType !== currentValues.serviceType}>
+                    {({ getFieldValue }) => {
+                        const currentServiceType = getFieldValue('serviceType');
+                        
+                        // Only show for inspection and maintenance
+                        if (currentServiceType !== 'Đăng kiểm định kỳ' && currentServiceType !== 'INSPECTION' &&
+                            currentServiceType !== 'Bảo dưỡng định kỳ' && currentServiceType !== 'MAINTENANCE_PERIODIC') {
+                            return null;
+                        }
+                        
+                        return (
+                            <Form.Item
+                                name="nextServiceDate"
+                                label="Ngày bảo trì/kiểm định tiếp theo"
+                                rules={[
+                                    { required: true, message: 'Vui lòng chọn ngày tiếp theo' },
+                                    ({ getFieldValue }) => ({
+                                        validator(_, value) {
+                                            if (!value) return Promise.resolve();
+                                            const plannedDate = getFieldValue('plannedDate');
+                                            if (plannedDate && value.isBefore(plannedDate)) {
+                                                return Promise.reject(new Error('Ngày bảo trì tiếp theo phải sau ngày dự kiến'));
+                                            }
+                                            if (value.isBefore(dayjs())) {
+                                                return Promise.reject(new Error('Ngày bảo trì tiếp theo phải sau ngày hiện tại'));
+                                            }
+                                            return Promise.resolve();
+                                        },
+                                    }),
+                                ]}
+                                dependencies={['plannedDate']}
+                                help="Ngày dự kiến cho lần bảo trì/kiểm định tiếp theo"
+                            >
+                                <DatePicker
+                                    className="w-full"
+                                    format="DD/MM/YYYY HH:mm"
+                                    placeholder="Chọn ngày tiếp theo"
+                                    showTime
+                                />
+                            </Form.Item>
+                        );
+                    }}
                 </Form.Item>
 
                 {initialValues && initialValues.serviceStatus === 'COMPLETED' && (

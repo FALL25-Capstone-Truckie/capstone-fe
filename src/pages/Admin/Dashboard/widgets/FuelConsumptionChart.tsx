@@ -1,5 +1,6 @@
 import React from 'react';
-import { Card, Statistic, Row, Col, Spin, Empty } from 'antd';
+import { Card, Row, Col, Spin, Empty } from 'antd';
+import StatCard from '../../../../components/common/StatCard';
 import { Line } from '@ant-design/plots';
 import { FireOutlined, ArrowUpOutlined, ArrowDownOutlined } from '@ant-design/icons';
 import type { FuelConsumptionStatistics } from '@/services/dashboard/dashboardService';
@@ -109,21 +110,25 @@ const FuelConsumptionChart: React.FC<FuelConsumptionChartProps> = ({ data, loadi
     >
       <Row gutter={[16, 16]} className="mb-4">
         <Col xs={24} sm={12}>
-          <Statistic
+          <StatCard
             title="Tổng nhiên liệu tiêu thụ"
             value={data.totalFuelConsumed}
             precision={0}
             suffix="lít"
-            valueStyle={{ color: '#1890ff', fontSize: '24px', fontWeight: 'bold' }}
+            valueStyle={{ color: '#1890ff' }}
+            borderColor="#1890ff"
+            loading={loading}
           />
         </Col>
         <Col xs={24} sm={12}>
-          <Statistic
+          <StatCard
             title="Trung bình mỗi chuyến"
             value={data.averageFuelConsumption}
             precision={1}
             suffix="lít"
-            valueStyle={{ color: '#52c41a', fontSize: '24px', fontWeight: 'bold' }}
+            valueStyle={{ color: '#52c41a' }}
+            borderColor="#52c41a"
+            loading={loading}
           />
           {deltaPercent !== 0 && (
             <div className="flex items-center mt-1">

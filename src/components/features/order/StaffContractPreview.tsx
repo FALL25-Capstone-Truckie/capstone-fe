@@ -664,7 +664,11 @@ const StaffContractPreview: React.FC<StaffContractPreviewProps> = ({
           </p>
           {(() => {
             const grandTotal = contractData.priceDetails.grandTotal || contractData.priceDetails.finalTotal;
-            const depositAmount = (grandTotal * contractData.contractSettings.depositPercent) / 100;
+            // Use custom deposit percent if available, otherwise use global setting
+            const effectiveDepositPercent = (contractData.customDepositPercent && contractData.customDepositPercent > 0 && contractData.customDepositPercent <= 100)
+              ? contractData.customDepositPercent
+              : contractData.contractSettings.depositPercent;
+            const depositAmount = (grandTotal * effectiveDepositPercent) / 100;
             const remainingAmount = grandTotal - depositAmount;
             const depositDeadlineHours = contractData.contractSettings.depositDeadlineHours || 24;
             const signingDeadlineHours = contractData.contractSettings.signingDeadlineHours || 24;
@@ -686,7 +690,7 @@ const StaffContractPreview: React.FC<StaffContractPreviewProps> = ({
                   - Thời hạn ký hợp đồng: {signingDeadlineHours} giờ kể từ khi nhận được hợp đồng
                 </p>
                 <p>
-                  - Đặt cọc: {contractData.contractSettings.depositPercent}% ({formatCurrency(depositAmount)}) - Thanh toán trong vòng {depositDeadlineHours} giờ kể từ khi ký hợp đồng
+                  - Đặt cọc: {effectiveDepositPercent}% ({formatCurrency(depositAmount)}) - Thanh toán trong vòng {depositDeadlineHours} giờ kể từ khi ký hợp đồng
                 </p>
                 <p>
                   - Thanh toán còn lại: {formatCurrency(remainingAmount)} - Thanh toán trước ngày lấy hàng dự kiến 1 ngày

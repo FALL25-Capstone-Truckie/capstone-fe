@@ -11,11 +11,16 @@ import {
   InputNumber,
   Row,
   Col,
+  Statistic,
+  Alert,
 } from "antd";
 import {
   FileTextOutlined,
   DownloadOutlined,
   EditOutlined,
+  InfoCircleOutlined,
+  DollarOutlined,
+  CreditCardOutlined,
 } from "@ant-design/icons";
 import { StaffContractPreview } from "../../../../components/features/order";
 import ContractExportContent from "../../../../components/features/order/ContractExportContent";
@@ -39,6 +44,14 @@ import type {
   StipulationSettings,
 } from "../../../../models/Contract";
 
+// Utility function to safely parse contract values (same as Customer view)
+const parseContractValue = (value: string | number | undefined): number => {
+  if (!value) return 0;
+  if (typeof value === "number") return value;
+  const numericValue = parseFloat(value.replace(/[^0-9.-]+/g, ""));
+  return isNaN(numericValue) ? 0 : numericValue;
+};
+
 interface ErrorResponse {
   response?: {
     status: number;
@@ -61,12 +74,22 @@ interface StaffContractProps {
   orderId?: string; // Add orderId for contract creation
   depositAmount?: number;
   onRefetch?: () => void; // Callback to refresh parent component data
+  // Insurance fields
+  hasInsurance?: boolean;
+  totalInsuranceFee?: number;
+  totalDeclaredValue?: number;
+  readOnly?: boolean;
 }
 
 const StaffContractSection: React.FC<StaffContractProps> = ({
   contract,
   orderId,
+  depositAmount: propDepositAmount,
   onRefetch,
+  hasInsurance,
+  totalInsuranceFee,
+  totalDeclaredValue,
+  readOnly = false,
 }) => {
   const messageApi = App.useApp().message;
   const [contractData, setContractData] = useState<ContractData | null>(null);
@@ -74,6 +97,25 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
     useState<ContractSettings | null>(null);
   const [stipulationSettings, setStipulationSettings] =
     useState<StipulationSettings | null>(null);
+  const [fetchedPriceDetails, setFetchedPriceDetails] = useState<any>(null);
+  
+  // Calculate deposit amount and check if adjusted value exists (same as Customer view)
+  const hasAdjustedValue = Boolean(
+    contract?.adjustedValue && contract.adjustedValue !== 0
+  );
+
+  // Use prop depositAmount if available (like Customer view), otherwise calculate
+  const depositAmount = propDepositAmount || (() => {
+    if (!contract) return 0;
+    const baseValue = hasAdjustedValue
+      ? parseContractValue(contract.adjustedValue)
+      : parseContractValue(contract.totalValue);
+    const depositPercent = contractSettings?.depositPercent || 30;
+    return (baseValue * depositPercent) / 100;
+  })();
+
+  const hasDepositAmount = typeof depositAmount === "number" && depositAmount > 0;
+  const [loadingPriceData, setLoadingPriceData] = useState<boolean>(false);
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [isCreationModalOpen, setIsCreationModalOpen] =
     useState<boolean>(false);
@@ -116,8 +158,25 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
       }
     };
 
+    const fetchPriceDetails = async () => {
+      if (!contract?.id) return;
+      
+      setLoadingPriceData(true);
+      try {
+        const response = await contractService.getContractPdfData(contract.id);
+        if (response.data?.priceDetails) {
+          setFetchedPriceDetails(response.data.priceDetails);
+        }
+      } catch (error) {
+        console.error("Error fetching price details:", error);
+      } finally {
+        setLoadingPriceData(false);
+      }
+    };
+
     fetchSettings();
-  }, []);
+    fetchPriceDetails();
+  }, [contract?.id]);
 
   // Contract customization state
   const [contractCustomization, setContractCustomization] = useState({
@@ -127,6 +186,7 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
     adjustedValue: 0,
     contractName: "",
     description: "",
+    customDepositPercent: null as number | null, // null = use global setting
   });
 
   // Wrapper function to handle customization changes
@@ -138,6 +198,7 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
       adjustedValue: customization.adjustedValue || 0,
       contractName: customization.contractName || "",
       description: customization.description || "",
+      customDepositPercent: customization.customDepositPercent ?? null,
     });
   };
 
@@ -168,6 +229,9 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
   };
 
   const handleCreateContract = async (values: Record<string, unknown>) => {
+    if (readOnly) {
+      return;
+    }
     if (!orderId) {
       messageApi.error("Không tìm thấy thông tin đơn hàng để tạo hợp đồng");
       return;
@@ -212,6 +276,9 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
   };
 
   const handleOpenUploadModal = () => {
+    if (readOnly) {
+      return;
+    }
     if (!contract?.id || !contractData) {
       messageApi.error("Không có dữ liệu hợp đồng để xuất");
       return;
@@ -270,9 +337,9 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
     try {
       messageApi.loading("Đang tạo và xuất hợp đồng PDF...", 0);
 
-      // Format datetime for backend
-      const formatDateTime = (dateString: string) => {
-        return new Date(dateString).toISOString().slice(0, 19);
+      // Normalize dates to 00:00:00 and format for backend
+      const formatDateTime = (date: dayjs.Dayjs) => {
+        return date.hour(0).minute(0).second(0).toISOString().slice(0, 19);
       };
 
       // Call backend API to generate PDF (Flying Saucer handles page breaks properly - no truncation)
@@ -280,10 +347,11 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
       const uploadResponse = await contractService.generateAndSaveContractPdf({
         contractId: contract.id,
         contractName: values.contractName as string,
-        effectiveDate: formatDateTime(values.effectiveDate as string),
-        expirationDate: formatDateTime(values.expirationDate as string),
+        effectiveDate: formatDateTime(values.effectiveDate as dayjs.Dayjs),
+        expirationDate: formatDateTime(values.expirationDate as dayjs.Dayjs),
         adjustedValue: Number(values.adjustedValue) || 0,
         description: values.description as string,
+        customDepositPercent: values.customDepositPercent as number | null,
       });
       console.log("✅ Backend PDF generation completed");
       // Handle response safely
@@ -378,14 +446,22 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
     form
       .validateFields()
       .then((values) => {
+        // Normalize dates to 00:00:00
+        const normalizedValues = {
+          ...values,
+          effectiveDate: values.effectiveDate.hour(0).minute(0).second(0),
+          expirationDate: values.expirationDate.hour(0).minute(0).second(0),
+        };
+        
         // Update contract customization with form values
         setContractCustomization({
-          effectiveDate: values.effectiveDate.toISOString(),
-          expirationDate: values.expirationDate.toISOString(),
+          effectiveDate: normalizedValues.effectiveDate.toISOString(),
+          expirationDate: normalizedValues.expirationDate.toISOString(),
           hasAdjustedValue: values.adjustedValue > 0,
           adjustedValue: values.adjustedValue || 0,
           contractName: values.contractName,
           description: values.description,
+          customDepositPercent: values.customDepositPercent ?? null,
         });
 
         setIsCreationModalOpen(false);
@@ -408,17 +484,9 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
   };
 
   const handleOpenModal = async () => {
-    // Check if contract customization has been set
-    if (
-      !contractCustomization.effectiveDate ||
-      !contractCustomization.expirationDate
-    ) {
-      // Open input modal first
-      handleOpenInputModal();
-    } else {
-      // Directly open preview modal
-      handleOpenPreviewModal();
-    }
+    // Directly open preview modal without requiring customization first
+    // User can click "Chỉnh sửa thông tin" button in preview modal if needed
+    handleOpenPreviewModal();
   };
 
   const handleCloseModal = () => {
@@ -631,11 +699,11 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
                         </span>
                         <span className="font-semibold text-lg text-blue-600">
                           {contract.adjustedValue && contract.adjustedValue > 0
-                            ? `${contract.adjustedValue.toLocaleString(
+                            ? `${parseContractValue(contract.adjustedValue).toLocaleString(
                                 "vi-VN"
                               )} VNĐ`
                             : contract.totalValue && contract.totalValue > 0
-                            ? `${contract.totalValue.toLocaleString(
+                            ? `${parseContractValue(contract.totalValue).toLocaleString(
                                 "vi-VN"
                               )} VNĐ`
                             : "Chưa có thông tin"}
@@ -728,6 +796,205 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
             </div>
           </div>
 
+          {/* Payment Summary - Exact same as Customer View */}
+          {hasDepositAmount && (
+            <div className="mb-6">
+              <Alert
+                message="Thông tin thanh toán"
+                description={
+                <div className="space-y-4">
+                  <Row gutter={[16, 16]} className="mt-3">
+                    {/* Show both original and adjusted values if there's a discount */}
+                    {contract.adjustedValue && 
+                     contract.adjustedValue > 0 && 
+                     contract.totalValue !== contract.adjustedValue && (
+                      <>
+                        <Col xs={24} sm={12} md={6}>
+                          <Statistic
+                            title="Giá niêm yết"
+                            value={parseContractValue(contract.totalValue).toLocaleString("vi-VN")}
+                            suffix="VNĐ"
+                            prefix={<DollarOutlined />}
+                            valueStyle={{ color: "#8c8c8c", textDecoration: "line-through" }}
+                          />
+                        </Col>
+                        <Col xs={24} sm={12} md={6}>
+                          <Statistic
+                            title="Giá thực tế"
+                            value={parseContractValue(contract.adjustedValue).toLocaleString("vi-VN")}
+                            suffix="VNĐ"
+                            prefix={<DollarOutlined />}
+                            valueStyle={{ color: "#722ed1", fontSize: "18px", fontWeight: "600" }}
+                          />
+                          <div className="text-xs text-gray-500 mt-1">
+                            Giá ưu đãi áp dụng cho hợp đồng này
+                          </div>
+                        </Col>
+                      </>
+                    )}
+
+                    {/* If no adjusted value, show total value */}
+                    {(!contract.adjustedValue || 
+                      contract.adjustedValue <= 0 || 
+                      contract.totalValue === contract.adjustedValue) && (
+                      <Col xs={24} sm={12} md={6}>
+                        <Statistic
+                          title="Tổng giá trị đơn hàng"
+                          value={parseContractValue(contract.totalValue).toLocaleString("vi-VN")}
+                          suffix="VNĐ"
+                          prefix={<DollarOutlined />}
+                          valueStyle={{ color: "#1890ff", fontSize: "18px", fontWeight: "600" }}
+                        />
+                      </Col>
+                    )}
+
+                    <Col xs={24} sm={12} md={6}>
+                      <Statistic
+                        title="Số tiền cọc cần thanh toán"
+                        value={depositAmount.toLocaleString("vi-VN")}
+                        suffix="VNĐ"
+                        prefix={<CreditCardOutlined />}
+                        valueStyle={{ color: "#52c41a", fontSize: "18px", fontWeight: "bold" }}
+                      />
+                    </Col>
+
+                    <Col xs={24} sm={12} md={6}>
+                      <Statistic
+                        title="Số tiền còn lại"
+                        value={(() => {
+                          const baseValue = hasAdjustedValue
+                            ? parseContractValue(contract.adjustedValue)
+                            : parseContractValue(contract.totalValue);
+                          return (baseValue - depositAmount).toLocaleString("vi-VN");
+                        })()}
+                        suffix="VNĐ"
+                        prefix={<DollarOutlined />}
+                        valueStyle={{ color: "#faad14", fontSize: "18px", fontWeight: "600" }}
+                      />
+                    </Col>
+                  </Row>
+
+                  {/* Price Breakdown - Show detailed calculation */}
+                  {fetchedPriceDetails && fetchedPriceDetails.steps && fetchedPriceDetails.steps.length > 0 && (
+                    <div className="mt-4 pt-4 border-t border-blue-200">
+                      <div className="mb-3">
+                        <span className="font-semibold text-gray-700">Chi phí vận chuyển:</span>
+                      </div>
+                      
+                      {/* a) Base shipping cost by distance */}
+                      <div className="mb-3">
+                        <div className="text-sm text-gray-700 mb-2">
+                          a) Cước vận chuyển cơ bản theo quãng đường {fetchedPriceDetails?.steps?.reduce((sum: number, step: any) => sum + step.appliedKm, 0).toFixed(2) || 0} km:
+                        </div>
+                        
+                        {/* Breakdown by vehicle type - Group by sizeRuleName */}
+                        <div className="space-y-2 ml-4">
+                          {(() => {
+                            // Group steps by sizeRuleName
+                            const groupedSteps = fetchedPriceDetails?.steps?.reduce((acc: any, step: any) => {
+                              if (!acc[step.sizeRuleName]) {
+                                acc[step.sizeRuleName] = {
+                                  sizeRuleName: step.sizeRuleName,
+                                  numOfVehicles: step.numOfVehicles,
+                                  parts: [],
+                                  totalSubtotal: 0
+                                };
+                              }
+                              acc[step.sizeRuleName].parts.push({
+                                unitPrice: step.unitPrice,
+                                appliedKm: step.appliedKm,
+                                subtotal: step.subtotal
+                              });
+                              acc[step.sizeRuleName].totalSubtotal += step.subtotal;
+                              return acc;
+                            }, {});
+                            
+                            return Object.values(groupedSteps).map((group: any, index: number) => (
+                              <div key={index} className="text-sm text-gray-700">
+                                - {group.sizeRuleName} ({group.numOfVehicles} xe): {group.parts.map((part: any) => 
+                                  `(${part.unitPrice.toLocaleString("vi-VN")}/km × ${part.appliedKm.toFixed(2)} km)`
+                                ).join(" + ")} = <strong>{group.totalSubtotal.toLocaleString("vi-VN")}</strong>
+                              </div>
+                            ));
+                          })()}
+                        </div>
+                        
+                        {/* Total base cost */}
+                        <div className="text-sm text-gray-700 mt-2">
+                          Tổng cước cơ bản: {fetchedPriceDetails?.steps?.map((step: any) => step.subtotal.toLocaleString("vi-VN")).join(" + ")} = <strong>{fetchedPriceDetails?.steps?.reduce((sum: number, step: any) => sum + step.subtotal, 0).toLocaleString("vi-VN") || 0}</strong>
+                        </div>
+                      </div>
+
+                      {/* b) Category coefficient */}
+                      {fetchedPriceDetails?.categoryCoefficient && fetchedPriceDetails.categoryCoefficient > 1 && (
+                        <div className="mb-3">
+                          <div className="text-sm text-gray-700">
+                            b) Hệ số danh mục: {fetchedPriceDetails?.categoryCoefficient}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* c) Category surcharge */}
+                      {fetchedPriceDetails?.categorySurcharge && fetchedPriceDetails.categorySurcharge > 0 && (
+                        <div className="mb-3">
+                          <div className="text-sm text-gray-700">
+                            c) Phụ thu danh mục: <strong>{fetchedPriceDetails?.categorySurcharge?.toLocaleString("vi-VN") || 0} VNĐ</strong>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Total transport cost */}
+                      <div className="mb-3">
+                        <div className="text-sm text-gray-700">
+                          Tổng chi phí vận chuyển (A): <strong>{fetchedPriceDetails?.finalTotal?.toLocaleString("vi-VN") || 0} VNĐ</strong>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Insurance cost section */}
+                  {hasInsurance && totalInsuranceFee && totalInsuranceFee > 0 && (
+                    <div className="mt-4 pt-4 border-t border-blue-200">
+                      <div className="mb-3">
+                        <span className="font-semibold text-gray-700">Chi phí bảo hiểm hàng hóa (B):</span>
+                      </div>
+                      <div className="space-y-2">
+                        <div className="text-sm text-gray-700">
+                          - Giá trị khai báo: <strong>{totalDeclaredValue?.toLocaleString("vi-VN")} VNĐ</strong>
+                        </div>
+                        <div className="text-sm text-gray-700">
+                          - Tỷ lệ bảo hiểm: <strong>{(() => {
+                            const baseRate = fetchedPriceDetails?.insuranceRate || contractSettings?.insuranceRateFragile || contractSettings?.insuranceRateNormal || 0.15;
+                            const vatRate = contractSettings?.vatRate || 10;
+                            const rateWithVat = baseRate * (1 + vatRate / 100);
+                            return rateWithVat.toFixed(5).replace('.', ',');
+                          })()}%</strong> (đã bao gồm 10% VAT)
+                        </div>
+                        <div className="text-sm text-gray-700">
+                          - Phí bảo hiểm: <strong>{totalInsuranceFee?.toLocaleString("vi-VN")} VNĐ</strong>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Grand Total - Show total contract value */}
+                  {fetchedPriceDetails && (
+                    <div className="mt-4 pt-4 border-t-2 border-black">
+                      <div className="text-base font-bold text-gray-900">
+                        TỔNG GIÁ TRỊ HỢP ĐỒNG (A + B): <span className="underline">{(fetchedPriceDetails?.grandTotal || fetchedPriceDetails?.finalTotal || 0).toLocaleString("vi-VN")}</span> VNĐ
+                      </div>
+                    </div>
+                  )}
+                </div>
+              }
+              type="info"
+              icon={<InfoCircleOutlined />}
+              showIcon
+              className="payment-summary-alert"
+            />
+          </div>
+          )}
+
           {/* Contract Actions - Chỉ xem và xuất hợp đồng, không có thanh toán */}
           <div className="mt-6">
             <div className="flex gap-4">
@@ -802,24 +1069,8 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
         open={isModalOpen}
         onCancel={handleCloseModal}
         footer={
-          <div className="flex justify-between">
-            <Button
-              icon={<EditOutlined />}
-              onClick={handleOpenInputModal}
-              size="large"
-            >
-              Chỉnh sửa thông tin
-            </Button>
-            <div className="flex gap-2">
-              <Button
-                icon={<FileTextOutlined />}
-                onClick={handleOpenUploadModal}
-                size="large"
-                type="primary"
-                style={{ background: "#52c41a", borderColor: "#52c41a" }}
-              >
-                Xuất hợp đồng
-              </Button>
+          readOnly ? (
+            <div className="flex justify-end gap-2">
               <Button
                 icon={<DownloadOutlined />}
                 onClick={handleExportPdf}
@@ -833,7 +1084,40 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
                 Đóng
               </Button>
             </div>
-          </div>
+          ) : (
+            <div className="flex justify-between">
+              <Button
+                icon={<EditOutlined />}
+                onClick={handleOpenInputModal}
+                size="large"
+              >
+                Chỉnh sửa thông tin
+              </Button>
+              <div className="flex gap-2">
+                <Button
+                  icon={<FileTextOutlined />}
+                  onClick={handleOpenUploadModal}
+                  size="large"
+                  type="primary"
+                  style={{ background: "#52c41a", borderColor: "#52c41a" }}
+                >
+                  Xuất hợp đồng
+                </Button>
+                <Button
+                  icon={<DownloadOutlined />}
+                  onClick={handleExportPdf}
+                  size="large"
+                  type="default"
+                  className="border-blue-500 text-blue-500 hover:border-blue-600 hover:text-blue-600"
+                >
+                  Xuất PDF
+                </Button>
+                <Button onClick={handleCloseModal} size="large">
+                  Đóng
+                </Button>
+              </div>
+            </div>
+          )
         }
         width="95vw"
         style={{ maxWidth: "1000px", top: 20 }}
@@ -946,7 +1230,7 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
             name="effectiveDate"
             rules={[{ required: true, message: "Vui lòng chọn ngày hiệu lực" }]}
           >
-            <DateSelectGroup mode="delivery" />
+            <DateSelectGroup mode="delivery" showTime={false} />
           </Form.Item>
 
           <Form.Item
@@ -971,7 +1255,7 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
               }),
             ]}
           >
-            <DateSelectGroup mode="delivery" />
+            <DateSelectGroup mode="delivery" showTime={false} />
           </Form.Item>
 
           <Form.Item
@@ -993,6 +1277,20 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
               }}
               addonAfter="VND"
               min={0}
+            />
+          </Form.Item>
+
+          <Form.Item
+            label="Tỉ lệ cọc điều chỉnh (%)"
+            name="customDepositPercent"
+            tooltip={`Để trống để sử dụng tỉ lệ cọc mặc định từ hệ thống (${contractSettings?.depositPercent || 30}%). Nhập giá trị từ 1-100 để áp dụng tỉ lệ cọc riêng cho hợp đồng này.`}
+          >
+            <InputNumber
+              style={{ width: "100%" }}
+              placeholder={`Để trống = sử dụng mặc định (${contractSettings?.depositPercent || 30}%)`}
+              min={1}
+              max={100}
+              addonAfter="%"
             />
           </Form.Item>
 
@@ -1062,7 +1360,7 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
             name="effectiveDate"
             rules={[{ required: true, message: "Vui lòng chọn ngày hiệu lực" }]}
           >
-            <DateSelectGroup mode="delivery" />
+            <DateSelectGroup mode="delivery" showTime={false} />
           </Form.Item>
 
           <Form.Item
@@ -1087,7 +1385,7 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
               }),
             ]}
           >
-            <DateSelectGroup mode="delivery" />
+            <DateSelectGroup mode="delivery" showTime={false} />
           </Form.Item>
 
           <Form.Item
@@ -1109,6 +1407,20 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
               }}
               addonAfter="VND"
               min={0}
+            />
+          </Form.Item>
+
+          <Form.Item
+            label="Tỉ lệ cọc điều chỉnh (%)"
+            name="customDepositPercent"
+            tooltip={`Để trống để sử dụng tỉ lệ cọc mặc định từ hệ thống (${contractSettings?.depositPercent || 30}%). Nhập giá trị từ 1-100 để áp dụng tỉ lệ cọc riêng cho hợp đồng này.`}
+          >
+            <InputNumber
+              style={{ width: "100%" }}
+              placeholder={`Để trống = sử dụng mặc định (${contractSettings?.depositPercent || 30}%)`}
+              min={1}
+              max={100}
+              addonAfter="%"
             />
           </Form.Item>
 

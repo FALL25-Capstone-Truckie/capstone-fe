@@ -53,6 +53,11 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({
       return [
         ...baseItems,
         {
+          key: "/admin/orders",
+          icon: <ShoppingCartOutlined />,
+          label: <Link to="/admin/orders">Đơn hàng</Link>,
+        },
+        {
           key: "/admin/customers",
           icon: <UserOutlined />,
           label: <Link to="/admin/customers">Quản lý khách hàng</Link>,

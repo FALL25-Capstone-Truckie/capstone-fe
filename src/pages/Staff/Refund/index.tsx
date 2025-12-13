@@ -11,7 +11,6 @@ import {
   Tooltip,
   Row,
   Col,
-  Statistic,
   Select,
   Skeleton,
   Empty,
@@ -19,6 +18,7 @@ import {
   Image,
   Divider
 } from 'antd';
+import StatCard from '../../../components/common/StatCard';
 import { 
   RollbackOutlined, 
   SearchOutlined, 
@@ -204,28 +204,39 @@ const RefundListPage: React.FC = () => {
       {/* Stats */}
       <Row gutter={[16, 16]} className="mb-6">
         <Col xs={12} sm={6}>
-          <Card className="text-center shadow-sm border-t-4 border-t-blue-500">
-            <Statistic title="Tổng yêu cầu" value={stats.total} prefix={<RollbackOutlined />} />
-          </Card>
+          <StatCard 
+            title="Tổng yêu cầu" 
+            value={stats.total} 
+            prefix={<RollbackOutlined />} 
+            borderColor="#1890ff"
+            loading={isLoading}
+          />
         </Col>
         <Col xs={12} sm={6}>
-          <Card className="text-center shadow-sm border-t-4 border-t-green-500">
-            <Statistic title="Đã hoàn" value={stats.completed} valueStyle={{ color: '#52c41a' }} />
-          </Card>
+          <StatCard 
+            title="Đã hoàn" 
+            value={stats.completed} 
+            valueStyle={{ color: '#52c41a' }} 
+            borderColor="#52c41a"
+            loading={isLoading}
+          />
         </Col>
         <Col xs={12} sm={6}>
-          <Card className="text-center shadow-sm border-t-4 border-t-yellow-500">
-            <Statistic title="Chờ xử lý" value={stats.pending} valueStyle={{ color: '#faad14' }} />
-          </Card>
+          <StatCard 
+            title="Chờ xử lý" 
+            value={stats.pending} 
+            valueStyle={{ color: '#faad14' }} 
+            borderColor="#faad14"
+            loading={isLoading}
+          />
         </Col>
         <Col xs={12} sm={6}>
-          <Card className="text-center shadow-sm border-t-4 border-t-purple-500">
-            <Statistic 
-              title="Tổng tiền hoàn" 
-              value={stats.totalAmount}
-              formatter={(value) => `${Number(value).toLocaleString('vi-VN')} đ`}
-            />
-          </Card>
+          <StatCard 
+            title="Tổng tiền hoàn" 
+            value={`${stats.totalAmount.toLocaleString('vi-VN')} đ`}
+            borderColor="#722ed1"
+            loading={isLoading}
+          />
         </Col>
       </Row>
 

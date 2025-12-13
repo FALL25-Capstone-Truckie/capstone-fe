@@ -12,11 +12,11 @@ import {
   Typography,
   Row,
   Col,
-  Statistic,
   Image,
   Tabs,
   Descriptions
 } from 'antd';
+import StatCard from '../../../components/common/StatCard';
 import { 
   SearchOutlined, 
   ReloadOutlined,
@@ -188,46 +188,46 @@ const FuelConsumptionPage: React.FC = () => {
       {/* Statistics Cards */}
       <Row gutter={16} className="mb-6">
         <Col xs={24} sm={12} lg={6}>
-          <Card className="shadow-sm" style={{ borderLeft: '4px solid #1890ff' }}>
-            <Statistic
-              title="Tổng bản ghi"
-              value={stats.total}
-              prefix={<DashboardOutlined style={{ color: '#1890ff' }} />}
-            />
-          </Card>
+          <StatCard
+            title="Tổng bản ghi"
+            value={stats.total}
+            prefix={<DashboardOutlined />}
+            borderColor="#1890ff"
+            loading={loading}
+          />
         </Col>
         <Col xs={24} sm={12} lg={6}>
-          <Card className="shadow-sm" style={{ borderLeft: '4px solid #faad14' }}>
-            <Statistic
-              title="Tổng nhiên liệu"
-              value={stats.totalFuel}
-              precision={1}
-              suffix="L"
-              valueStyle={{ color: '#faad14' }}
-            />
-          </Card>
+          <StatCard
+            title="Tổng nhiên liệu"
+            value={stats.totalFuel}
+            precision={1}
+            suffix="L"
+            valueStyle={{ color: '#faad14' }}
+            borderColor="#faad14"
+            loading={loading}
+          />
         </Col>
         <Col xs={24} sm={12} lg={6}>
-          <Card className="shadow-sm" style={{ borderLeft: '4px solid #52c41a' }}>
-            <Statistic
-              title="Tổng quãng đường"
-              value={stats.totalDistance}
-              precision={1}
-              suffix="km"
-              valueStyle={{ color: '#52c41a' }}
-            />
-          </Card>
+          <StatCard
+            title="Tổng quãng đường"
+            value={stats.totalDistance}
+            precision={1}
+            suffix="km"
+            valueStyle={{ color: '#52c41a' }}
+            borderColor="#52c41a"
+            loading={loading}
+          />
         </Col>
         <Col xs={24} sm={12} lg={6}>
-          <Card className="shadow-sm" style={{ borderLeft: '4px solid #722ed1' }}>
-            <Statistic
-              title="TB tiêu thụ"
-              value={stats.avgConsumption}
-              precision={2}
-              suffix="L/100km"
-              valueStyle={{ color: '#722ed1' }}
-            />
-          </Card>
+          <StatCard
+            title="TB tiêu thụ"
+            value={stats.avgConsumption}
+            precision={2}
+            suffix="L/100km"
+            valueStyle={{ color: '#722ed1' }}
+            borderColor="#722ed1"
+            loading={loading}
+          />
         </Col>
       </Row>
 

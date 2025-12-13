@@ -392,7 +392,7 @@ const NotificationDetailModal: React.FC<NotificationDetailModalProps> = ({
 
           {/* 🔧 Display tracking code instead of UUID for vehicle assignment */}
           {(notification.metadata?.vehicleAssignmentTrackingCode || notification.relatedVehicleAssignmentId) && (
-            <Descriptions.Item label="Mã phân công xe">
+            <Descriptions.Item label="Mã chuyến xe">
               <Tag color="purple">
                 {notification.metadata?.vehicleAssignmentTrackingCode || notification.relatedVehicleAssignmentId}
               </Tag>

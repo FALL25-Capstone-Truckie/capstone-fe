@@ -20,14 +20,14 @@ const HeroSection: React.FC<HeroSectionProps> = () => {
                         <div className="container mx-auto px-4">
                             <div className="max-w-lg bg-white/80 p-8 rounded-lg">
                                 <h1 className="text-4xl font-bold mb-4 text-blue-800">
-                                    Tối ưu hiệu quả cho mọi kiện hàng
+                                    Vận tải xe tải nội thành TP.HCM nhanh, đúng hẹn
                                 </h1>
                                 <p className="mb-6 text-lg">
-                                    Tối ưu hóa hoạt động logistics với hệ thống quản lý vận tải toàn diện của chúng tôi
+                                    Đặt chuyến dễ dàng, theo dõi hành trình theo thời gian thực và quản lý trạng thái giao nhận minh bạch cho mọi đơn hàng.
                                 </p>
                                 <div className="flex space-x-4">
                                     <Button type="primary" size="large" className="bg-blue-600 h-12 px-8 text-base">
-                                        Tìm hiểu thêm
+                                        Nhận báo giá
                                     </Button>
                                 </div>
                             </div>
@@ -49,4 +49,4 @@ const HeroSection: React.FC<HeroSectionProps> = () => {
     );
 };
 
-export default HeroSection; 
+export default HeroSection;

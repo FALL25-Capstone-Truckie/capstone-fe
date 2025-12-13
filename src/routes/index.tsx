@@ -1,6 +1,7 @@
 import { createBrowserRouter, Outlet } from "react-router-dom";
 import HomePage from "../pages/Home";
-import { LoginPage, RegisterPage, ForgotPasswordPage } from "../pages/Auth";
+import { LoginPage, RegisterPage, ForgotPasswordPage, FirstTimePasswordChangePage } from "../pages/Auth";
+import VerifyOTPPage from "../pages/Auth/VerifyOTP";
 import { PaymentReturn } from "../pages/Payment";
 import RecipientOrderTracking from "../pages/RecipientTracking";
 import Dashboard from "../pages/Dashboard";
@@ -112,6 +113,27 @@ const router = createBrowserRouter([
             }}
           >
             <ForgotPasswordPage />
+          </PermissionRoute>
+        ),
+      },
+      {
+        path: "/auth/first-time-password",
+        element: <FirstTimePasswordChangePage />,
+      },
+      {
+        path: "/auth/verify-otp",
+        element: (
+          <PermissionRoute
+            authenticationRequired="unauthenticated"
+            authRedirectPath={(auth) => {
+              // Chuyển hướng dựa trên vai trò nếu đã đăng nhập
+              if (auth?.user?.role === "admin") return "/admin/dashboard";
+              if (auth?.user?.role === "staff") return "/staff/dashboard";
+              if (auth?.user?.role === "driver") return "/driver/dashboard";
+              return "/"; // Mặc định cho customer
+            }}
+          >
+            <VerifyOTPPage />
           </PermissionRoute>
         ),
       },

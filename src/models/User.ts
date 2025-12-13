@@ -46,7 +46,7 @@ export interface UserStatusUpdateRequest {
 export interface RegisterEmployeeRequest {
     username: string;
     email: string;
-    password: string;
+    password?: string; // Made optional since it's not required for staff registration
     gender: boolean;
     dateOfBirth: string;
     imageUrl?: string;

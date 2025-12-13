@@ -42,7 +42,23 @@ const LoginPage: React.FC = () => {
     // Call login function
     login(values.username, values.password)
       .then(response => {
-        // On successful login, show success message and redirect
+        // Check if this is first time login (for staff)
+        if (response.data?.firstTimeLogin) {
+          // Show message about first time login
+          messageApi.info("Đây là lần đăng nhập đầu tiên của bạn. Vui lòng đổi mật khẩu để tiếp tục.");
+          
+          // Navigate to first time password change page
+          navigate("/auth/first-time-password", { 
+            state: { 
+              firstTimeLogin: true, 
+              username: values.username,
+              requiredActions: response.data.requiredActions 
+            } 
+          });
+          return;
+        }
+        
+        // Normal login flow
         messageApi.success(response.message || "Đăng nhập thành công");
 
         // Get the redirect path based on user role

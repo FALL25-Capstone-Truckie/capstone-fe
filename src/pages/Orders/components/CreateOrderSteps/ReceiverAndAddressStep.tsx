@@ -261,7 +261,7 @@ const ReceiverAndAddressStep: React.FC<ReceiverAndAddressStepProps> = ({
                             ]}
                             tooltip="Thời gian lấy hàng phải cách thời điểm hiện tại ít nhất 2 ngày để đảm bảo đủ thời gian chuẩn bị"
                         >
-                            <DateSelectGroup minDate={dayjs().add(2, 'day')} mode="delivery" />
+                            <DateSelectGroup minDate={dayjs().add(2, 'day')} mode="delivery" showTime={false} />
                         </Form.Item>
                     </div>
                 </Col>

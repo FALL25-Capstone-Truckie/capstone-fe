@@ -28,6 +28,7 @@ declare global {
  * Service for handling authentication API calls
  */
 const authService = {
+
     /**
      * Initialize authentication state
      * This should be called when the application starts
@@ -104,29 +105,39 @@ const authService = {
                 throw new Error(response.data.message || 'Đăng nhập thất bại');
             }
 
+            // Check if this is first time login
+            const isFirstTimeLogin = response.data.data.firstTimeLogin === true;
+            console.log('[authService] Login response data:', response.data.data);
+            console.log('[authService] firstTimeLogin detected:', isFirstTimeLogin);
+            
             // Store auth token in memory
             authToken = response.data.data.authToken;
 
             // Store token in window for external access
             window.__AUTH_TOKEN__ = authToken;
 
-            
+            // Only save user info to storage if NOT first time login
+            // This prevents AuthContext from thinking user is fully authenticated
+            if (!isFirstTimeLogin) {
+                console.log('[authService] Normal login - saving user info to storage');
+                // Lưu thông tin người dùng vào sessionStorage
+                const user = response.data.data.user;
+                const roleName = user.role?.roleName;
 
-            // Lưu thông tin người dùng vào sessionStorage
-            const user = response.data.data.user;
-            const roleName = user.role?.roleName;
+                sessionStorage.setItem('user_role', roleName.toLowerCase());
+                sessionStorage.setItem('userId', user.id);
+                sessionStorage.setItem('username', user.username);
+                sessionStorage.setItem('email', user.email);
 
-            sessionStorage.setItem('user_role', roleName.toLowerCase());
-            sessionStorage.setItem('userId', user.id);
-            sessionStorage.setItem('username', user.username);
-            sessionStorage.setItem('email', user.email);
-
-            // Also store in localStorage for persistence across server restarts
-            localStorage.setItem('user_role', roleName.toLowerCase());
-            localStorage.setItem('userId', user.id);
-            localStorage.setItem('username', user.username);
-            localStorage.setItem('email', user.email);
-            localStorage.setItem('remember_login', 'true');
+                // Also store in localStorage for persistence across server restarts
+                localStorage.setItem('user_role', roleName.toLowerCase());
+                localStorage.setItem('userId', user.id);
+                localStorage.setItem('username', user.username);
+                localStorage.setItem('email', user.email);
+                localStorage.setItem('remember_login', 'true');
+            } else {
+                console.log('[authService] First time login detected, not saving user info to storage yet');
+            }
 
             // Thêm dòng hello username
             response.data.message = `Đăng nhập thành công`;
@@ -280,39 +291,6 @@ const authService = {
         return sessionStorage.getItem('user_role');
     },
 
-    /**
-     * Change user password
-     * @param data Password change data
-     * @returns Promise with change password response
-     */
-    changePassword: async (data: ChangePasswordRequest): Promise<ChangePasswordResponse> => {
-        try {
-            const response = await httpClient.put<ChangePasswordResponse>('/auths/change-password', data);
-            if (!response.data.success) {
-                console.error('Change password failed with message:', response.data.message);
-                throw new Error(response.data.message || 'Đổi mật khẩu thất bại');
-            }
-
-            return response.data;
-        } catch (error: any) {
-            console.error('Change password error:', error);
-
-            // Xử lý lỗi cụ thể từ API
-            if (error.response && error.response.data) {
-                const errorData = error.response.data;
-                if (errorData.message) {
-                    throw new Error(errorData.message);
-                }
-            }
-
-            throw handleApiError(error, 'Đổi mật khẩu thất bại');
-        }
-    }, // <--- Added closing brace here
-
-    /**
-     * Debug function to check current token in memory
-     * @returns Current token or null
-     */
     debugGetToken: (): string | null => {
         return authToken;
     },
@@ -414,6 +392,75 @@ const authService = {
                 throw new Error(error.response.data.message);
             }
             
+            throw handleApiError(error, 'Đổi mật khẩu thất bại');
+        }
+    },
+
+    // ==================== REGISTER OTP METHODS ====================
+
+    verifyRegisterOtp: async (email: string, otp: string): Promise<ApiResponse<any>> => {
+        try {
+            const response = await httpClient.post<ApiResponse<any>>('/emails/otp/verify', { email, otp });
+
+            if (!response.data.success) {
+                throw new Error(response.data.message || 'Xác thực OTP thất bại');
+            }
+
+            return response.data;
+        } catch (error: any) {
+            console.error('Verify register OTP error:', error);
+
+            if (error.response?.data?.message) {
+                throw new Error(error.response.data.message);
+            }
+
+            throw handleApiError(error, 'Xác thực OTP thất bại');
+        }
+    },
+
+    resendRegisterOtp: async (email: string): Promise<ApiResponse<any>> => {
+        try {
+            const response = await httpClient.post<ApiResponse<any>>('/emails/otp/resend', { email });
+
+            if (!response.data.success) {
+                throw new Error(response.data.message || 'Gửi lại OTP thất bại');
+            }
+
+            return response.data;
+        } catch (error: any) {
+            console.error('Resend register OTP error:', error);
+
+            if (error.response?.data?.message) {
+                throw new Error(error.response.data.message);
+            }
+
+            throw handleApiError(error, 'Gửi lại OTP thất bại');
+        }
+    },
+
+    // ==================== CHANGE PASSWORD METHOD ====================
+
+    /**
+     * Change user password
+     * @param data Change password request data
+     * @returns Promise with success response
+     */
+    changePassword: async (data: ChangePasswordRequest): Promise<ChangePasswordResponse> => {
+        try {
+            const response = await httpClient.put<ChangePasswordResponse>('/auths/change-password', data);
+
+            if (!response.data.success) {
+                throw new Error(response.data.message || 'Đổi mật khẩu thất bại');
+            }
+
+            return response.data;
+        } catch (error: any) {
+            console.error('Change password error:', error);
+
+            if (error.response?.data?.message) {
+                throw new Error(error.response.data.message);
+            }
+
             throw handleApiError(error, 'Đổi mật khẩu thất bại');
         }
     }

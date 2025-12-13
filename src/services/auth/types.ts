@@ -43,6 +43,8 @@ export interface UserApiResponse {
 export interface LoginResponseData {
     authToken: string;
     user: UserApiResponse;
+    firstTimeLogin?: boolean;
+    requiredActions?: string[];
 }
 
 export type LoginResponse = ApiResponse<LoginResponseData>;
@@ -62,6 +64,19 @@ export interface RegisterResponseData {
     businessAddress: string;
     status: string;
     userResponse: UserApiResponse;
+    otpRequired?: boolean;
+    email?: string;
+    otpMessage?: string;
+    customer?: {
+        id: string;
+        companyName: string;
+        representativeName: string;
+        representativePhone: string;
+        businessLicenseNumber: string;
+        businessAddress: string;
+        status: string;
+        userResponse: UserApiResponse;
+    };
 }
 
 export type RegisterResponse = ApiResponse<RegisterResponseData>;

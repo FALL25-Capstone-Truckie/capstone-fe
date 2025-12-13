@@ -105,7 +105,7 @@ const CustomerPage: React.FC = () => {
         return 'Không xác định';
     };
 
-    // Status options for the modal - đầy đủ theo UserStatusEnum
+    // Status options for the modal - chỉ hiển thị các trạng thái cần thiết
     const statusOptions: StatusOption[] = [
         {
             value: UserStatusEnum.ACTIVE,
@@ -122,25 +122,11 @@ const CustomerPage: React.FC = () => {
             icon: <StopOutlined />
         },
         {
-            value: UserStatusEnum.OTP_PENDING,
-            label: 'Chờ OTP',
-            description: 'Khách hàng đang chờ xác thực OTP',
-            color: 'gold',
-            icon: <ClockCircleOutlined />
-        },
-        {
             value: UserStatusEnum.BANNED,
             label: 'Bị cấm',
             description: 'Khách hàng bị cấm sử dụng hệ thống',
             color: 'red',
             icon: <LockOutlined />
-        },
-        {
-            value: UserStatusEnum.DELETED,
-            label: 'Đã xóa',
-            description: 'Tài khoản khách hàng đã bị xóa',
-            color: 'default',
-            icon: <DeleteOutlined />
         }
     ];
 

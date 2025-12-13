@@ -8,9 +8,11 @@ import type { ChangePasswordRequest } from '@/services/auth/types';
 interface ChangePasswordFormProps {
     username: string;
     onSuccess?: () => void;
+    isFirstTimeLogin?: boolean;
+    requiredActions?: string[];
 }
 
-const ChangePasswordForm: React.FC<ChangePasswordFormProps> = ({ username, onSuccess }) => {
+const ChangePasswordForm: React.FC<ChangePasswordFormProps> = ({ username, onSuccess, isFirstTimeLogin, requiredActions }) => {
     const [form] = Form.useForm();
     const [loading, setLoading] = useState(false);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -72,6 +74,14 @@ const ChangePasswordForm: React.FC<ChangePasswordFormProps> = ({ username, onSuc
             onFinish={handleSubmit}
             className="change-password-form"
         >
+            {isFirstTimeLogin && (
+                <Form.Item>
+                    <div className="bg-blue-50 border-l-4 border-blue-500 text-blue-700 p-4 mb-4">
+                        <p className="font-bold">Đăng nhập lần đầu</p>
+                        <p>Đây là lần đăng nhập đầu tiên của bạn. Vui lòng đổi mật khẩu tạm thời để tiếp tục sử dụng hệ thống.</p>
+                    </div>
+                </Form.Item>
+            )}
             {errorMessage && (
                 <Form.Item>
                     <div className="text-red-500 mb-2">{errorMessage}</div>

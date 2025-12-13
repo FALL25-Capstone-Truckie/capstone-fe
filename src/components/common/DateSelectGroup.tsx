@@ -23,7 +23,7 @@ const DateSelectGroup: React.FC<DateSelectGroupProps> = ({
     mode = 'delivery',
     maxYear = dayjs().year(),
     minYear = maxYear - 100,
-    showTime = true,
+    showTime = false,
 }) => {
     // Initialize with appropriate default date based on mode
     const getDefaultDate = () => {

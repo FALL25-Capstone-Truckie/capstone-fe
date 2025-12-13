@@ -126,7 +126,7 @@ const ReceiverInfoStep: React.FC<ReceiverInfoStepProps> = ({
             ]}
             tooltip="Thời gian lấy hàng phải cách thời điểm hiện tại ít nhất 2 ngày để đảm bảo đủ thời gian chuẩn bị"
           >
-            <DateSelectGroup minDate={minPickupTime} mode="delivery" />
+            <DateSelectGroup minDate={minPickupTime} mode="delivery" showTime={false} />
           </Form.Item>
         </Col>
       </Row>

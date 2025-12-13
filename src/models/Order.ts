@@ -82,10 +82,7 @@ export interface OrderDetail {
   unit: string;
   description?: string;
   status: string;
-  startTime?: string;
   estimatedStartTime?: string;
-  endTime?: string;
-  estimatedEndTime?: string;
   createdAt: string;
   updatedAt: string;
   trackingCode: string;
@@ -411,10 +408,7 @@ export interface CustomerOrderDetailItem {
   unit: string;
   description: string;
   status: string;
-  startTime: string;
   estimatedStartTime: string;
-  endTime: string;
-  estimatedEndTime: string;
   createdAt: string;
   trackingCode: string;
   orderSize?: {
@@ -588,10 +582,10 @@ export interface StaffOrderDetailItem {
   unit: string;
   description: string;
   status: string;
-  startTime: string | null;
   estimatedStartTime: string | null;
-  endTime: string | null;
-  estimatedEndTime: string | null;
+  estimatedEndTime?: string | null;
+  startTime?: string | null;
+  endTime?: string | null;
   createdAt: string;
   trackingCode: string;
   orderSize?: {

@@ -20,7 +20,8 @@ import {
     InfoCircleOutlined,
     EditOutlined,
     ArrowLeftOutlined,
-    DeleteOutlined
+    DeleteOutlined,
+    LaptopOutlined
 } from "@ant-design/icons";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { vehicleAssignmentService } from "../../../services/vehicle-assignment";
@@ -39,7 +40,7 @@ const VehicleAssignmentDetailPage: React.FC = () => {
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
-    // Fetch vehicle assignment details
+    // Fetch vehicle assignment details with full information including devices
     const {
         data: assignmentData,
         isLoading: isLoadingAssignment,
@@ -47,7 +48,7 @@ const VehicleAssignmentDetailPage: React.FC = () => {
         isError: isAssignmentError
     } = useQuery({
         queryKey: ["vehicleAssignment", id],
-        queryFn: () => id ? vehicleAssignmentService.getById(id) : null,
+        queryFn: () => id ? vehicleAssignmentService.getFullById(id) : null,
         enabled: !!id,
     });
 
@@ -234,6 +235,60 @@ const VehicleAssignmentDetailPage: React.FC = () => {
                     </Row>
 
                     <Row gutter={[16, 16]} className="mt-4">
+                        <Col span={24}>
+                            <Card
+                                className="shadow-sm hover:shadow-md transition-shadow border-blue-100 mb-4"
+                                headStyle={{ backgroundColor: "#f0f7ff", borderBottom: "1px solid #d6e4ff" }}
+                                title={
+                                    <div className="flex items-center">
+                                        <InfoCircleOutlined className="text-blue-500 mr-2" />
+                                        <span className="font-semibold">Thiết bị đính kèm</span>
+                                    </div>
+                                }
+                            >
+                                {assignment.devices && assignment.devices.length > 0 ? (
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                        {assignment.devices.map((device: any) => (
+                                            <div key={device.id} className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                                                <div className="flex items-center mb-2">
+                                                    <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center mr-3">
+                                                        <InfoCircleOutlined className="text-blue-500" />
+                                                    </div>
+                                                    <div>
+                                                        <div className="font-semibold">{device.deviceCode}</div>
+                                                        <div className="text-xs text-gray-500">{device.deviceTypeEntity?.deviceTypeName || 'Không xác định'}</div>
+                                                    </div>
+                                                </div>
+                                                <Divider className="my-2" />
+                                                <div className="grid grid-cols-2 gap-2 text-sm">
+                                                    <div>
+                                                        <div className="text-gray-500 text-xs">Nhà sản xuất</div>
+                                                        <div>{device.manufacturer || 'N/A'}</div>
+                                                    </div>
+                                                    <div>
+                                                        <div className="text-gray-500 text-xs">Model</div>
+                                                        <div>{device.model || 'N/A'}</div>
+                                                    </div>
+                                                    <div>
+                                                        <div className="text-gray-500 text-xs">IP Address</div>
+                                                        <div>{device.ipAddress || 'N/A'}</div>
+                                                    </div>
+                                                    <div>
+                                                        <div className="text-gray-500 text-xs">Firmware</div>
+                                                        <div>{device.firmwareVersion || 'N/A'}</div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <div className="text-center py-6 text-gray-500">
+                                        <InfoCircleOutlined style={{ fontSize: '24px' }} className="block mx-auto mb-2" />
+                                        <p>Không có thiết bị nào được đính kèm</p>
+                                    </div>
+                                )}
+                            </Card>
+                        </Col>
                         <Col span={12}>
                             <Card
                                 className="shadow-sm hover:shadow-md transition-shadow border-blue-100 h-full"

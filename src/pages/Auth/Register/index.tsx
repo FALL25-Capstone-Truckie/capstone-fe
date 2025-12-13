@@ -50,23 +50,39 @@ const RegisterPage: React.FC = () => {
                 const response = await authService.register(registerData);
 
                 if (response.success) {
-                    message.success(`Đăng ký thành công! Tài khoản ${response.data.userResponse.username} đã được tạo.`);
+                    // Lấy thông tin user từ customer.userResponse thay vì trực tiếp từ userResponse
+                    const username = response.data.customer?.userResponse?.username || response.data.userResponse?.username || '';
+                    message.success(`Đăng ký thành công! Tài khoản ${username} đã được tạo.`);
 
-                    // Hiển thị thông báo thành công
-                    let successMessage = `Tài khoản ${response.data.userResponse.username} đã được tạo thành công!`;
+                    // Kiểm tra xem có yêu cầu nhập OTP không
+                    if (response.data.otpRequired) {
+                        // Hiển thị thông báo
+                        message.info(response.data.otpMessage || 'Vui lòng kiểm tra email để xác thực tài khoản.');
+                        
+                        // Chuyển hướng đến trang nhập OTP ngay lập tức
+                        navigate('/auth/verify-otp', { 
+                            state: { 
+                                email: response.data.email || values.email 
+                            } 
+                        });
+                    } else {
+                        // Hiển thị thông báo thành công
+                        const username = response.data.customer?.userResponse?.username || response.data.userResponse?.username || '';
+                        let successMessage = `Tài khoản ${username} đã được tạo thành công!`;
 
-                    // Nếu status là OTP_PENDING, thông báo cho người dùng
-                    if (response.data.status === 'OTP_PENDING') {
-                        successMessage += ' Vui lòng kiểm tra email để xác thực tài khoản.';
-                        message.info('Vui lòng kiểm tra email để xác thực tài khoản.');
+                        // Nếu status là OTP_PENDING, thông báo cho người dùng
+                        if (response.data.status === 'OTP_PENDING') {
+                            successMessage += ' Vui lòng kiểm tra email để xác thực tài khoản.';
+                            message.info('Vui lòng kiểm tra email để xác thực tài khoản.');
+                        }
+
+                        setSuccess(successMessage);
+
+                        // Chuyển hướng đến trang đăng nhập sau 3 giây
+                        setTimeout(() => {
+                            navigate('/auth/login', { state: { registered: true, username: values.username } });
+                        }, 3000);
                     }
-
-                    setSuccess(successMessage);
-
-                    // Chuyển hướng đến trang đăng nhập sau 3 giây
-                    setTimeout(() => {
-                        navigate('/auth/login', { state: { registered: true, username: values.username } });
-                    }, 3000);
                 } else {
                     // Xử lý trường hợp API trả về success: false
                     message.error(response.message || 'Đăng ký thất bại');
@@ -126,11 +142,6 @@ const RegisterPage: React.FC = () => {
                     form={form}
                     loading={loading}
                     onSubmit={handleRegister}
-                />
-
-                <SocialSignup
-                    loading={loading}
-                    onGoogleSignup={handleGoogleSignup}
                 />
             </Card>
         </AuthPageLayout>

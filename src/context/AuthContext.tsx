@@ -149,16 +149,26 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
                 throw new Error("Vai trò người dùng không hợp lệ");
             }
 
-            // Map API user to our User type
-            const userData: User = {
-                id: apiUser.id,
-                username: apiUser.username,
-                email: apiUser.email,
-                role: roleName as "admin" | "customer" | "staff" | "driver",
-            };
-
-            setUser(userData);
-            return response; // Return the response for success handling
+            // Check if this is first time login
+            const isFirstTimeLogin = response.data.firstTimeLogin === true;
+            
+            // Don't set user in context if it's first time login
+            // This prevents auto-redirect to dashboard
+            if (!isFirstTimeLogin) {
+                // Map API user to our User type
+                const userData: User = {
+                    id: apiUser.id,
+                    username: apiUser.username,
+                    email: apiUser.email,
+                    role: roleName as "admin" | "customer" | "staff" | "driver",
+                };
+                
+                setUser(userData);
+            } else {
+                console.log("First time login detected, not setting user in context yet");
+            }
+            
+            return response; // Return the full response for handling in Login component
         } catch (error) {
             console.error("Login failed:", error);
             // Ensure error is propagated to the calling component

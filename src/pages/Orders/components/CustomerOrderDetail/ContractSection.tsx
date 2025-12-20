@@ -10,6 +10,7 @@ import {
   Row,
   Col,
   Spin,
+  Skeleton,
 } from "antd";
 import {
   FileTextOutlined,
@@ -28,6 +29,7 @@ import type { PriceDetails } from "../../../../services/contract/contractTypes";
 import contractSettingService from "../../../../services/contract/contractSettingService";
 import contractService from "../../../../services/contract/contractService";
 import type { ContractSettings } from "../../../../models/Contract";
+import { CategoryName, isFragileCategory } from "../../../../models/CategoryName";
 
 // Utility function to safely parse contract values
 const parseContractValue = (value: string | number | undefined): number => {
@@ -60,6 +62,8 @@ interface ContractProps {
   hasInsurance?: boolean;
   totalInsuranceFee?: number;
   totalDeclaredValue?: number;
+  // Order category for insurance rate calculation
+  categoryName?: string;
 }
 
 const ContractSection: React.FC<ContractProps> = ({
@@ -72,6 +76,7 @@ const ContractSection: React.FC<ContractProps> = ({
   hasInsurance,
   totalInsuranceFee,
   totalDeclaredValue,
+  categoryName,
 }) => {
   const messageApi = App.useApp().message;
   const [contractSettings, setContractSettings] = useState<ContractSettings | null>(null);
@@ -323,7 +328,11 @@ const ContractSection: React.FC<ContractProps> = ({
                     </Row>
 
                     {/* Price Breakdown - Show detailed calculation */}
-                    {fetchedPriceDetails && fetchedPriceDetails.steps && fetchedPriceDetails.steps.length > 0 && (
+                    {loadingPriceData ? (
+                      <div className="mt-4 pt-4 border-t border-blue-200">
+                        <Skeleton active paragraph={{ rows: 8, width: ['100%', '80%', '60%', '100%', '70%', '50%', '100%', '80%'] }} />
+                      </div>
+                    ) : fetchedPriceDetails && fetchedPriceDetails.steps && fetchedPriceDetails.steps.length > 0 ? (
                       <div className="mt-4 pt-4 border-t border-blue-200">
                         <div className="mb-3">
                           <span className="font-semibold text-gray-700">Chi phí vận chuyển:</span>
@@ -394,7 +403,7 @@ const ContractSection: React.FC<ContractProps> = ({
                           </div>
                         </div>
                       </div>
-                    )}
+                    ) : null}
 
                     {/* Insurance Breakdown - Show if order has insurance */}
                     {hasInsurance && totalInsuranceFee && totalInsuranceFee > 0 && (
@@ -402,33 +411,60 @@ const ContractSection: React.FC<ContractProps> = ({
                         <div className="mb-3">
                           <span className="font-semibold text-gray-700">Chi phí bảo hiểm hàng hóa (B):</span>
                         </div>
-                        <div className="space-y-2">
-                          <div className="text-sm text-gray-700">
-                            - Giá trị khai báo: <strong>{totalDeclaredValue?.toLocaleString("vi-VN")} VNĐ</strong>
+                        {loadingPriceData || !contractSettings ? (
+                          <Skeleton active paragraph={{ rows: 3, width: ['100%', '80%', '60%'] }} />
+                        ) : (
+                          <div className="space-y-2">
+                            <div className="text-sm text-gray-700">
+                              - Giá trị khai báo: <strong>{totalDeclaredValue?.toLocaleString("vi-VN")} VNĐ</strong>
+                            </div>
+                            <div className="text-sm text-gray-700">
+                              - Tỷ lệ bảo hiểm: <strong>{loadingPriceData || !contractSettings ? (
+                                <Skeleton.Input style={{ width: 100 }} size="small" active />
+                              ) : (() => {
+                                // Determine insurance rate based on cargo category
+                                let baseRate = 0.15; // Default fallback
+                                
+                                if (contractSettings) {
+                                  // Use the appropriate rate based on category
+                                  if (categoryName && isFragileCategory(categoryName as CategoryName)) {
+                                    baseRate = contractSettings.insuranceRateFragile || 0.15;
+                                  } else {
+                                    baseRate = contractSettings.insuranceRateNormal || 0.08;
+                                  }
+                                } else if (fetchedPriceDetails?.insuranceRate) {
+                                  // Fallback to priceDetails if available
+                                  baseRate = fetchedPriceDetails.insuranceRate;
+                                }
+                                
+                                // Get VAT rate from contract settings (already in decimal form, e.g., 0.1 = 10%)
+                                const vatRate = contractSettings?.vatRate || 0.1;
+                                // Since baseRate is already a percentage (e.g., 0.15%), we just add VAT
+                                const rateWithVat = baseRate * (1 + vatRate);
+                                
+                                return rateWithVat.toFixed(5).replace('.', ',');
+                              })()}%</strong> {loadingPriceData || !contractSettings ? '' : `(đã bao gồm ${(contractSettings?.vatRate || 0.1) * 100}% VAT)`}
+                            </div>
+                            <div className="text-sm text-gray-700">
+                              - Phí bảo hiểm: <strong>{totalInsuranceFee?.toLocaleString("vi-VN")} VNĐ</strong>
+                            </div>
                           </div>
-                          <div className="text-sm text-gray-700">
-                            - Tỷ lệ bảo hiểm: <strong>{(() => {
-                              const baseRate = fetchedPriceDetails?.insuranceRate || contractSettings?.insuranceRateFragile || contractSettings?.insuranceRateNormal || 0.15;
-                              const vatRate = contractSettings?.vatRate || 10;
-                              const rateWithVat = baseRate * (1 + vatRate / 100);
-                              return rateWithVat.toFixed(5).replace('.', ',');
-                            })()}%</strong> (đã bao gồm 10% VAT)
-                          </div>
-                          <div className="text-sm text-gray-700">
-                            - Phí bảo hiểm: <strong>{totalInsuranceFee?.toLocaleString("vi-VN")} VNĐ</strong>
-                          </div>
-                        </div>
+                        )}
                       </div>
                     )}
 
                     {/* Grand Total - Show total contract value */}
-                    {fetchedPriceDetails && (
+                    {loadingPriceData ? (
+                      <div className="mt-4 pt-4 border-t-2 border-black">
+                        <Skeleton.Input style={{ width: 300 }} size="small" active />
+                      </div>
+                    ) : fetchedPriceDetails ? (
                       <div className="mt-4 pt-4 border-t-2 border-black">
                         <div className="text-base font-bold text-gray-900">
                           TỔNG GIÁ TRỊ HỢP ĐỒNG (A + B): <span className="underline">{(fetchedPriceDetails.grandTotal || fetchedPriceDetails.finalTotal).toLocaleString("vi-VN")}</span> VNĐ
                         </div>
                       </div>
-                    )}
+                    ) : null}
                   </div>
                 }
                 type="info"

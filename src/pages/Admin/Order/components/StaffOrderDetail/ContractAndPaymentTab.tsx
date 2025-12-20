@@ -34,6 +34,8 @@ interface ContractAndPaymentTabProps {
   totalInsuranceFee?: number;
   totalDeclaredValue?: number;
   readOnly?: boolean;
+  // Order category for insurance rate calculation
+  categoryName?: string;
 }
 
 const ContractAndPaymentTab: React.FC<ContractAndPaymentTabProps> = ({
@@ -46,6 +48,7 @@ const ContractAndPaymentTab: React.FC<ContractAndPaymentTabProps> = ({
   totalInsuranceFee,
   totalDeclaredValue,
   readOnly,
+  categoryName,
 }) => {
   return (
     <div>
@@ -60,6 +63,7 @@ const ContractAndPaymentTab: React.FC<ContractAndPaymentTabProps> = ({
           totalInsuranceFee={totalInsuranceFee}
           totalDeclaredValue={totalDeclaredValue}
           readOnly={readOnly}
+          categoryName={categoryName}
         />
       )}
 

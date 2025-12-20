@@ -1008,6 +1008,7 @@ const CustomerOrderDetail: React.FC = () => {
                 hasInsurance={order.hasInsurance}
                 totalInsuranceFee={order.totalInsuranceFee}
                 totalDeclaredValue={order.totalDeclaredValue}
+                categoryName={order.categoryName}
                 onContractSigned={() => {
                   setActiveMainTab("contract");
                 }}

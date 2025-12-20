@@ -1,5 +1,15 @@
 import React, { useState } from "react";
-import { Button, Modal, Card, Row, Col, Empty, Tabs, Alert, Pagination } from "antd";
+import {
+  Button,
+  Modal,
+  Card,
+  Row,
+  Col,
+  Empty,
+  Tabs,
+  Alert,
+  Pagination,
+} from "antd";
 import {
   TruckOutlined,
   ThunderboltOutlined,
@@ -219,12 +229,17 @@ const VehicleSuggestionsModal: React.FC<VehicleSuggestionsModalProps> = ({
                 </span>
               </div>
               {(() => {
-                const vehicleKey = `${isOptimal ? "optimal" : "realistic"}-${index}`;
+                const vehicleKey = `${
+                  isOptimal ? "optimal" : "realistic"
+                }-${index}`;
                 const currentPage = getPackagePage(vehicleKey);
                 const totalItems = suggestion.assignedDetails.length;
                 const startIndex = (currentPage - 1) * PACKAGES_PER_PAGE;
                 const endIndex = startIndex + PACKAGES_PER_PAGE;
-                const paginatedDetails = suggestion.assignedDetails.slice(startIndex, endIndex);
+                const paginatedDetails = suggestion.assignedDetails.slice(
+                  startIndex,
+                  endIndex
+                );
 
                 return (
                   <>
@@ -252,7 +267,9 @@ const VehicleSuggestionsModal: React.FC<VehicleSuggestionsModalProps> = ({
                                   </span>
                                   <span
                                     className={`font-bold ${
-                                      isOptimal ? "text-blue-700" : "text-green-700"
+                                      isOptimal
+                                        ? "text-blue-700"
+                                        : "text-green-700"
                                     }`}
                                   >
                                     {detail.weightBaseUnit}

@@ -27,6 +27,7 @@ interface VehicleSuggestionsModalProps {
     realistic: VehicleSuggestion[];
   };
   creatingContract: boolean;
+  accepted?: boolean;
   onCancel: () => void;
   onAccept: () => void;
 }
@@ -36,6 +37,7 @@ const VehicleSuggestionsModal: React.FC<VehicleSuggestionsModalProps> = ({
   orderCode,
   vehicleSuggestions,
   creatingContract,
+  accepted = false,
   onCancel,
   onAccept,
 }) => {
@@ -139,10 +141,12 @@ const VehicleSuggestionsModal: React.FC<VehicleSuggestionsModalProps> = ({
                     isOptimal ? "text-blue-600" : "text-green-600"
                   }`}
                 >
-                  {suggestions.reduce(
-                    (total, suggestion) => total + suggestion.currentLoad,
-                    0
-                  )}{" "}
+                  {suggestions
+                    .reduce(
+                      (total, suggestion) => total + suggestion.currentLoad,
+                      0
+                    )
+                    .toFixed(1)}{" "}
                   {suggestions.length > 0 ? suggestions[0].currentLoadUnit : ""}
                 </div>
               </div>
@@ -185,7 +189,8 @@ const VehicleSuggestionsModal: React.FC<VehicleSuggestionsModalProps> = ({
                       isOptimal ? "text-blue-600" : "text-green-600"
                     }`}
                   >
-                    {suggestion.currentLoad} {suggestion.currentLoadUnit}
+                    {suggestion.currentLoad.toFixed(1)}{" "}
+                    {suggestion.currentLoadUnit}
                   </div>
                 </div>
               </Col>
@@ -288,7 +293,10 @@ const VehicleSuggestionsModal: React.FC<VehicleSuggestionsModalProps> = ({
                                       Giá trị KB:
                                     </span>
                                     <span className="text-xs font-semibold text-orange-600">
-                                      {detail.declaredValue.toLocaleString('vi-VN')} VNĐ
+                                      {detail.declaredValue.toLocaleString(
+                                        "vi-VN"
+                                      )}{" "}
+                                      VNĐ
                                     </span>
                                   </div>
                                 )}

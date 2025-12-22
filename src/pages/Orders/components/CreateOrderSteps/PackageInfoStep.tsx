@@ -113,9 +113,7 @@ const PackageInfoStep: React.FC<PackageInfoStepProps> = ({
         <Select placeholder="Chọn kích thước kiện hàng">
           {orderSizes.map((size) => (
             <Option key={size.id} value={size.id}>
-              {size.minWidth} - {size.maxWidth} x {size.minLength} -{" "}
-              {size.maxLength} x {size.minHeight} - {size.maxHeight} /{" "}
-              {formatCurrency(size.price || 0)}
+              {size.description || `${size.minWidth} - ${size.maxWidth} x ${size.minLength} - ${size.maxLength} x ${size.minHeight} - ${size.maxHeight}`}
             </Option>
           ))}
         </Select>

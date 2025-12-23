@@ -1066,7 +1066,7 @@ const RerouteDetail: React.FC<RerouteDetailProps> = ({ issue, onUpdate }) => {
                         {/* ✅ NEW: Suggested Routes Section */}
                         {!isResolved && (
                             <div style={{ marginBottom: 16 }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                                {/* <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
                                     <Title level={5} style={{ margin: 0 }}>
                                         🤖 Gợi ý lộ trình
                                     </Title>
@@ -1079,7 +1079,7 @@ const RerouteDetail: React.FC<RerouteDetailProps> = ({ issue, onUpdate }) => {
                                     >
                                         Tải gợi ý lộ trình
                                     </Button>
-                                </div>
+                                </div> */}
                                 
                                 {suggestedRoutes.length > 0 && (
                                     <div style={{ marginTop: 16 }}>

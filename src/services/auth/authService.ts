@@ -465,6 +465,40 @@ const authService = {
 
             throw handleApiError(error, 'Đổi mật khẩu thất bại');
         }
+    },
+
+    // ==================== VALIDATION METHODS ====================
+
+    /**
+     * Check if username is available for registration
+     * @param username Username to check
+     * @returns Promise with boolean indicating availability
+     */
+    checkUsernameAvailability: async (username: string): Promise<boolean> => {
+        try {
+            const response = await httpClient.get<ApiResponse<boolean>>(`/auths/check-username?username=${encodeURIComponent(username)}`);
+            return response.data.data || false;
+        } catch (error: any) {
+            console.error('Check username availability error:', error);
+            // Return false on error to be safe
+            return false;
+        }
+    },
+
+    /**
+     * Check if email is available for registration
+     * @param email Email to check
+     * @returns Promise with boolean indicating availability
+     */
+    checkEmailAvailability: async (email: string): Promise<boolean> => {
+        try {
+            const response = await httpClient.get<ApiResponse<boolean>>(`/auths/check-email?email=${encodeURIComponent(email)}`);
+            return response.data.data || false;
+        } catch (error: any) {
+            console.error('Check email availability error:', error);
+            // Return false on error to be safe
+            return false;
+        }
     }
 };
 

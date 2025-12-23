@@ -16,6 +16,7 @@ import type { UploadProps } from 'antd';
 import dayjs from 'dayjs';
 import { DateSelectGroup } from '../../../../components/common';
 import type { FormEvent } from 'react';
+import { authService } from '../../../../services';
 
 interface RegisterFormProps {
     loading: boolean;
@@ -51,6 +52,55 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ loading, onSubmit, form }) 
         }
 
         return Promise.resolve();
+    };
+
+    const validateUsername = async (_: any, value: string) => {
+        if (!value) {
+            return Promise.reject('Vui lòng nhập tên đăng nhập');
+        }
+
+        // Check minimum length
+        if (value.length < 3) {
+            return Promise.reject('Tên đăng nhập phải có ít nhất 3 ký tự');
+        }
+
+        // Check if username is available
+        try {
+            const isAvailable = await authService.checkUsernameAvailability(value);
+            if (!isAvailable) {
+                return Promise.reject('Tên đăng nhập đã được sử dụng');
+            }
+            return Promise.resolve();
+        } catch (error) {
+            console.error('Error checking username:', error);
+            // Don't block registration if check fails
+            return Promise.resolve();
+        }
+    };
+
+    const validateEmail = async (_: any, value: string) => {
+        if (!value) {
+            return Promise.reject('Vui lòng nhập email');
+        }
+
+        // Check email format
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(value)) {
+            return Promise.reject('Email không hợp lệ');
+        }
+
+        // Check if email is available
+        try {
+            const isAvailable = await authService.checkEmailAvailability(value);
+            if (!isAvailable) {
+                return Promise.reject('Email đã được sử dụng');
+            }
+            return Promise.resolve();
+        } catch (error) {
+            console.error('Error checking email:', error);
+            // Don't block registration if check fails
+            return Promise.resolve();
+        }
     };
 
     const uploadProps: UploadProps = {
@@ -115,7 +165,12 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ loading, onSubmit, form }) 
                         <Form.Item
                             name="username"
                             label="Tên đăng nhập"
-                            rules={[{ required: true, message: 'Vui lòng nhập tên đăng nhập' }]}
+                            validateFirst
+                            rules={[
+                                { required: true, message: 'Vui lòng nhập tên đăng nhập' },
+                                { validator: validateUsername }
+                            ]}
+                            hasFeedback
                         >
                             <Input
                                 prefix={<UserOutlined />}
@@ -129,10 +184,12 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ loading, onSubmit, form }) 
                         <Form.Item
                             name="email"
                             label="Email"
+                            validateFirst
                             rules={[
                                 { required: true, message: 'Vui lòng nhập email' },
-                                { type: 'email', message: 'Email không hợp lệ' }
+                                { validator: validateEmail }
                             ]}
+                            hasFeedback
                         >
                             <Input
                                 prefix={<MailOutlined />}

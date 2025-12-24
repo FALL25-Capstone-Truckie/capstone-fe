@@ -26,6 +26,7 @@ import InsuranceInfo from "../../../../components/common/InsuranceInfo";
 import { ContractStatusEnum, OrderStatusEnum } from "../../../../constants/enums";
 import { useRefreshOrderDetail, useContractOperations } from "../../../../hooks";
 import type { PriceDetails } from "../../../../services/contract/contractTypes";
+import type { PaymentBreakdownSnapshot } from "../../../../services/contract/types";
 import contractSettingService from "../../../../services/contract/contractSettingService";
 import contractService from "../../../../services/contract/contractService";
 import type { ContractSettings } from "../../../../models/Contract";
@@ -52,6 +53,7 @@ interface ContractProps {
     attachFileUrl: string;
     status: string;
     staffName: string;
+    paymentBreakdownSnapshot?: string; // JSON string
   };
   orderStatus?: string;
   depositAmount?: number;
@@ -102,6 +104,52 @@ const ContractSection: React.FC<ContractProps> = ({
       
       setLoadingPriceData(true);
       try {
+        // Priority 1: Use snapshot if available
+        if (contract.paymentBreakdownSnapshot) {
+          try {
+            const snapshot: PaymentBreakdownSnapshot = JSON.parse(contract.paymentBreakdownSnapshot);
+            console.log("[Customer] ✅ Using payment breakdown snapshot:", snapshot);
+            
+            // Transform snapshot to match expected format
+            const transformedData: PriceDetails = {
+              steps: snapshot.steps,
+              totalPrice: snapshot.totalPrice,
+              totalBeforeAdjustment: snapshot.totalBeforeAdjustment,
+              categoryExtraFee: snapshot.categoryExtraFee,
+              categoryMultiplier: snapshot.categoryMultiplier,
+              promotionDiscount: 0, // Default value if not in snapshot
+              finalTotal: snapshot.finalTotal,
+              grandTotal: snapshot.grandTotal,
+              summary: '', // Default empty summary
+              insuranceFee: snapshot.insuranceFee,
+              insuranceRate: snapshot.insuranceRate,
+              totalDeclaredValue: snapshot.totalDeclaredValue,
+              hasInsurance: snapshot.hasInsurance,
+              totalTollFee: snapshot.totalTollFee,
+              totalTollCount: snapshot.totalTollCount,
+              vehicleType: snapshot.vehicleType,
+              vatRate: snapshot.vatRate,
+              // Add contract-specific fields from snapshot
+              adjustedValue: snapshot.adjustedValue ?? undefined,
+              effectiveTotal: snapshot.effectiveTotal ?? undefined,
+              depositAmount: snapshot.depositAmount ?? undefined,
+              depositPercent: snapshot.depositPercent ?? undefined,
+              remainingAmount: snapshot.remainingAmount ?? undefined,
+              // Add snapshot metadata
+              isSnapshot: true,
+              snapshotDate: snapshot.snapshotDate,
+              snapshotVersion: snapshot.snapshotVersion,
+            };
+            
+            setFetchedPriceDetails(transformedData);
+            return; // Exit early if snapshot loaded successfully
+          } catch (parseError) {
+            console.error("[Customer] ❌ Failed to parse snapshot:", parseError);
+          }
+        }
+        
+        // Priority 2: Fallback to API (legacy contracts without snapshot)
+        console.warn("[Customer] ⚠️ No snapshot found, using API fallback");
         const response = await contractService.getContractPdfData(contract.id);
         if (response.data?.priceDetails) {
           setFetchedPriceDetails(response.data.priceDetails);
@@ -247,36 +295,25 @@ const ContractSection: React.FC<ContractProps> = ({
     >
       {contract ? (
         <>
-          {/* Payment Summary */}
-          {hasDepositAmount && (
+          {/* Payment Summary - Only show when snapshot exists */}
+          {hasDepositAmount && fetchedPriceDetails?.isSnapshot && (
             <div className="mb-6">
               <Alert
                 message="Thông tin thanh toán"
                 description={
                   <div className="space-y-4">
                     <Row gutter={[16, 16]} className="mt-3">
-                      {!hasAdjustedValue && (
-                        <Col xs={24} sm={12} md={6}>
-                          <Statistic
-                            title="Tổng giá trị đơn hàng"
-                            value={parseContractValue(
-                              contract.totalValue
-                            ).toLocaleString("vi-VN")}
-                            suffix="VNĐ"
-                            prefix={<DollarOutlined />}
-                            valueStyle={{ color: "#1890ff", fontSize: "18px", fontWeight: "600" }}
-                          />
-                        </Col>
-                      )}
-
-                      {hasAdjustedValue && (
+                      {/* Show both original and adjusted values if there's a discount */}
+                      {fetchedPriceDetails.adjustedValue && 
+                       fetchedPriceDetails.grandTotal &&
+                       fetchedPriceDetails.adjustedValue > 0 && 
+                       fetchedPriceDetails.grandTotal > 0 &&
+                       fetchedPriceDetails.grandTotal !== fetchedPriceDetails.adjustedValue && (
                         <>
                           <Col xs={24} sm={12} md={6}>
                             <Statistic
                               title="Giá niêm yết"
-                              value={parseContractValue(contract.totalValue).toLocaleString(
-                                "vi-VN"
-                              )}
+                              value={(fetchedPriceDetails.grandTotal || 0).toLocaleString("vi-VN")}
                               suffix="VNĐ"
                               prefix={<DollarOutlined />}
                               valueStyle={{ color: "#8c8c8c", textDecoration: "line-through" }}
@@ -285,9 +322,7 @@ const ContractSection: React.FC<ContractProps> = ({
                           <Col xs={24} sm={12} md={6}>
                             <Statistic
                               title="Giá thực tế"
-                              value={parseContractValue(
-                                contract.adjustedValue
-                              ).toLocaleString("vi-VN")}
+                              value={(fetchedPriceDetails.adjustedValue || 0).toLocaleString("vi-VN")}
                               suffix="VNĐ"
                               prefix={<DollarOutlined />}
                               valueStyle={{ color: "#722ed1", fontSize: "18px", fontWeight: "600" }}
@@ -299,10 +334,26 @@ const ContractSection: React.FC<ContractProps> = ({
                         </>
                       )}
 
+                      {/* If no adjusted value, show grand total only */}
+                      {(!fetchedPriceDetails.adjustedValue || 
+                        fetchedPriceDetails.adjustedValue <= 0 || 
+                        fetchedPriceDetails.grandTotal === fetchedPriceDetails.adjustedValue) && 
+                        fetchedPriceDetails.grandTotal && fetchedPriceDetails.grandTotal > 0 && (
+                        <Col xs={24} sm={12} md={6}>
+                          <Statistic
+                            title="Tổng giá trị đơn hàng"
+                            value={(fetchedPriceDetails.grandTotal || 0).toLocaleString("vi-VN")}
+                            suffix="VNĐ"
+                            prefix={<DollarOutlined />}
+                            valueStyle={{ color: "#1890ff", fontSize: "18px", fontWeight: "600" }}
+                          />
+                        </Col>
+                      )}
+
                       <Col xs={24} sm={12} md={6}>
                         <Statistic
                           title="Số tiền cọc cần thanh toán"
-                          value={depositAmount.toLocaleString("vi-VN")}
+                          value={(fetchedPriceDetails.depositAmount || depositAmount || 0).toLocaleString("vi-VN")}
                           suffix="VNĐ"
                           prefix={<CreditCardOutlined />}
                           valueStyle={{ color: "#52c41a", fontSize: "18px", fontWeight: "bold" }}
@@ -312,14 +363,10 @@ const ContractSection: React.FC<ContractProps> = ({
                       <Col xs={24} sm={12} md={6}>
                         <Statistic
                           title="Số tiền còn lại"
-                          value={(() => {
-                            const baseValue = hasAdjustedValue
-                              ? parseContractValue(contract.adjustedValue)
-                              : parseContractValue(contract.totalValue);
-                            return (baseValue - depositAmount).toLocaleString(
-                              "vi-VN"
-                            );
-                          })()}
+                          value={(fetchedPriceDetails.remainingAmount || (() => {
+                            const baseValue = fetchedPriceDetails.adjustedValue || fetchedPriceDetails.grandTotal || 0;
+                            return baseValue - (fetchedPriceDetails.depositAmount || depositAmount || 0);
+                          })()).toLocaleString("vi-VN")}
                           suffix="VNĐ"
                           prefix={<DollarOutlined />}
                           valueStyle={{ color: "#faad14", fontSize: "18px", fontWeight: "600" }}
@@ -405,8 +452,28 @@ const ContractSection: React.FC<ContractProps> = ({
                       </div>
                     ) : null}
 
-                    {/* Insurance Breakdown - Show if order has insurance */}
-                    {hasInsurance && totalInsuranceFee && totalInsuranceFee > 0 && (
+                    {/* Insurance Breakdown - Use snapshot data only */}
+                    {fetchedPriceDetails?.isSnapshot && fetchedPriceDetails?.hasInsurance && fetchedPriceDetails?.insuranceFee && fetchedPriceDetails.insuranceFee > 0 && (
+                      <div className="mt-4 pt-4 border-t border-blue-200">
+                        <div className="mb-3">
+                          <span className="font-semibold text-gray-700">Chi phí bảo hiểm hàng hóa (B):</span>
+                        </div>
+                        <div className="space-y-2">
+                          <div className="text-sm text-gray-700">
+                            - Giá trị khai báo: <strong>{(fetchedPriceDetails.totalDeclaredValue || 0).toLocaleString("vi-VN")} VNĐ</strong>
+                          </div>
+                          <div className="text-sm text-gray-700">
+                            - Tỷ lệ bảo hiểm: <strong>{((fetchedPriceDetails.insuranceRate || 0) * (1 + (fetchedPriceDetails.vatRate || 0))).toFixed(5).replace('.', ',')}%</strong> (đã bao gồm {((fetchedPriceDetails.vatRate || 0) * 100)}% VAT)
+                          </div>
+                          <div className="text-sm text-gray-700">
+                            - Phí bảo hiểm: <strong>{(fetchedPriceDetails.insuranceFee || 0).toLocaleString("vi-VN")} VNĐ</strong>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Fallback insurance display for old contracts without snapshot */}
+                    {!fetchedPriceDetails?.isSnapshot && hasInsurance && totalInsuranceFee && totalInsuranceFee > 0 && (
                       <div className="mt-4 pt-4 border-t border-blue-200">
                         <div className="mb-3">
                           <span className="font-semibold text-gray-700">Chi phí bảo hiểm hàng hóa (B):</span>

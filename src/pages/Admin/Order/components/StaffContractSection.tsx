@@ -46,6 +46,7 @@ import type {
   StipulationSettings,
 } from "../../../../models/Contract";
 import { CategoryName, isFragileCategory } from "../../../../models/CategoryName";
+import type { PaymentBreakdownSnapshot } from "../../../../services/contract/types";
 
 // Utility function to safely parse contract values (same as Customer view)
 const parseContractValue = (value: string | number | undefined): number => {
@@ -73,6 +74,7 @@ interface StaffContractProps {
     attachFileUrl: string;
     status: string;
     staffName: string;
+    paymentBreakdownSnapshot?: string; // JSON string
   };
   orderId?: string; // Add orderId for contract creation
   depositAmount?: number;
@@ -111,8 +113,24 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
   );
 
   // Use prop depositAmount if available (like Customer view), otherwise calculate
+  // Priority: 1) prop, 2) snapshot, 3) calculated
   const depositAmount = propDepositAmount || (() => {
     if (!contract) return 0;
+    
+    // Try to get from snapshot first
+    if (contract.paymentBreakdownSnapshot) {
+      try {
+        const snapshot: PaymentBreakdownSnapshot = JSON.parse(contract.paymentBreakdownSnapshot);
+        if (snapshot.depositAmount) {
+          console.log("[Staff] Using deposit amount from snapshot:", snapshot.depositAmount);
+          return snapshot.depositAmount;
+        }
+      } catch (e) {
+        console.warn("[Staff] Failed to parse snapshot for deposit amount:", e);
+      }
+    }
+    
+    // Fallback to calculation
     const baseValue = hasAdjustedValue
       ? parseContractValue(contract.adjustedValue)
       : parseContractValue(contract.totalValue);
@@ -169,12 +187,55 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
       
       setLoadingPriceData(true);
       try {
-        const response = await contractService.getContractPdfData(contract.id);
-        if (response.data?.priceDetails) {
-          setFetchedPriceDetails(response.data.priceDetails);
+        // REQUIRED: Must have payment breakdown snapshot
+        if (!contract.paymentBreakdownSnapshot) {
+          console.error("[Staff] ❌ Contract missing payment breakdown snapshot!");
+          setFetchedPriceDetails(null);
+          setLoadingPriceData(false);
+          return;
+        }
+
+        try {
+          const snapshot: PaymentBreakdownSnapshot = JSON.parse(contract.paymentBreakdownSnapshot);
+          console.log("[Staff] ✅ Using payment breakdown snapshot:", snapshot);
+          
+          // Transform snapshot to match expected format
+          const transformedData = {
+            steps: snapshot.steps,
+            categoryCoefficient: snapshot.categoryMultiplier,
+            categorySurcharge: snapshot.categoryExtraFee,
+            categoryMultiplier: snapshot.categoryMultiplier,  // Keep original names too
+            categoryExtraFee: snapshot.categoryExtraFee,
+            finalTotal: snapshot.finalTotal,
+            grandTotal: snapshot.grandTotal,
+            insuranceFee: snapshot.insuranceFee,
+            insuranceRate: snapshot.insuranceRate,
+            vatRate: snapshot.vatRate,  // Add VAT rate from snapshot
+            totalDeclaredValue: snapshot.totalDeclaredValue,
+            hasInsurance: snapshot.hasInsurance,
+            totalTollFee: snapshot.totalTollFee,
+            totalTollCount: snapshot.totalTollCount,
+            vehicleType: snapshot.vehicleType,
+            // Add contract-specific fields from snapshot
+            adjustedValue: snapshot.adjustedValue,
+            effectiveTotal: snapshot.effectiveTotal,
+            depositAmount: snapshot.depositAmount,
+            depositPercent: snapshot.depositPercent,
+            remainingAmount: snapshot.remainingAmount,
+            // Add snapshot metadata
+            isSnapshot: true,
+            snapshotDate: snapshot.snapshotDate,
+            snapshotVersion: snapshot.snapshotVersion,
+          };
+          
+          setFetchedPriceDetails(transformedData);
+        } catch (parseError) {
+          console.error("[Staff] ❌ Failed to parse snapshot:", parseError);
+          setFetchedPriceDetails(null);
         }
       } catch (error) {
         console.error("Error fetching price details:", error);
+        setFetchedPriceDetails(null);
       } finally {
         setLoadingPriceData(false);
       }
@@ -182,7 +243,7 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
 
     fetchSettings();
     fetchPriceDetails();
-  }, [contract?.id]);
+  }, [contract?.id, contract?.paymentBreakdownSnapshot]);
 
   // Contract customization state
   const [contractCustomization, setContractCustomization] = useState({
@@ -802,8 +863,8 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
             </div>
           </div>
 
-          {/* Payment Summary - Exact same as Customer View */}
-          {hasDepositAmount && (
+          {/* Payment Summary - Only show when snapshot exists */}
+          {hasDepositAmount && fetchedPriceDetails?.isSnapshot && (
             <div className="mb-6">
               <Alert
                 message="Thông tin thanh toán"
@@ -811,87 +872,87 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
                 <div className="space-y-4" style={{ listStyle: "none", counterReset: "none" }}>
                   <Row gutter={[16, 16]} className="mt-3" style={{ listStyle: "none" }}>
                     {/* Show both original and adjusted values if there's a discount */}
-                    {!!contract.adjustedValue && 
-                     !!contract.totalValue &&
-                     String(contract.adjustedValue) !== "0" &&
-                     String(contract.totalValue) !== "0" &&
-                     parseContractValue(contract.adjustedValue) > 0 && 
-                     parseContractValue(contract.totalValue) > 0 &&
-                     parseContractValue(contract.totalValue) !== parseContractValue(contract.adjustedValue) && (
-                      <>
+                    {fetchedPriceDetails.adjustedValue && 
+                         fetchedPriceDetails.grandTotal &&
+                         fetchedPriceDetails.adjustedValue > 0 && 
+                         fetchedPriceDetails.grandTotal > 0 &&
+                         fetchedPriceDetails.grandTotal !== fetchedPriceDetails.adjustedValue && (
+                          <>
+                            <Col xs={24} sm={12} md={6}>
+                              <Statistic
+                                title="Giá niêm yết"
+                                value={fetchedPriceDetails.grandTotal.toLocaleString("vi-VN")}
+                                suffix="VNĐ"
+                                valueStyle={{ color: "#8c8c8c", textDecoration: "line-through" }}
+                              />
+                            </Col>
+                            <Col xs={24} sm={12} md={6}>
+                              <Statistic
+                                title="Giá thực tế"
+                                value={fetchedPriceDetails.adjustedValue.toLocaleString("vi-VN")}
+                                suffix="VNĐ"
+                                valueStyle={{ color: "#722ed1", fontSize: "18px", fontWeight: "600" }}
+                              />
+                              <div className="text-xs text-gray-500 mt-1">
+                                Giá ưu đãi áp dụng cho hợp đồng này
+                              </div>
+                            </Col>
+                          </>
+                        )}
+
+                        {/* If no adjusted value, show grand total only */}
+                        {(!fetchedPriceDetails.adjustedValue || 
+                          fetchedPriceDetails.adjustedValue <= 0 || 
+                          fetchedPriceDetails.grandTotal === fetchedPriceDetails.adjustedValue) && 
+                          fetchedPriceDetails.grandTotal > 0 && (
+                          <Col xs={24} sm={12} md={6}>
+                            <Statistic
+                              title="Tổng giá trị đơn hàng"
+                              value={fetchedPriceDetails.grandTotal.toLocaleString("vi-VN")}
+                              suffix="VNĐ"
+                              prefix={<DollarOutlined />}
+                              valueStyle={{ color: "#1890ff", fontSize: "18px", fontWeight: "600" }}
+                            />
+                          </Col>
+                        )}
+
                         <Col xs={24} sm={12} md={6}>
                           <Statistic
-                            title="Giá niêm yết"
-                            value={parseContractValue(contract.totalValue).toLocaleString("vi-VN")}
+                            title="Số tiền cọc cần thanh toán"
+                            value={(fetchedPriceDetails.depositAmount || 0).toLocaleString("vi-VN")}
                             suffix="VNĐ"
-                            valueStyle={{ color: "#8c8c8c", textDecoration: "line-through" }}
+                            prefix={<CreditCardOutlined />}
+                            valueStyle={{ color: "#52c41a", fontSize: "18px", fontWeight: "bold" }}
                           />
                         </Col>
+
                         <Col xs={24} sm={12} md={6}>
                           <Statistic
-                            title="Giá thực tế"
-                            value={parseContractValue(contract.adjustedValue).toLocaleString("vi-VN")}
+                            title="Số tiền còn lại"
+                            value={(fetchedPriceDetails.remainingAmount || 0).toLocaleString("vi-VN")}
                             suffix="VNĐ"
-                            valueStyle={{ color: "#722ed1", fontSize: "18px", fontWeight: "600" }}
+                            prefix={<DollarOutlined />}
+                            valueStyle={{ color: "#faad14", fontSize: "18px", fontWeight: "600" }}
                           />
-                          <div className="text-xs text-gray-500 mt-1">
-                            Giá ưu đãi áp dụng cho hợp đồng này
-                          </div>
                         </Col>
-                      </>
-                    )}
-
-                    {/* If no adjusted value, show total value only if totalValue > 0 */}
-                    {(!contract.adjustedValue || 
-                      parseContractValue(contract.adjustedValue) <= 0 || 
-                      parseContractValue(contract.totalValue) === parseContractValue(contract.adjustedValue)) && 
-                      !!contract.totalValue && 
-                      String(contract.totalValue) !== "0" &&
-                      parseContractValue(contract.totalValue) > 0 && (
-                      <Col xs={24} sm={12} md={6}>
-                        <Statistic
-                          title="Tổng giá trị đơn hàng"
-                          value={parseContractValue(contract.totalValue).toLocaleString("vi-VN")}
-                          suffix="VNĐ"
-                          prefix={<DollarOutlined />}
-                          valueStyle={{ color: "#1890ff", fontSize: "18px", fontWeight: "600" }}
-                        />
-                      </Col>
-                    )}
-
-                    <Col xs={24} sm={12} md={6}>
-                      <Statistic
-                        title="Số tiền cọc cần thanh toán"
-                        value={depositAmount.toLocaleString("vi-VN")}
-                        suffix="VNĐ"
-                        prefix={<CreditCardOutlined />}
-                        valueStyle={{ color: "#52c41a", fontSize: "18px", fontWeight: "bold" }}
-                      />
-                    </Col>
-
-                    <Col xs={24} sm={12} md={6}>
-                      <Statistic
-                        title="Số tiền còn lại"
-                        value={(() => {
-                          const baseValue = hasAdjustedValue
-                            ? parseContractValue(contract.adjustedValue)
-                            : parseContractValue(contract.totalValue);
-                          return (baseValue - depositAmount).toLocaleString("vi-VN");
-                        })()}
-                        suffix="VNĐ"
-                        prefix={<DollarOutlined />}
-                        valueStyle={{ color: "#faad14", fontSize: "18px", fontWeight: "600" }}
-                      />
-                    </Col>
-                  </Row>
+                      </Row>
 
                   {/* Price Breakdown - Show detailed calculation */}
                   {loadingPriceData ? (
                     <div className="mt-4 pt-4 border-t border-blue-200">
                       <Skeleton active paragraph={{ rows: 8, width: ['100%', '80%', '60%', '100%', '70%', '50%', '100%', '80%'] }} />
                     </div>
-                  ) : fetchedPriceDetails && fetchedPriceDetails.steps && fetchedPriceDetails.steps.length > 0 ? (
+                  ) : fetchedPriceDetails?.isSnapshot && fetchedPriceDetails.steps && fetchedPriceDetails.steps.length > 0 ? (
                     <div className="mt-4 pt-4 border-t border-blue-200">
+                      {/* Snapshot indicator */}
+                      {fetchedPriceDetails.isSnapshot && (
+                        <div className="mb-3 p-2 bg-green-50 border border-green-200 rounded">
+                          <span className="text-xs text-green-700">
+                            ✓ Thông tin thanh toán đã được lưu trữ tại thời điểm xuất hợp đồng ({new Date(fetchedPriceDetails.snapshotDate).toLocaleString('vi-VN')})
+                          </span>
+                        </div>
+                      )}
+                      
                       <div className="mb-3">
                         <span className="font-semibold text-gray-700">Chi phí vận chuyển:</span>
                       </div>
@@ -902,128 +963,122 @@ const StaffContractSection: React.FC<StaffContractProps> = ({
                           a) Cước vận chuyển cơ bản theo quãng đường {fetchedPriceDetails?.steps?.reduce((sum: number, step: any) => sum + step.appliedKm, 0).toFixed(2)} km:
                         </div>
                         
-                        {/* Breakdown by vehicle type - Group by sizeRuleName */}
+                        {/* Breakdown by vehicle type - Show each vehicle separately */}
                         <div className="space-y-2 ml-4">
-                          {(() => {
-                            // Group steps by sizeRuleName
-                            const groupedSteps = fetchedPriceDetails?.steps?.reduce((acc: any, step: any) => {
-                              if (!acc[step.sizeRuleName]) {
-                                acc[step.sizeRuleName] = {
-                                  sizeRuleName: step.sizeRuleName,
-                                  numOfVehicles: step.numOfVehicles,
-                                  parts: [],
-                                  totalSubtotal: 0
-                                };
-                              }
-                              acc[step.sizeRuleName].parts.push({
-                                unitPrice: step.unitPrice,
-                                appliedKm: step.appliedKm,
-                                subtotal: step.subtotal
-                              });
-                              acc[step.sizeRuleName].totalSubtotal += step.subtotal;
-                              return acc;
-                            }, {});
+                          {fetchedPriceDetails?.steps?.map((step: any, index: number) => {
+                            const calcParts = [];
+                            // Build calculation formula parts
+                            calcParts.push(`${step.unitPrice.toLocaleString("vi-VN")}/km × ${step.appliedKm.toFixed(2)} km`);
                             
-                            return Object.values(groupedSteps).map((group: any, index: number) => (
+                            return (
                               <div key={index} className="text-sm text-gray-700">
-                                - {group.sizeRuleName} ({group.numOfVehicles} xe): {group.parts.map((part: any) => 
-                                  `(${part.unitPrice.toLocaleString("vi-VN")}/km × ${part.appliedKm.toFixed(2)} km)`
-                                ).join(" + ")} = <strong>{group.totalSubtotal.toLocaleString("vi-VN")}</strong>
+                                - Xe {index + 1} ({step.sizeRuleName}): {calcParts.join(" + ")} = <strong>{step.subtotal.toLocaleString("vi-VN")} VNĐ</strong>
                               </div>
-                            ));
-                          })()}
+                            );
+                          })}
                         </div>
                         
-                        {/* Total base cost */}
-                        <div className="text-sm text-gray-700 mt-2">
-                          Tổng cước cơ bản: {fetchedPriceDetails?.steps?.map((step: any) => step.subtotal.toLocaleString("vi-VN")).join(" + ")} = <strong>{fetchedPriceDetails?.steps?.reduce((sum: number, step: any) => sum + step.subtotal, 0).toLocaleString("vi-VN")}</strong>
-                        </div>
+                        {/* Total base cost with formula */}
+                        {fetchedPriceDetails?.steps && fetchedPriceDetails.steps.length > 1 && (
+                          <div className="text-sm text-gray-700 mt-2">
+                            Tổng cước cơ bản: {fetchedPriceDetails.steps.map((step: any) => step.subtotal.toLocaleString("vi-VN")).join(" + ")} = <strong>{fetchedPriceDetails.steps.reduce((sum: number, step: any) => sum + step.subtotal, 0).toLocaleString("vi-VN")} VNĐ</strong>
+                          </div>
+                        )}
+                        {fetchedPriceDetails?.steps && fetchedPriceDetails.steps.length === 1 && (
+                          <div className="text-sm text-gray-700 mt-2">
+                            Tổng cước cơ bản: <strong>{fetchedPriceDetails.steps[0].subtotal.toLocaleString("vi-VN")} VNĐ</strong>
+                          </div>
+                        )}
                       </div>
 
-                      {/* b) Category coefficient */}
-                      {fetchedPriceDetails?.categoryCoefficient && fetchedPriceDetails.categoryCoefficient > 1 && (
+                      {/* b) Category multiplier */}
+                      {fetchedPriceDetails?.categoryMultiplier && fetchedPriceDetails.categoryMultiplier > 1 && (
                         <div className="mb-3">
                           <div className="text-sm text-gray-700">
-                            b) Hệ số danh mục: {fetchedPriceDetails?.categoryCoefficient}
+                            b) Hệ số danh mục (Hàng dễ vỡ): × <strong>{fetchedPriceDetails.categoryMultiplier}</strong>
                           </div>
                         </div>
                       )}
 
-                      {/* c) Category surcharge */}
-                      {fetchedPriceDetails?.categorySurcharge && fetchedPriceDetails.categorySurcharge > 0 && (
+                      {/* c) Category extra fee */}
+                      {fetchedPriceDetails?.categoryExtraFee && fetchedPriceDetails.categoryExtraFee > 0 && (
                         <div className="mb-3">
                           <div className="text-sm text-gray-700">
-                            c) Phụ thu danh mục: <strong>{fetchedPriceDetails?.categorySurcharge?.toLocaleString("vi-VN")} VNĐ</strong>
+                            c) Phụ thu danh mục (Hàng dễ vỡ): + <strong>{fetchedPriceDetails.categoryExtraFee.toLocaleString("vi-VN")} VNĐ</strong>
                           </div>
                         </div>
                       )}
 
-                      {/* Total transport cost */}
-                      <div className="mb-3">
-                        <div className="text-sm text-gray-700">
-                          Tổng chi phí vận chuyển (A): <strong>{fetchedPriceDetails?.finalTotal?.toLocaleString("vi-VN")} VNĐ</strong>
+                      {/* Total transport cost with formula */}
+                      <div className="border-t-2 border-dashed border-gray-400 pt-2 mt-2">
+                        <div className="text-base font-semibold text-gray-800">
+                          {(() => {
+                            const baseCost = fetchedPriceDetails?.steps?.reduce((sum: number, step: any) => sum + step.subtotal, 0) || 0;
+                            const hasMultiplier = fetchedPriceDetails?.categoryMultiplier && fetchedPriceDetails.categoryMultiplier > 1;
+                            const afterMultiplier = hasMultiplier ? baseCost * fetchedPriceDetails.categoryMultiplier : baseCost;
+                            const extraFee = fetchedPriceDetails?.categoryExtraFee || 0;
+                            
+                            const parts = [];
+                            if (hasMultiplier && extraFee > 0) {
+                              // Both multiplier and extra fee
+                              return `Tổng chi phí vận chuyển (A): (${baseCost.toLocaleString("vi-VN")} × ${fetchedPriceDetails.categoryMultiplier}) + ${extraFee.toLocaleString("vi-VN")} = ${(fetchedPriceDetails?.finalTotal || 0).toLocaleString("vi-VN")} VNĐ`;
+                            } else if (hasMultiplier) {
+                              // Only multiplier
+                              return `Tổng chi phí vận chuyển (A): ${baseCost.toLocaleString("vi-VN")} × ${fetchedPriceDetails.categoryMultiplier} = ${(fetchedPriceDetails?.finalTotal || 0).toLocaleString("vi-VN")} VNĐ`;
+                            } else if (extraFee > 0) {
+                              // Only extra fee
+                              return `Tổng chi phí vận chuyển (A): ${baseCost.toLocaleString("vi-VN")} + ${extraFee.toLocaleString("vi-VN")} = ${(fetchedPriceDetails?.finalTotal || 0).toLocaleString("vi-VN")} VNĐ`;
+                            } else {
+                              // No adjustments
+                              return `Tổng chi phí vận chuyển (A): ${(fetchedPriceDetails?.finalTotal || 0).toLocaleString("vi-VN")} VNĐ`;
+                            }
+                          })()}
                         </div>
                       </div>
                     </div>
                   ) : null}
 
-                  {/* Insurance Breakdown - Show if order has insurance */}
-                  {hasInsurance && totalInsuranceFee && totalInsuranceFee > 0 && (
-                    <div className="mt-4 pt-4 border-t border-blue-200">
-                      <div className="mb-3">
-                        <span className="font-semibold text-gray-700">Chi phí bảo hiểm hàng hóa (B):</span>
-                      </div>
-                      {loadingPriceData || !contractSettings ? (
-                        <Skeleton active paragraph={{ rows: 3, width: ['100%', '80%', '60%'] }} />
-                      ) : (
-                        <div className="space-y-2">
-                          <div className="text-sm text-gray-700">
-                            - Giá trị khai báo: <strong>{totalDeclaredValue?.toLocaleString("vi-VN")} VNĐ</strong>
+                      {/* Insurance Breakdown - Use snapshot data only */}
+                      {fetchedPriceDetails?.isSnapshot && fetchedPriceDetails?.hasInsurance && fetchedPriceDetails?.insuranceFee && fetchedPriceDetails.insuranceFee > 0 && (
+                        <div className="mt-4 pt-4 border-t border-blue-200">
+                          <div className="mb-3">
+                            <span className="font-semibold text-gray-700">Chi phí bảo hiểm hàng hóa (B):</span>
                           </div>
-                          <div className="text-sm text-gray-700">
-                            - Tỷ lệ bảo hiểm: <strong>{loadingPriceData || !contractSettings ? (
-                              <Skeleton.Input style={{ width: 100 }} size="small" active />
-                            ) : (() => {
-                              // Determine insurance rate based on cargo category
-                              let baseRate = 0.15; // Default fallback
-                              
-                              if (contractSettings) {
-                                // Use the appropriate rate based on category
-                                if (categoryName && isFragileCategory(categoryName as CategoryName)) {
-                                  baseRate = contractSettings.insuranceRateFragile || 0.15;
-                                } else {
-                                  baseRate = contractSettings.insuranceRateNormal || 0.08;
-                                }
-                              } else if (fetchedPriceDetails?.insuranceRate) {
-                                // Fallback to priceDetails if available
-                                baseRate = fetchedPriceDetails.insuranceRate;
-                              }
-                              
-                              // Get VAT rate from contract settings (already in decimal form, e.g., 0.1 = 10%)
-                              const vatRate = contractSettings?.vatRate || 0.1;
-                              // Since baseRate is already a percentage (e.g., 0.15%), we just add VAT
-                              const rateWithVat = baseRate * (1 + vatRate);
-                              
-                              return rateWithVat.toFixed(5).replace('.', ',');
-                            })()}%</strong> {loadingPriceData || !contractSettings ? '' : `(đã bao gồm ${(contractSettings?.vatRate || 0.1) * 100}% VAT)`}
-                          </div>
-                          <div className="text-sm text-gray-700">
-                            - Phí bảo hiểm: <strong>{totalInsuranceFee?.toLocaleString("vi-VN")} VNĐ</strong>
-                          </div>
+                          <div className="space-y-2">
+                            <div className="text-sm text-gray-700">
+                              - Giá trị khai báo: <strong>{(fetchedPriceDetails.totalDeclaredValue || 0).toLocaleString("vi-VN")} VNĐ</strong>
+                            </div>
+                            <div className="text-sm text-gray-700">
+                          - Tỷ lệ bảo hiểm (đã bao gồm VAT): <strong>{((fetchedPriceDetails.insuranceRate || 0) * (1 + (fetchedPriceDetails.vatRate || 0))).toFixed(5).replace('.', ',')}%</strong>
                         </div>
-                      )}
+                      </div>
+                      <div className="border-t-2 border-dashed border-gray-400 pt-2 mt-2">
+                        <div className="text-base font-semibold text-gray-800">
+                          Tổng chi phí bảo hiểm (B): {(fetchedPriceDetails.totalDeclaredValue || 0).toLocaleString("vi-VN")} × {((fetchedPriceDetails.insuranceRate || 0) * (1 + (fetchedPriceDetails.vatRate || 0))).toFixed(5).replace('.', ',')}% = <strong>{(fetchedPriceDetails.insuranceFee || 0).toLocaleString("vi-VN")} VNĐ</strong>
+                        </div>
+                      </div>
                     </div>
                   )}
 
-                  {/* Grand Total - Show total contract value */}
+                  {/* Grand Total - Show total contract value with formula */}
                   {loadingPriceData ? (
                     <div className="mt-4 pt-4 border-t-2 border-black">
                       <Skeleton.Input style={{ width: 300 }} size="small" active />
                     </div>
                   ) : fetchedPriceDetails && (fetchedPriceDetails?.grandTotal > 0 || fetchedPriceDetails?.finalTotal > 0) ? (
                     <div className="mt-4 pt-4 border-t-2 border-black">
-                      <div className="text-base font-bold text-gray-900">
-                        TỔNG GIÁ TRỊ HỢP ĐỒNG (A + B): <span className="underline">{(fetchedPriceDetails.grandTotal || fetchedPriceDetails.finalTotal).toLocaleString("vi-VN")}</span> VNĐ
+                      <div className="text-lg font-bold text-gray-900">
+                        {(() => {
+                          const transportCost = fetchedPriceDetails?.finalTotal || 0;
+                          const insuranceCost = fetchedPriceDetails?.insuranceFee || 0;
+                          const grandTotal = fetchedPriceDetails?.grandTotal || 0;
+                          
+                          if (insuranceCost > 0) {
+                            return `TỔNG GIÁ TRỊ (A + B): ${transportCost.toLocaleString("vi-VN")} + ${insuranceCost.toLocaleString("vi-VN")} = ${grandTotal.toLocaleString("vi-VN")} VNĐ`;
+                          } else {
+                            return `TỔNG GIÁ TRỊ: ${grandTotal.toLocaleString("vi-VN")} VNĐ`;
+                          }
+                        })()}
                       </div>
                     </div>
                   ) : null}

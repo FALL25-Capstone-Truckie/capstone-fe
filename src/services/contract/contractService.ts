@@ -178,6 +178,7 @@ const contractService = {
    */
   uploadContract: async (formData: FormData) => {
     try {
+      console.log("Calling /contracts/upload-contract API");  
       const response = await httpClient.post(
         "/contracts/upload-contract",
         formData,

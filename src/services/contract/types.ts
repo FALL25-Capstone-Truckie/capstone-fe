@@ -43,6 +43,53 @@ export interface CreateContractRequest {
   orderId: string;
 }
 
+// Payment breakdown snapshot types
+export interface CalculationStep {
+  sizeRuleName: string;
+  numOfVehicles: number;
+  distanceRange: string;
+  unitPrice: number;
+  appliedKm: number;
+  subtotal: number;
+}
+
+export interface VehicleAssignmentSnapshot {
+  vehicleId?: string;
+  vehicleTypeName: string;
+  licensePlate?: string;
+  sizeRuleName: string;
+  pricePerKm: number;
+  quantity: number;
+}
+
+export interface PaymentBreakdownSnapshot {
+  totalPrice: number;
+  totalBeforeAdjustment: number;
+  categoryExtraFee: number;
+  categoryMultiplier: number;
+  promotionDiscount: number;
+  finalTotal: number;
+  totalTollFee: number;
+  totalTollCount: number;
+  vehicleType: string;
+  totalDeclaredValue: number;
+  insuranceFee: number;
+  insuranceRate: number;
+  vatRate: number;
+  hasInsurance: boolean;
+  grandTotal: number;
+  steps: CalculationStep[];
+  vehicleAssignments: VehicleAssignmentSnapshot[];
+  distanceKm: number;
+  depositPercent: number;
+  depositAmount: number;
+  remainingAmount: number;
+  adjustedValue: number | null;
+  effectiveTotal: number;
+  snapshotDate: string;
+  snapshotVersion: string;
+}
+
 export interface Contract {
   id: string;
   contractName: string;
@@ -55,6 +102,7 @@ export interface Contract {
   status: string;
   orderId: string;
   staffId: string;
+  paymentBreakdownSnapshot?: string; // JSON string
 }
 
 export interface CreateContractResponse {

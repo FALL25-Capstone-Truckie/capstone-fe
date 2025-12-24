@@ -167,6 +167,20 @@ export interface PriceDetails {
   vatRate?: number;              // Tỷ lệ VAT (0.1)
   hasInsurance?: boolean;        // Có mua bảo hiểm không
   grandTotal?: number;           // Tổng cuối cùng (phí vận chuyển + phí bảo hiểm)
+  // Snapshot fields
+  adjustedValue?: number;        // Giá trị điều chỉnh
+  effectiveTotal?: number;       // Giá cuối cùng thực tế
+  depositAmount?: number;        // Số tiền cọc
+  depositPercent?: number;       // Tỷ lệ cọc
+  remainingAmount?: number;      // Số tiền còn lại
+  isSnapshot?: boolean;          // Có phải từ snapshot không
+  snapshotDate?: string;         // Ngày tạo snapshot
+  snapshotVersion?: string;      // Phiên bản snapshot
+  totalTollFee?: number;         // Tổng phí cầu đường
+  totalTollCount?: number;       // Số trạm thu phí
+  vehicleType?: string;          // Loại xe
+  categoryCoefficient?: number;  // Hệ số danh mục (alias for categoryMultiplier)
+  categorySurcharge?: number;    // Phụ thu danh mục (alias for categoryExtraFee)
 }
 
 export interface PriceStep {

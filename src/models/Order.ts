@@ -528,6 +528,7 @@ export interface CustomerContract {
   attachFileUrl: string;
   status: string;
   staffName: string;
+  paymentBreakdownSnapshot?: string; // JSON string containing payment breakdown
 }
 
 export interface CustomerTransaction {

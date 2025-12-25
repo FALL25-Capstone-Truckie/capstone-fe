@@ -93,6 +93,47 @@ export const useOrderCreation = () => {
     }
   }, []);
 
+  // Refetch all initial data (useful for retry after error)
+  const refetchInitialData = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      // Fetch all data in parallel including customer profile
+      const [addressesData, orderSizesData, categoriesData, customerProfile] = await Promise.all([
+        addressService.getMyAddresses(),
+        orderSizeService.getAllOrderSizes(),
+        categoryService.getCategories(),
+        customerService.getMyProfile(),
+      ]);
+
+      // Check customer status
+      const profileStatus = customerProfile?.status;
+      setCustomerStatus(profileStatus);
+
+      // Only ACTIVE customers can create new orders
+      if (profileStatus !== 'ACTIVE') {
+        setError('Tài khoản khách hàng của bạn hiện không ở trạng thái hoạt động. Vui lòng liên hệ bộ phận hỗ trợ để được kiểm tra và kích hoạt lại.');
+        setLoading(false);
+        return;
+      }
+
+      setAddresses(addressesData);
+      setOrderSizes(orderSizesData);
+      
+      // getCategories returns GetCategoriesResponse, need to extract data
+      const categoriesArray = Array.isArray(categoriesData) 
+        ? categoriesData 
+        : (categoriesData as any)?.data || [];
+      setCategories(categoriesArray);
+    } catch (err: any) {
+      console.error('[useOrderCreation] Error fetching initial data:', err);
+      setError(err?.message || 'Không thể tải dữ liệu');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   return {
     // Data
     addresses,
@@ -107,5 +148,6 @@ export const useOrderCreation = () => {
     // Actions
     createOrder,
     refetchAddresses,
+    refetchInitialData,
   };
 };

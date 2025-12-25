@@ -21,7 +21,7 @@ const { Title, Text } = Typography;
 export default function CreateOrder() {
   const navigate = useNavigate();
   const { message } = App.useApp();
-  const { addresses, orderSizes, categories, loading, error, createOrder, refetchAddresses } = useOrderCreation();
+  const { addresses, orderSizes, categories, loading, error, createOrder, refetchAddresses, refetchInitialData } = useOrderCreation();
   const [currentStep, setCurrentStep] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formValues, setFormValues] = useState<any>({
@@ -451,7 +451,7 @@ export default function CreateOrder() {
               <Button
                 type="primary"
                 size="large"
-                onClick={handleRetry}
+                onClick={refetchInitialData}
                 className="bg-red-500 hover:bg-red-600 border-red-500"
               >
                 Thử lại

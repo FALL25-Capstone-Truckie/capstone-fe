@@ -291,6 +291,9 @@ const IssueModal: React.FC = () => {
                   newIssueForModal.issueImages.length > 0 &&
                   newIssueForModal.issueImages.some(url => url && typeof url === 'string' && url.trim() !== '');
                 
+                // Don't render anything if no valid images
+                if (!hasValidImages) return null;
+                
                 return (
                   <div className="p-2 rounded border bg-purple-50 border-purple-200">
                     <div className="flex items-center gap-1 mb-1">
@@ -299,34 +302,28 @@ const IssueModal: React.FC = () => {
                         Biên bản vi phạm
                       </Text>
                     </div>
-                    {hasValidImages ? (
-                      <Image.PreviewGroup>
-                        <div className="grid grid-cols-2 gap-2">
-                          {newIssueForModal.issueImages!.filter(url => url && typeof url === 'string' && url.trim() !== '').map((imageUrl, index) => (
-                            <Image
-                              key={index}
-                              src={imageUrl}
-                              alt={`Biên bản vi phạm ${index + 1}`}
-                              style={{ 
-                                width: '100%',
-                                height: 'auto',
-                                maxHeight: '250px',
-                                objectFit: 'contain',
-                                borderRadius: '4px',
-                                border: '1px solid #9333ea',
-                                cursor: 'pointer'
-                              }}
-                              preview={{ mask: 'Xem full size' }}
-                              fallback="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=="
-                            />
-                          ))}
-                        </div>
-                      </Image.PreviewGroup>
-                    ) : (
-                      <div className="text-center py-4 text-gray-500 text-xs">
-                        Chưa có hình biên bản vi phạm
+                    <Image.PreviewGroup>
+                      <div className="grid grid-cols-2 gap-2">
+                        {newIssueForModal.issueImages!.filter(url => url && typeof url === 'string' && url.trim() !== '').map((imageUrl, index) => (
+                          <Image
+                            key={index}
+                            src={imageUrl}
+                            alt={`Biên bản vi phạm ${index + 1}`}
+                            style={{ 
+                              width: '100%',
+                              height: 'auto',
+                              maxHeight: '250px',
+                              objectFit: 'contain',
+                              borderRadius: '4px',
+                              border: '1px solid #9333ea',
+                              cursor: 'pointer'
+                            }}
+                            preview={{ mask: 'Xem full size' }}
+                            fallback="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=="
+                          />
+                        ))}
                       </div>
-                    )}
+                    </Image.PreviewGroup>
                   </div>
                 );
               })()}

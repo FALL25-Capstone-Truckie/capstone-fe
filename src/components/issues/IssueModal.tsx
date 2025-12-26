@@ -14,12 +14,16 @@ const { Title, Text, Paragraph } = Typography;
  */
 const IssueModal: React.FC = () => {
   const navigate = useNavigate();
-  const { newIssueForModal, hideNewIssueModal, clearIssueFromQueueByIssueId } = useIssuesContext();
+  const { newIssueForModal, hideNewIssueModal, clearIssueFromQueueByIssueId, isQueueOpen, toggleQueue } = useIssuesContext();
 
   const handleViewDetail = () => {
     if (newIssueForModal) {
       clearIssueFromQueueByIssueId(newIssueForModal.id);
       hideNewIssueModal();
+      // Đóng modal queue nếu đang mở
+      if (isQueueOpen) {
+        toggleQueue();
+      }
       navigate(`/staff/issues/${newIssueForModal.id}`);
     }
   };

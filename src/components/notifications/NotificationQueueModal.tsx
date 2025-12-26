@@ -33,7 +33,8 @@ const NotificationQueueModal: React.FC<NotificationQueueModalProps> = ({ visible
     markAsProcessed, 
     removeFromQueue,
     showNewIssueModal,
-    getHighPriorityCount 
+    getHighPriorityCount,
+    hideNewIssueModal 
   } = useIssuesContext();
 
   const [selectedIssue, setSelectedIssue] = useState<Issue | null>(null);
@@ -102,6 +103,9 @@ const NotificationQueueModal: React.FC<NotificationQueueModalProps> = ({ visible
   };
 
   const handleViewIssue = (queuedIssue: QueuedIssue) => {
+    // Đóng queue modal trước
+    onClose();
+    // Hiển thị issue modal
     showNewIssueModal(queuedIssue.issue);
     markAsProcessed(queuedIssue.id);
   };
@@ -111,6 +115,9 @@ const NotificationQueueModal: React.FC<NotificationQueueModalProps> = ({ visible
   };
 
   const handleMarkAsProcessed = (issueId: string) => {
+    // Đóng tất cả modal
+    hideNewIssueModal();
+    onClose();
     markAsProcessed(issueId);
   };
 

@@ -30,8 +30,8 @@ export const OffRouteWarningProvider: React.FC<OffRouteWarningProviderProps> = (
   const [modalVisible, setModalVisible] = useState(false);
   const { user } = useAuth();
   
-  // Check if user is staff using reactive auth state
-  const isStaff = user?.role === 'staff' || user?.role === 'admin';
+  // Check if user is staff only (exclude admin) using reactive auth state
+  const isStaff = user?.role === 'staff';
   
   // console.log('[OffRouteWarningProvider] Auth state:', { 
   //   userId: user?.id, 
@@ -54,7 +54,7 @@ export const OffRouteWarningProvider: React.FC<OffRouteWarningProviderProps> = (
     createIssue,
     dismissWarning,
   } = useOffRouteWarning({
-    autoConnect: isStaff, // Only connect for staff users
+    autoConnect: isStaff, // Only connect for staff users (not admin)
     onWarning: handleWarning,
   });
 
